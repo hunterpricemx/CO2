@@ -23,6 +23,8 @@ const PANEL_LABELS: Record<AdminPanelPermission, string> = {
   news: "Noticias",
   downloads: "Descargas",
   payments: "Pagos",
+  influencers: "Influencers",
+  settings: "Ajustes del Sitio",
 };
 
 type Props = {
