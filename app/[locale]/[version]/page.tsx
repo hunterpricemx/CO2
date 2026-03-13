@@ -221,11 +221,11 @@ export default async function HomePage({
 
                 {/* Video + Promo Slides */}
                 {(videoUrl || promoSlides.filter((s) => s.image_url).length > 0) && (
-                  <div className="grid md:grid-cols-2 gap-4 mb-10">
+                  <div className="flex flex-col md:grid md:grid-cols-2 gap-4 mb-10">
                     {/* Video */}
-                    <div className="aspect-video rounded-xl overflow-hidden bg-black/40">
-                      {videoUrl ? (
-                        videoUrl.includes("youtu") ? (
+                    {videoUrl && (
+                      <div className="w-full aspect-video rounded-xl overflow-hidden bg-black/40">
+                        {videoUrl.includes("youtu") ? (
                           <iframe
                             src={`https://www.youtube.com/embed/${extractYoutubeId(videoUrl)}?rel=0&modestbranding=1`}
                             className="w-full h-full"
@@ -243,17 +243,15 @@ export default async function HomePage({
                             loop
                             playsInline
                           />
-                        )
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="text-white/10 text-sm font-poppins">Sin video</span>
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
                     {/* Promo Slides */}
-                    <div className="aspect-video">
-                      <PromoSlider slides={promoSlides} />
-                    </div>
+                    {promoSlides.filter((s) => s.image_url).length > 0 && (
+                      <div className="w-full aspect-video">
+                        <PromoSlider slides={promoSlides} />
+                      </div>
+                    )}
                   </div>
                 )}
 
