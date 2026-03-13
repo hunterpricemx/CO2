@@ -2,12 +2,33 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/*
+ * ============================================================
+ * Conquer Classic Plus — Design Tokens
+ * Dark gaming aesthetic: deep blacks, gold accents, sharp type
+ *
+ * Primary palette:
+ *   Background   #1a1a1a  oklch(0.118 0 0)
+ *   Surface      #2d2d2d  oklch(0.196 0 0)
+ *   Gold         #f39c12  oklch(0.718 0.162 66.5)
+ *   Gold-light   #f1c40f  oklch(0.804 0.175 80)
+ *   Gold-dark    #e67e22  oklch(0.643 0.163 54)
+ *   Text         #ffffff  oklch(1 0 0)
+ *   Muted        #aaaaaa  oklch(0.695 0 0)
+ *   Border       rgba(255,255,255,0.1)
+ * ============================================================
+ */
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  /* Font families injected by next/font/google via CSS variables */
+  --font-sans:   var(--font-chakra);
+  --font-chakra: var(--font-chakra);
+  --font-bebas:  var(--font-bebas);
+  --font-poppins: var(--font-poppins);
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -17,11 +38,6 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -45,75 +61,81 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* Conquer brand tokens — available as Tailwind classes:
+     bg-gold, text-gold, border-gold, etc. */
+  --color-gold:       oklch(0.718 0.162 66.5);   /* #f39c12 */
+  --color-gold-light: oklch(0.804 0.175 80);      /* #f1c40f */
+  --color-gold-dark:  oklch(0.643 0.163 54);      /* #e67e22 */
+  --color-surface:    oklch(0.196 0 0);           /* #2d2d2d */
+  --color-surface-2:  oklch(0.22 0 0);            /* #333 */
+  --color-muted-text: oklch(0.695 0 0);           /* #aaa */
 }
 
+/*
+ * Conquer gaming site is always dark.
+ * Both :root and .dark use the same dark theme tokens.
+ */
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  color-scheme: dark;
+
+  --background: oklch(0.118 0 0);       /* #1a1a1a */
+  --foreground: oklch(0.985 0 0);       /* #fafafa */
+  --card: oklch(0.196 0 0);             /* #2d2d2d */
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.196 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.718 0.162 66.5);   /* gold #f39c12 */
+  --primary-foreground: oklch(0.118 0 0);
+  --secondary: oklch(0.22 0 0);         /* #333 */
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.695 0 0); /* #aaa */
+  --accent: oklch(0.643 0.163 54);      /* gold-dark */
+  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.718 0.162 66.5);      /* gold focus ring */
+  --radius: 0.5rem;
+  --sidebar: oklch(0.14 0 0);           /* slightly darker than bg */
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.718 0.162 66.5);
+  --sidebar-primary-foreground: oklch(0.118 0 0);
+  --sidebar-accent: oklch(0.22 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.718 0.162 66.5);
 }
 
+/* .dark mirrors :root since the site is always dark */
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: oklch(0.118 0 0);
   --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
+  --card: oklch(0.196 0 0);
   --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
+  --popover: oklch(0.196 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  --primary: oklch(0.718 0.162 66.5);
+  --primary-foreground: oklch(0.118 0 0);
+  --secondary: oklch(0.22 0 0);
   --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --muted: oklch(0.22 0 0);
+  --muted-foreground: oklch(0.695 0 0);
+  --accent: oklch(0.643 0.163 54);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.809 0.105 251.813);
-  --chart-2: oklch(0.623 0.214 259.815);
-  --chart-3: oklch(0.546 0.245 262.881);
-  --chart-4: oklch(0.488 0.243 264.376);
-  --chart-5: oklch(0.424 0.199 265.638);
-  --sidebar: oklch(0.205 0 0);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.718 0.162 66.5);
+  --sidebar: oklch(0.14 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-primary: oklch(0.718 0.162 66.5);
+  --sidebar-primary-foreground: oklch(0.118 0 0);
+  --sidebar-accent: oklch(0.22 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.718 0.162 66.5);
 }
 
 @layer base {
@@ -122,8 +144,50 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
   }
   html {
     @apply font-sans;
   }
+}
+
+/* ============================================================
+   Conquer utility classes
+   ============================================================ */
+@layer utilities {
+  /* Gold gradient — used on buttons and headings */
+  .bg-gold-gradient {
+    background: linear-gradient(135deg, oklch(0.804 0.175 80) 0%, oklch(0.718 0.162 66.5) 100%);
+  }
+
+  /* Subtle surface gradient — used on hero sections */
+  .bg-surface-gradient {
+    background: linear-gradient(135deg, oklch(0.118 0 0) 0%, oklch(0.196 0 0) 100%);
+  }
+
+  /* Card hover glow effect */
+  .card-glow:hover {
+    box-shadow: 0 8px 32px oklch(0.718 0.162 66.5 / 0.15);
+  }
+
+  /* Gold text shimmer animation */
+  .text-gold-shimmer {
+    background: linear-gradient(90deg, oklch(0.804 0.175 80), oklch(0.643 0.163 54), oklch(0.804 0.175 80));
+    background-size: 200% auto;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: shimmer 3s linear infinite;
+  }
+
+  @keyframes shimmer {
+    0%   { background-position: 0% center; }
+    100% { background-position: 200% center; }
+  }
+
+  /* Scrollbar styling — dark gold theme */
+  .custom-scrollbar::-webkit-scrollbar        { width: 6px; height: 6px; }
+  .custom-scrollbar::-webkit-scrollbar-track  { background: oklch(0.196 0 0); }
+  .custom-scrollbar::-webkit-scrollbar-thumb  { background: oklch(0.718 0.162 66.5 / 0.6); border-radius: 3px; }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: oklch(0.718 0.162 66.5); }
 }

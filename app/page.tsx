@@ -1,65 +1,154 @@
+﻿import type { Metadata } from "next";
+import Link from "next/link";
 import Image from "next/image";
+
+export const metadata: Metadata = {
+  title: "Conquer Classic Plus � Elige tu Experiencia",
+};
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
+    <>
+      <style>{`
+        .home-hero { height: 100vh; display: flex; overflow: hidden; }
+
+        .home-hero-section {
+          flex: 1;
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          text-decoration: none;
+          overflow: hidden;
+          background-position: center;
+          background-size: 105%;
+          transition: background-size 0.4s ease;
+          cursor: pointer;
+        }
+        .home-hero-section:hover { background-size: 110%; }
+
+        .home-hero-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0,0,0,0.4);
+          transition: background 0.4s ease;
+        }
+        .home-hero-section:hover .home-hero-overlay { background: rgba(0,0,0,0.2); }
+
+        .home-hero-content {
+          position: relative;
+          z-index: 2;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1rem;
+          text-align: center;
+          color: white;
+          padding: 2rem;
+          font-family: var(--font-chakra), "Chakra Petch", sans-serif;
+        }
+
+        .home-hero-logo-img {
+          max-width: 200px;
+          height: auto;
+          transition: transform 0.3s ease;
+        }
+        .home-hero-section:hover .home-hero-logo-img { transform: scale(1.05); }
+
+        .home-hero-server {
+          font-size: 1.3rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          margin: 0;
+        }
+
+        .home-hero-title {
+          font-size: 2rem;
+          font-weight: 700;
+          margin: 0;
+          text-shadow: 2px 2px 8px rgba(0,0,0,0.5);
+        }
+
+        .home-hero-subtitle {
+          font-size: 1.1rem;
+          opacity: 0.9;
+          margin: 0;
+        }
+
+        .home-hero-cta {
+          background-image: url("/images/buttons/button_1.png");
+          background-size: cover;
+          width: 150px;
+          height: 46px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          font-weight: 700;
+          text-transform: uppercase;
+          color: white;
+          margin-top: 0.5rem;
+          transition: transform 0.3s ease;
+        }
+        .home-hero-section:hover .home-hero-cta {
+          transform: scale(0.9);
+          background-image: url("/images/buttons/button_2.png");
+        }
+
+        @media (max-width: 768px) {
+          .home-hero { flex-direction: column; }
+          .home-hero-section { min-height: 50vh; }
+          .home-hero-title { font-size: 1.5rem; }
+          .home-hero-subtitle { font-size: 0.85rem; }
+          .home-hero-server { font-size: 1rem; margin-bottom: 5px; }
+        }
+      `}</style>
+
+      <main className="home-hero">
+        <Link
+          href="/1.0"
+          className="home-hero-section"
+          style={{ backgroundImage: "url('/images/backgrounds/bh__home10.png')" }}
+        >
+          <div className="home-hero-overlay" />
+          <div className="home-hero-content">
             <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+              src="/images/logos/conquer_classic_plus_10_logo.png"
+              alt="Conquer Classic Plus 1.0"
+              width={200}
+              height={100}
+              className="home-hero-logo-img"
+              priority
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+            <p className="home-hero-server">SERVER 1.0</p>
+            <h1 className="home-hero-title">CONQUER CLASSIC PLUS</h1>
+            <p className="home-hero-subtitle">¡ENTRA A LA VERDADERA ERA CLÁSICA!</p>
+            <span className="home-hero-cta">ENTRAR</span>
+          </div>
+        </Link>
+
+        <Link
+          href="/2.0"
+          className="home-hero-section"
+          style={{ backgroundImage: "url('/images/backgrounds/bh__home20.png')" }}
+        >
+          <div className="home-hero-overlay" />
+          <div className="home-hero-content">
+            <Image
+              src="/images/logos/conquer_classic_plus_20_logo.png"
+              alt="Conquer Classic Plus 2.0"
+              width={200}
+              height={100}
+              className="home-hero-logo-img"
+              priority
+            />
+            <p className="home-hero-server">SERVER 2.0</p>
+            <h1 className="home-hero-title">CONQUER CLASSIC PLUS</h1>
+            <p className="home-hero-subtitle">¡ENTRA A LA ERA DEL 2008!!</p>
+            <span className="home-hero-cta">ENTRAR</span>
+          </div>
+        </Link>
       </main>
-    </div>
+    </>
   );
 }
