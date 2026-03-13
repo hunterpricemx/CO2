@@ -203,7 +203,7 @@ export default async function HomePage({
                 style={{
                   background: "linear-gradient(135deg, rgb(10, 10, 10) 0%, rgb(11, 10, 10) 100%)",
                   border: "2px solid rgba(243, 156, 18, 0.3)",
-                  padding: "3rem",
+                  padding: "clamp(1rem, 4vw, 3rem)",
                 }}
               >
                 {/* Header */}
@@ -221,7 +221,7 @@ export default async function HomePage({
 
                 {/* Video + Promo Slides */}
                 {(videoUrl || promoSlides.filter((s) => s.image_url).length > 0) && (
-                  <div className="flex flex-col md:grid md:grid-cols-2 gap-4 mb-10">
+                  <div className="flex flex-col md:grid md:grid-cols-2 gap-4 mb-10 w-full overflow-hidden">
                     {/* Video */}
                     {videoUrl && (
                       <div className="w-full aspect-video rounded-xl overflow-hidden bg-black/40">
