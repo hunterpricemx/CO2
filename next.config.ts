@@ -11,7 +11,6 @@ const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
  * - Supabase storage: remote image domain allowed
  */
 const nextConfig: NextConfig = {
-  basePath: "/coplus",
   images: {
     remotePatterns: [
       {
