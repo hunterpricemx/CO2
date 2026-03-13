@@ -190,14 +190,14 @@ export default async function HomePage({
 
       {/* ═══════════════════════ CONTENT SECTION ═══════════════════════ */}
       <section
-        className="px-4 pb-12"
+        className="px-4 pb-12 overflow-x-hidden"
         style={{ backgroundColor: "#0f0503", minHeight: "50vh" }}
       >
         <div className="container mx-auto max-w-7xl">
           <div className="grid lg:grid-cols-[1fr_320px] gap-8 py-8">
 
             {/* ── MAIN CONTENT ── */}
-            <div>
+            <div className="min-w-0">
               <div
                 className="rounded-2xl shadow-2xl"
                 style={{
@@ -358,7 +358,7 @@ export default async function HomePage({
             </div>
 
             {/* ── SIDEBAR ── */}
-            <aside className="flex flex-col gap-6">
+            <aside className="flex flex-col gap-6 min-w-0">
 
               {/* Events Schedule */}
               <div className="rounded-xl p-6" style={sidebarCardEvents}>
