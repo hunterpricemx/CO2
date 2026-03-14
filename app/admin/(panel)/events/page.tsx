@@ -59,7 +59,7 @@ export default function AdminEventsPage() {
   });
 
   const { mutate: deleteEvent } = useDelete();
-  const { mutate: createEvent, isPending: isCloning } = useCreate();
+  const { mutate: createEvent, isLoading: isCloning } = useCreate();
 
   const events = (query.data?.data ?? []) as EventItem[];
   const isLoading = query.isLoading;
