@@ -51,6 +51,7 @@ export default function AdminEventsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sortBy, setSortBy] = useState<"created_at" | "title" | "schedule">("created_at");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [isCloning, setIsCloning] = useState(false);
 
   const { query } = useList({
     resource: "events",
@@ -59,7 +60,7 @@ export default function AdminEventsPage() {
   });
 
   const { mutate: deleteEvent } = useDelete();
-  const { mutate: createEvent, isLoading: isCloning } = useCreate();
+  const { mutate: createEvent } = useCreate();
 
   const events = (query.data?.data ?? []) as EventItem[];
   const isLoading = query.isLoading;
@@ -113,6 +114,7 @@ export default function AdminEventsPage() {
   }, [events, search, versionFilter, statusFilter, sortBy, sortOrder]);
 
   function handleClone(ev: EventItem) {
+    setIsCloning(true);
     createEvent(
       {
         resource: "events",
@@ -137,9 +139,11 @@ export default function AdminEventsPage() {
       },
       {
         onSuccess: () => {
+          setIsCloning(false);
           toast.success(`Evento clonado en borrador: ${cloneTitle(ev.title_es)}`);
         },
         onError: (error) => {
+          setIsCloning(false);
           toast.error(error?.message ?? "No se pudo clonar el evento");
         },
       },
