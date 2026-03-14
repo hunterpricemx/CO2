@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useForm } from "@refinedev/react-hook-form";
 import { useFieldArray } from "react-hook-form";
 import { useBack } from "@refinedev/core";
@@ -12,6 +13,37 @@ const FIELD_CLS =
 
 const LABEL_CLS = "text-xs text-gray-400 uppercase tracking-wider mb-1 block";
 
+function normalizeSchedule(value: unknown): Array<{ day: ScheduleDay; time: string }> {
+  let parsed = value;
+
+  if (typeof parsed === "string") {
+    try {
+      parsed = JSON.parse(parsed);
+    } catch {
+      parsed = [];
+    }
+  }
+
+  if (!Array.isArray(parsed)) {
+    return [{ day: "daily", time: "20:00" }];
+  }
+
+  const normalized = parsed
+    .filter(
+      (entry): entry is { day: ScheduleDay; time: string } =>
+        !!entry &&
+        typeof entry === "object" &&
+        "day" in entry &&
+        "time" in entry &&
+        typeof entry.day === "string" &&
+        typeof entry.time === "string" &&
+        SCHEDULE_DAYS.includes(entry.day as ScheduleDay),
+    )
+    .map((entry) => ({ day: entry.day, time: entry.time.slice(0, 5) }));
+
+  return normalized.length > 0 ? normalized : [{ day: "daily", time: "20:00" }];
+}
+
 export default function EventEditPage() {
   const back = useBack();
 
@@ -19,6 +51,7 @@ export default function EventEditPage() {
     register,
     handleSubmit,
     control,
+    reset,
     formState: { isSubmitting },
     saveButtonProps,
     refineCore: { onFinish, query: queryResult },
@@ -32,6 +65,16 @@ export default function EventEditPage() {
 
   const { fields: scheduleFields, append: appendSchedule, remove: removeSchedule } =
     useFieldArray({ control, name: "schedule" });
+
+  useEffect(() => {
+    const record = queryResult?.data?.data;
+    if (!record) return;
+
+    reset({
+      ...record,
+      schedule: normalizeSchedule(record.schedule),
+    });
+  }, [queryResult?.data?.data, reset]);
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl">

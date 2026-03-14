@@ -36,4 +36,5 @@ export interface LoginInput {
 export interface GameLoginInput {
   username: string;
   password: string;
+  captchaToken: string;
 }

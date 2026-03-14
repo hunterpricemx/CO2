@@ -29,6 +29,10 @@ export default function AdminSiteSettingsPage() {
   const [bgV1, setBgV1] = useState<string | null>(null);
   const [bgV2, setBgV2] = useState<string | null>(null);
 
+  // Community links
+  const [discordUrlV1, setDiscordUrlV1] = useState("");
+  const [discordUrlV2, setDiscordUrlV2] = useState("");
+
   // Home videos
   const [videoV1, setVideoV1] = useState("");
   const [videoV2, setVideoV2] = useState("");
@@ -62,6 +66,8 @@ export default function AdminSiteSettingsPage() {
         setLogoV2(map.logo_v2 || "/images/logos/conquer_classic_plus_20_logo.png");
         setBgV1(map.hero_bg_v1 || "/images/backgrounds/bg__main10.jpg");
         setBgV2(map.hero_bg_v2 || "/images/backgrounds/bg__main20.jpg");
+        setDiscordUrlV1(map.discord_url_v1 || "");
+        setDiscordUrlV2(map.discord_url_v2 || "");
         setVideoV1(map.home_video_url_v1 || "");
         setVideoV2(map.home_video_url_v2 || "");
         try { setSlidesV1(JSON.parse(map.promo_slides_v1 || "[]")); } catch { setSlidesV1([]); }
@@ -186,6 +192,41 @@ export default function AdminSiteSettingsPage() {
             onChange={(v) => setBgV2(v)}
             folder="site-settings"
           />
+        </div>
+      </Section>
+
+      <Section
+        title="Comunidad de Discord"
+        description="Links de invitación para las comunidades de Discord por versión."
+        onSave={() =>
+          save([
+            { key: "discord_url_v1", value: discordUrlV1 },
+            { key: "discord_url_v2", value: discordUrlV2 },
+          ])
+        }
+        saving={saving}
+      >
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-gray-400 uppercase tracking-wider">Discord v1.0</label>
+            <input
+              type="url"
+              value={discordUrlV1}
+              onChange={(e) => setDiscordUrlV1(e.target.value)}
+              placeholder="https://discord.gg/..."
+              className={FIELD_CLS}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-gray-400 uppercase tracking-wider">Discord v2.0</label>
+            <input
+              type="url"
+              value={discordUrlV2}
+              onChange={(e) => setDiscordUrlV2(e.target.value)}
+              placeholder="https://discord.gg/..."
+              className={FIELD_CLS}
+            />
+          </div>
         </div>
       </Section>
 

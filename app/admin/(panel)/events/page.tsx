@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useList, useDelete } from "@refinedev/core";
+import { useList, useDelete, useCreate } from "@refinedev/core";
 import Link from "next/link";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Copy, Plus, Pencil, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { formatSchedule } from "@/modules/events/types";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -24,10 +25,25 @@ type EventItem = {
   title_en?: string | null;
   title_pt?: string | null;
   schedule: unknown;
+  description_es?: string | null;
+  description_en?: string | null;
+  description_pt?: string | null;
+  rewards_es?: string | null;
+  rewards_en?: string | null;
+  rewards_pt?: string | null;
+  featured_image?: string | null;
   version: string;
   status: string;
+  view_count?: number;
   created_at?: string;
+  updated_at?: string;
 };
+
+function cloneTitle(title?: string | null): string {
+  const value = title?.trim();
+  if (!value) return "(copy)";
+  return value.startsWith("(copy)") ? value : `(copy) ${value}`;
+}
 
 export default function AdminEventsPage() {
   const [search, setSearch] = useState("");
@@ -43,6 +59,7 @@ export default function AdminEventsPage() {
   });
 
   const { mutate: deleteEvent } = useDelete();
+  const { mutate: createEvent, isPending: isCloning } = useCreate();
 
   const events = (query.data?.data ?? []) as EventItem[];
   const isLoading = query.isLoading;
@@ -94,6 +111,40 @@ export default function AdminEventsPage() {
 
     return result;
   }, [events, search, versionFilter, statusFilter, sortBy, sortOrder]);
+
+  function handleClone(ev: EventItem) {
+    createEvent(
+      {
+        resource: "events",
+        values: {
+          title_es: cloneTitle(ev.title_es),
+          title_en: cloneTitle(ev.title_en),
+          title_pt: cloneTitle(ev.title_pt),
+          schedule: ev.schedule,
+          description_es: ev.description_es ?? null,
+          description_en: ev.description_en ?? null,
+          description_pt: ev.description_pt ?? null,
+          rewards_es: ev.rewards_es ?? null,
+          rewards_en: ev.rewards_en ?? null,
+          rewards_pt: ev.rewards_pt ?? null,
+          featured_image: ev.featured_image ?? null,
+          version: ev.version,
+          status: "draft",
+          view_count: 0,
+        },
+        successNotification: false,
+        errorNotification: false,
+      },
+      {
+        onSuccess: () => {
+          toast.success(`Evento clonado en borrador: ${cloneTitle(ev.title_es)}`);
+        },
+        onError: (error) => {
+          toast.error(error?.message ?? "No se pudo clonar el evento");
+        },
+      },
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -220,6 +271,14 @@ export default function AdminEventsPage() {
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Link>
+                      <button
+                        onClick={() => handleClone(ev)}
+                        disabled={isCloning}
+                        className="p-1.5 text-gray-400 hover:text-sky-400 hover:bg-sky-900/20 disabled:opacity-50 rounded-lg transition-colors"
+                        title={`Clonar "${ev.title_es}"`}
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
                       <button
                         onClick={() => {
                           if (confirm(`¿Eliminar "${ev.title_es}"?`)) {

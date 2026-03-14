@@ -17,8 +17,9 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
-import { useTransition, useState } from "react";
+import { useTransition, useState, useRef } from "react";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import ReCAPTCHA from "react-google-recaptcha";
 import { useTranslations } from "next-intl";
 
 const schema = z.object({
@@ -36,6 +37,7 @@ export default function LoginPage() {
   const tn = useTranslations("nav");
   const [isPending, startTransition] = useTransition();
   const [showPassword, setShowPassword] = useState(false);
+  const recaptchaRef = useRef<ReCAPTCHA>(null);
 
   function vp(path: string) {
     return `/${locale === "es" ? "" : locale + "/"}${version}${path}`;
@@ -53,6 +55,7 @@ export default function LoginPage() {
   const errorMap: Record<string, string> = {
     invalid_credentials: t("errors.invalid_credentials"),
     account_banned: t("errors.account_banned"),
+    captcha_error: t("errors.captcha_error"),
   };
 
   const form = useForm<FormData>({
@@ -62,8 +65,18 @@ export default function LoginPage() {
 
   function onSubmit(data: FormData) {
     startTransition(async () => {
-      const result = await gameLoginAction(data);
+      const captchaToken = recaptchaRef.current?.getValue() ?? "";
+      if (!captchaToken) {
+        toast.error(t("errors.captcha_error"));
+        return;
+      }
+
+      const result = await gameLoginAction({
+        ...data,
+        captchaToken,
+      });
       if (!result.success) {
+        recaptchaRef.current?.reset();
         toast.error(errorMap[result.error ?? ""] ?? result.error ?? "Error");
         return;
       }
@@ -157,6 +170,15 @@ export default function LoginPage() {
                   </FormItem>
                 )}
               />
+
+              <div className="flex justify-center">
+                <ReCAPTCHA
+                  ref={recaptchaRef}
+                  sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
+                  theme="light"
+                />
+              </div>
+
               <Button
                 type="submit"
                 disabled={isPending}

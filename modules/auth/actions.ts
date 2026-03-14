@@ -24,7 +24,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getGameDb, type AccountRow } from "@/lib/game-db";
 import { setGameSession, clearGameSession, getGameSession } from "@/lib/session";
 import type { ActionResult } from "@/types";
-import type { LoginInput, RegisterInput } from "./types";
+import type { GameLoginInput, LoginInput, RegisterInput } from "./types";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,6 +36,21 @@ function hashGamePassword(password: string, salt: string): string {
   return createHash("sha3-256").update(h1 + password + salt).digest("hex");
 }
 
+async function verifyRecaptcha(captchaToken: string): Promise<boolean> {
+  const secret = process.env.RECAPTCHA_SECRET_KEY;
+  if (!secret || !captchaToken) {
+    return false;
+  }
+
+  const verifyRes = await fetch(
+    `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${captchaToken}`,
+    { method: "POST" },
+  );
+  const verifyData = await verifyRes.json() as { success: boolean };
+
+  return verifyData.success;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GAME AUTH — MariaDB accounts table
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,15 +59,16 @@ function hashGamePassword(password: string, salt: string): string {
  * Authenticates a game player against the MariaDB accounts table.
  * Sets a signed httpOnly session cookie on success.
  */
-export async function gameLoginAction(input: {
-  username: string;
-  password: string;
-}): Promise<ActionResult> {
+export async function gameLoginAction(input: GameLoginInput): Promise<ActionResult> {
   const username = input.username.trim();
-  const { password } = input;
+  const { password, captchaToken } = input;
 
   if (!username || !password) {
     return { success: false, error: "invalid_credentials" };
+  }
+
+  if (!(await verifyRecaptcha(captchaToken))) {
+    return { success: false, error: "captcha_error" };
   }
 
   const { conn, config } = await getGameDb();
@@ -99,16 +115,7 @@ export async function gameRegisterAction(input: RegisterInput): Promise<ActionRe
   const { email, password, captchaToken } = input;
 
   // ── Verify reCAPTCHA server-side ──────────────────────────────────────────
-  const secret = process.env.RECAPTCHA_SECRET_KEY;
-  if (!secret) {
-    return { success: false, error: "captcha_error" };
-  }
-  const verifyRes = await fetch(
-    `https://www.google.com/recaptcha/api/siteverify?secret=${secret}&response=${captchaToken}`,
-    { method: "POST" },
-  );
-  const verifyData = await verifyRes.json() as { success: boolean };
-  if (!verifyData.success) {
+  if (!(await verifyRecaptcha(captchaToken))) {
     return { success: false, error: "captcha_error" };
   }
 

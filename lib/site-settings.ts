@@ -11,6 +11,8 @@ export type SiteSettings = {
   logo_v2: string;
   hero_bg_v1: string;
   hero_bg_v2: string;
+  discord_url_v1: string;
+  discord_url_v2: string;
   home_video_url_v1: string;
   home_video_url_v2: string;
   promo_slides_v1: PromoSlide[];
@@ -26,6 +28,8 @@ const DEFAULTS: SiteSettings = {
   logo_v2:           "/images/logos/conquer_classic_plus_20_logo.png",
   hero_bg_v1:        "/images/backgrounds/bg__main10.jpg",
   hero_bg_v2:        "/images/backgrounds/bg__main20.jpg",
+  discord_url_v1:    "",
+  discord_url_v2:    "",
   home_video_url_v1: "",
   home_video_url_v2: "",
   promo_slides_v1:   [],
@@ -70,6 +74,8 @@ async function _fetchSiteSettings(): Promise<SiteSettings> {
       logo_v2:           map.logo_v2           || DEFAULTS.logo_v2,
       hero_bg_v1:        map.hero_bg_v1        || DEFAULTS.hero_bg_v1,
       hero_bg_v2:        map.hero_bg_v2        || DEFAULTS.hero_bg_v2,
+      discord_url_v1:    map.discord_url_v1    || "",
+      discord_url_v2:    map.discord_url_v2    || "",
       home_video_url_v1: map.home_video_url_v1 || "",
       home_video_url_v2: map.home_video_url_v2 || "",
       promo_slides_v1:   safeJSON<PromoSlide[]>(map.promo_slides_v1, []),
@@ -88,6 +94,7 @@ export function getVersionAssets(settings: SiteSettings, version: string) {
   return {
     heroBg:      version === "1.0" ? settings.hero_bg_v1        : settings.hero_bg_v2,
     logoSrc:     version === "1.0" ? settings.logo_v1           : settings.logo_v2,
+    discordUrl:  version === "1.0" ? settings.discord_url_v1    : settings.discord_url_v2,
     videoUrl:    version === "1.0" ? settings.home_video_url_v1 : settings.home_video_url_v2,
     promoSlides: version === "1.0" ? settings.promo_slides_v1   : settings.promo_slides_v2,
   };

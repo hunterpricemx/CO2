@@ -111,8 +111,16 @@ function LocationModal({
       let posY = ry * 0.0625;
       const w = mapRef.current.clientWidth;
       const h = mapRef.current.clientHeight;
-      posX = posX * (w / 512) - 7;
-      posY = posY * (h / 512) - 7;
+      const scaleWidth = w / 512;
+      const scaleHeight = h / 512;
+
+      posX *= scaleWidth;
+      posY *= scaleHeight;
+
+      // Match the legacy conquer marker anchor for the market map.
+      posX -= 5.5;
+      posY -= 2.5;
+
       if (posX >= 0 && posX <= w && posY >= 0 && posY <= h) {
         setDot({ left: posX, top: posY });
       } else {
