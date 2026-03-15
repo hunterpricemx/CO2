@@ -129,14 +129,17 @@ export async function createAdminUser(input: CreateAdminInput): Promise<ActionRe
 
   const { error: profileError } = await supabase
     .from("profiles")
-    .update({
-      username,
-      email,
-      role: "admin",
-      panel_permissions: permissions,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", data.user.id);
+    .upsert(
+      {
+        id: data.user.id,
+        username,
+        email,
+        role: "admin",
+        panel_permissions: permissions,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" },
+    );
 
   if (profileError) {
     await supabase.auth.admin.deleteUser(data.user.id);
