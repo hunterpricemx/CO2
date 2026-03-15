@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { formatSchedule, getNextOccurrenceMs } from "@/modules/events/types";
+import {
+  formatSchedule,
+  getNextOccurrenceMs,
+  type ScheduleEntry,
+} from "@/modules/events/types";
 import type { EventRow } from "@/modules/events/types";
 import { EventDetailModal } from "./EventDetailModal";
 import type { ModalLabels } from "./EventDetailModal";
@@ -31,8 +35,79 @@ function formatCountdown(ms: number): string {
   const s = totalSeconds % 60;
   const mm = String(m).padStart(2, "0");
   const ss = String(s).padStart(2, "0");
-  if (h > 0) return `${h}h ${mm}m ${ss}s`;
+  // Keep long countdowns compact to avoid noisy UI (e.g. 12h instead of 12h 23m 11s).
+  if (h > 0) return `${h}h`;
   return `${mm}m ${ss}s`;
+}
+
+function getNextOccurrenceDate(
+  schedule: ScheduleEntry[] | string | unknown,
+  now: Date,
+): Date | null {
+  let entries: unknown = schedule;
+  if (typeof entries === "string") {
+    try {
+      entries = JSON.parse(entries);
+    } catch {
+      return null;
+    }
+  }
+
+  if (!Array.isArray(entries) || entries.length === 0) return null;
+
+  const dayToDow: Record<string, number | "daily" | "first_of_month"> = {
+    daily: "daily",
+    monday: 1,
+    tuesday: 2,
+    wednesday: 3,
+    thursday: 4,
+    friday: 5,
+    saturday: 6,
+    sunday: 0,
+    first_of_month: "first_of_month",
+  };
+
+  let next: Date | null = null;
+
+  for (const entry of entries as ScheduleEntry[]) {
+    const [h, m] = entry.time.split(":").map(Number);
+    const dow = dayToDow[entry.day];
+    if (dow === undefined || Number.isNaN(h) || Number.isNaN(m)) continue;
+
+    const candidate = new Date(now);
+    candidate.setSeconds(0, 0);
+    candidate.setHours(h, m, 0, 0);
+
+    if (dow === "daily") {
+      if (candidate.getTime() <= now.getTime()) candidate.setDate(candidate.getDate() + 1);
+    } else if (dow === "first_of_month") {
+      candidate.setDate(1);
+      if (candidate.getTime() <= now.getTime()) {
+        candidate.setMonth(candidate.getMonth() + 1);
+        candidate.setDate(1);
+      }
+    } else {
+      const currentDow = now.getDay();
+      let daysUntil = ((dow as number) - currentDow + 7) % 7;
+      if (daysUntil === 0 && candidate.getTime() <= now.getTime()) daysUntil = 7;
+      candidate.setDate(candidate.getDate() + daysUntil);
+    }
+
+    if (!next || candidate.getTime() < next.getTime()) {
+      next = candidate;
+    }
+  }
+
+  return next;
+}
+
+function formatEventTime(date: Date | null): string {
+  if (!date) return "--:--";
+  return date.toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
 }
 
 function evTitle(ev: EventRow, locale: string): string {
@@ -60,15 +135,18 @@ export function EventsCountdownSidebar({ events, locale, eventsUrl, labels, moda
     .sort((a, b) => a.ms - b.ms)
     .slice(0, 6);
 
-  function getBadge(ms: number): { text: string; color: string; bg: string } {
-    if (ms <= 0)
-      return { text: labels.live, color: "#ff4444", bg: "rgba(255,68,68,0.15)" };
-    if (ms < 30 * 60 * 1000)
-      return { text: labels.soon, color: "#f39c12", bg: "rgba(243,156,18,0.15)" };
+  function getBadge(ms: number, nextAt: Date | null): { text: string; color: string; bg: string } {
+    const isLive = ms <= 0;
+    const isSoon = ms > 0 && ms < 30 * 60 * 1000;
+
     return {
-      text: formatCountdown(ms),
-      color: "#ffd700",
-      bg: "rgba(255,215,0,0.1)",
+      text: formatEventTime(nextAt),
+      color: isLive ? "#ff4444" : isSoon ? "#f39c12" : "#ffd700",
+      bg: isLive
+        ? "rgba(255,68,68,0.15)"
+        : isSoon
+          ? "rgba(243,156,18,0.15)"
+          : "rgba(255,215,0,0.1)",
     };
   }
 
@@ -79,7 +157,8 @@ export function EventsCountdownSidebar({ events, locale, eventsUrl, labels, moda
           <p className="font-poppins text-sm text-[#b4b4c8]">{labels.noEvents}</p>
         ) : (
           sorted.map(({ ev, ms }) => {
-            const badge = getBadge(ms);
+            const nextAt = getNextOccurrenceDate(ev.schedule, refDate);
+            const badge = getBadge(ms, nextAt);
             const scheduleText = formatSchedule(
               ev.schedule,
               locale as "es" | "en" | "pt",
