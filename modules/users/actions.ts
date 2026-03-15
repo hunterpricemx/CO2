@@ -81,6 +81,24 @@ export async function createAdminUser(input: CreateAdminInput): Promise<ActionRe
   }
 
   const supabase = await createAdminClient();
+
+  // Prevent opaque Supabase auth errors caused by profile trigger failures
+  // (for example, duplicate username unique constraint on public.profiles).
+  const { data: existingUsername, error: usernameCheckError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("username", username)
+    .limit(1)
+    .maybeSingle();
+
+  if (usernameCheckError) {
+    return { success: false, error: usernameCheckError.message };
+  }
+
+  if (existingUsername) {
+    return { success: false, error: "Ese nombre de usuario ya existe." };
+  }
+
   const { data, error } = await supabase.auth.admin.createUser({
     email,
     password,
@@ -93,6 +111,19 @@ export async function createAdminUser(input: CreateAdminInput): Promise<ActionRe
   });
 
   if (error || !data.user) {
+    const message = (error?.message ?? "").toLowerCase();
+
+    if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
+      return { success: false, error: "Ese correo ya esta registrado." };
+    }
+
+    if (message.includes("database error creating new user")) {
+      return {
+        success: false,
+        error: "Error de base de datos al crear usuario. Revisa que username/email no esten duplicados.",
+      };
+    }
+
     return { success: false, error: error?.message ?? "No se pudo crear el administrador." };
   }
 
