@@ -7,7 +7,7 @@ import {
   User, Loader2, CreditCard,
 } from "lucide-react";
 import type { PaymentConfig, DonationPackage } from "@/lib/game-db";
-import { createStripeCheckout } from "@/app/[locale]/[version]/donate/actions";
+import { createStripeCheckout, createTebexCheckout } from "@/app/[locale]/[version]/donate/actions";
 
 // -- Types ---------------------------------------------------------------------
 
@@ -38,7 +38,8 @@ export type DonateLabels = {
   checkout_text: string;
   checkout_close: string;
   no_payment_methods: string;
-  tebex_go_to_store: string;
+  tebex_pay: string;
+  tebex_processing: string;
   stripe_test_mode_notice: string;
   char_name_label: string;
   char_name_placeholder: string;
@@ -69,6 +70,7 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
   const [charName, setCharName] = useState(sessionUsername);
   const [stripeError, setStripeError] = useState("");
   const [isPending, startTransition] = useTransition();
+  const [pendingProvider, setPendingProvider] = useState<"stripe" | "tebex" | null>(null);
 
   const stripeActive = paymentConfig?.stripe_enabled ?? false;
   const tebexActive  = paymentConfig?.tebex_enabled  ?? false;
@@ -96,6 +98,7 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
       return;
     }
     setStripeError("");
+    setPendingProvider("stripe");
     startTransition(async () => {
       const result = await createStripeCheckout({
         packageId:    modal.pkg.id,
@@ -111,6 +114,33 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
         window.location.href = result.url;
       } else {
         setStripeError(result.error);
+        setPendingProvider(null);
+      }
+    });
+  }
+
+  function handleTebexCheckout() {
+    if (!modal) return;
+    if (!charName.trim()) {
+      setStripeError(labels.char_name_required);
+      return;
+    }
+
+    setStripeError("");
+    setPendingProvider("tebex");
+    startTransition(async () => {
+      const result = await createTebexCheckout({
+        packageId: modal.pkg.id,
+        characterName: charName.trim(),
+        version,
+        locale,
+      });
+
+      if ("url" in result) {
+        window.location.href = result.url;
+      } else {
+        setStripeError(result.error);
+        setPendingProvider(null);
       }
     });
   }
@@ -341,15 +371,16 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
 
                       {/* Tebex button */}
                       {tebexActive && paymentConfig?.tebex_webstore_id && (
-                        <a
-                          href={`https://store.tebex.io/${paymentConfig.tebex_webstore_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 transition-colors"
+                        <button
+                          onClick={handleTebexCheckout}
+                          disabled={isPending}
+                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 transition-colors disabled:opacity-60"
                         >
-                          ?? {labels.tebex_go_to_store}
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </a>
+                          {isPending && pendingProvider === "tebex"
+                            ? <><Loader2 className="h-4 w-4 animate-spin" /> {labels.tebex_processing}</>
+                            : <><ExternalLink className="h-3.5 w-3.5" /> {labels.tebex_pay}</>
+                          }
+                        </button>
                       )}
 
                       {/* Stripe button */}
@@ -363,7 +394,7 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
                             disabled={isPending}
                             className="w-full flex items-center justify-center gap-2 rounded-xl bg-[#635bff] hover:bg-[#5146e8] py-2.5 text-sm font-semibold text-white transition-colors disabled:opacity-60"
                           >
-                            {isPending
+                            {isPending && pendingProvider === "stripe"
                               ? <><Loader2 className="h-4 w-4 animate-spin" /> {labels.stripe_processing}</>
                               : <><CreditCard className="h-4 w-4" /> {labels.stripe_pay}</>
                             }

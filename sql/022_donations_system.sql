@@ -29,10 +29,12 @@ CREATE TABLE IF NOT EXISTS public.donation_packages (
   sort_order    INT           NOT NULL DEFAULT 0,
   bonus_label   TEXT          DEFAULT NULL,               -- texto extra ej: "+50% bonus esta semana"
   image_url     TEXT          DEFAULT NULL,               -- URL pública de la imagen del paquete
+  tebex_package_id TEXT        DEFAULT NULL,              -- package id de Tebex Headless
   created_at    TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS donation_packages_version_idx ON public.donation_packages (version, active);
+CREATE INDEX IF NOT EXISTS donation_packages_tebex_idx ON public.donation_packages (tebex_package_id) WHERE tebex_package_id IS NOT NULL;
 
 -- Seed: paquetes de ejemplo (ajusta precios/CPs a tu servidor)
 INSERT INTO public.donation_packages (name, price_usd, cps, version, sort_order) VALUES
@@ -228,6 +230,7 @@ $$;
 --   ADD COLUMN IF NOT EXISTS character_name     TEXT,
 --   ADD COLUMN IF NOT EXISTS version            SMALLINT     NOT NULL DEFAULT 2,
 --   ADD COLUMN IF NOT EXISTS package_id         UUID         REFERENCES public.donation_packages(id),
+--   ADD COLUMN IF NOT EXISTS tebex_package_id   TEXT,
 --   ADD COLUMN IF NOT EXISTS cps_base           INT          NOT NULL DEFAULT 0,
 --   ADD COLUMN IF NOT EXISTS cps_bonus          INT          NOT NULL DEFAULT 0,
 --   ADD COLUMN IF NOT EXISTS cps_total          INT          NOT NULL DEFAULT 0,

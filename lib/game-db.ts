@@ -21,8 +21,8 @@ export interface ServerConfig {
   db_user: string;
   db_pass: string;
   table_accounts: string;
-  table_characters_v1: string;
-  table_characters_v2: string;
+  table_characters: string;
+  table_payments: string;
 }
 
 export interface PaymentConfig {
@@ -65,31 +65,41 @@ export interface GameDbHandle {
  * Opens a new MySQL2 connection using credentials stored in Supabase.
  * Caller MUST call `await conn.end()` when done.
  */
-export async function getGameDb(): Promise<GameDbHandle> {
+export async function getGameDb(version: 1 | 2 = 2): Promise<GameDbHandle> {
   const supabase = await createAdminClient();
 
   const { data, error } = await supabase
     .from("server_config")
-    .select("db_host, db_port, db_name, db_user, db_pass, table_accounts, table_characters_v1, table_characters_v2")
+    .select("*")
     .eq("id", 1)
     .single();
 
-  if (error || !data?.db_host) {
+  if (error || !data) {
     throw new Error(
       "Game server not configured. Go to Admin → Game Server and save the connection.",
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const d = data as any;
+  const v = version === 1 ? "v1" : "v2";
+
   const config: ServerConfig = {
-    db_host: data.db_host,
-    db_port: data.db_port ?? 3306,
-    db_name: data.db_name ?? "",
-    db_user: data.db_user ?? "",
-    db_pass: data.db_pass ?? "",
-    table_accounts: data.table_accounts ?? "accounts",
-    table_characters_v1: data.table_characters_v1 ?? "topservers",
-    table_characters_v2: data.table_characters_v2 ?? "topserver_turbo",
+    db_host:          d[`db_host_${v}`]          ?? "",
+    db_port:          d[`db_port_${v}`]          ?? 3306,
+    db_name:          d[`db_name_${v}`]          ?? "",
+    db_user:          d[`db_user_${v}`]          ?? "",
+    db_pass:          d[`db_pass_${v}`]          ?? "",
+    table_accounts:   d[`table_accounts_${v}`]   ?? "accounts",
+    table_characters: d[`table_characters_${v}`] ?? (version === 1 ? "topservers" : "topserver_turbo"),
+    table_payments:   d[`table_payments_${v}`]   ?? "dbb_payments",
   };
+
+  if (!config.db_host) {
+    throw new Error(
+      `Servidor v${version}.0 no configurado. Ve a Admin → Game Server.`,
+    );
+  }
 
   const conn = await mysql.createConnection({
     host: config.db_host,
@@ -148,11 +158,10 @@ export interface DonationPackage {
 export async function getCharacterName(entityId: number, versionNum: number): Promise<string | null> {
   let conn: mysql.Connection | undefined;
   try {
-    const { conn: c, config } = await getGameDb();
+    const { conn: c, config } = await getGameDb(versionNum as 1 | 2);
     conn = c;
-    const table = versionNum === 1 ? config.table_characters_v1 : config.table_characters_v2;
     const [rows] = await conn.execute<mysql.RowDataPacket[]>(
-      `SELECT Name FROM \`${table}\` WHERE EntityID = ? LIMIT 1`,
+      `SELECT Name FROM \`${config.table_characters}\` WHERE EntityID = ? LIMIT 1`,
       [entityId],
     );
     return (rows[0]?.Name as string) ?? null;

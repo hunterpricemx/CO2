@@ -7,6 +7,46 @@ export const runtime = "nodejs";
 // Required to receive the raw body for signature verification
 export const dynamic = "force-dynamic";
 
+function sanitizeTableName(table: string): string {
+  return table.replace(/`/g, "").trim() || "dbb_payments";
+}
+
+async function upsertLegacyPayment(params: {
+  conn: Awaited<ReturnType<typeof getGameDb>>["conn"];
+  tableName: string;
+  userId: string;
+  txn: string;
+  product: string;
+  price: number;
+  basketIdent: string;
+  status: number;
+}) {
+  const table = sanitizeTableName(params.tableName);
+  const unixTime = String(Math.floor(Date.now() / 1000));
+
+  const [existing] = await params.conn.execute(
+    `SELECT id FROM \`${table}\` WHERE txn = ? OR basket_ident = ? ORDER BY id DESC LIMIT 1`,
+    [params.txn, params.basketIdent],
+  );
+
+  const existingRows = existing as Array<{ id: number }>;
+  if (existingRows.length > 0) {
+    await params.conn.execute(
+      `UPDATE \`${table}\`
+         SET user_id = ?, product = ?, price = ?, basket_ident = ?, item_number = 1, status = ?, date = ?
+       WHERE id = ?`,
+      [params.userId, params.product, params.price, params.basketIdent, params.status, unixTime, existingRows[0].id],
+    );
+    return;
+  }
+
+  await params.conn.execute(
+    `INSERT INTO \`${table}\` (user_id, txn, product, price, basket_ident, item_number, status, date)
+     VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
+    [params.userId, params.txn, params.product, params.price, params.basketIdent, params.status, unixTime],
+  );
+}
+
 export async function POST(req: NextRequest) {
   const sig = req.headers.get("stripe-signature");
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -69,7 +109,7 @@ export async function POST(req: NextRequest) {
     .from("donations")
     .update({ status: "paid", payment_intent_id: paymentIntentId })
     .eq("id", donationId)
-    .select("id, cps_base, cps_total")
+    .select("id, cps_base, cps_total, package_id, amount_paid")
     .single();
 
   if (fetchErr || !donation) {
@@ -82,8 +122,19 @@ export async function POST(req: NextRequest) {
 
   // 2. Insert into game MariaDB (cq_pending_donations)
   try {
-    const { conn } = await getGameDb();
+    const { conn, config: gameCfg } = await getGameDb(versionNum as 1 | 2);
     try {
+      await upsertLegacyPayment({
+        conn,
+        tableName: gameCfg.table_payments,
+        userId: String(accountName ?? ""),
+        txn: paymentIntentId ?? session.id,
+        product: String(meta.package_id ?? don.package_id ?? ""),
+        price: Number(don.amount_paid ?? 0),
+        basketIdent: String(donationId),
+        status: 1,
+      });
+
       await conn.execute(
         `INSERT INTO cq_pending_donations
            (donation_uuid, char_name, account_name, version, cps_base, cps_total, status)

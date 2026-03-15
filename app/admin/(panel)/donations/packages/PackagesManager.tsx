@@ -11,7 +11,7 @@ const VERSION_LABELS: Record<number, string> = { 0: "Ambas", 1: "V1", 2: "V2" };
 
 const EMPTY_FORM: PackageFormData = {
   name: "", price_usd: 0, cps: 0, version: 0,
-  active: true, sort_order: 10, bonus_label: "", image_url: "",
+  active: true, sort_order: 10, bonus_label: "", image_url: "", tebex_package_id: "",
 };
 
 type Props = { packages: DonationPackageRow[] };
@@ -35,7 +35,7 @@ export default function PackagesManager({ packages: initial }: Props) {
     setForm({
       name: pkg.name, price_usd: pkg.price_usd, cps: pkg.cps,
       version: pkg.version, active: pkg.active, sort_order: pkg.sort_order,
-      bonus_label: pkg.bonus_label ?? "", image_url: pkg.image_url ?? "",
+      bonus_label: pkg.bonus_label ?? "", image_url: pkg.image_url ?? "", tebex_package_id: pkg.tebex_package_id ?? "",
     });
     setModal(pkg);
     setMsg(null);
@@ -127,20 +127,34 @@ export default function PackagesManager({ packages: initial }: Props) {
         <table className="w-full text-sm min-w-160">
           <thead>
             <tr className="border-b border-[rgba(255,215,0,0.08)]">
-              {["Imagen", "Orden", "Nombre", "CPs", "Precio", "Versión", "Bonus label", "Estado", "Acciones"].map(h => (
+              {[
+                "Imagen",
+                "Orden",
+                "Nombre",
+                "CPs",
+                "Precio",
+                "Versión",
+                "Tebex ID",
+                "Bonus label",
+                "Estado",
+                "Acciones",
+              ].map(h => (
                 <th key={h} className="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {packages.length === 0 && (
-              <tr><td colSpan={9} className="px-4 py-8 text-center text-gray-600">Sin paquetes</td></tr>
+              <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-600">Sin paquetes</td></tr>
             )}
             {packages.map(pkg => (
               <tr key={pkg.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/2">
                 <td className="px-4 py-3">
                   {pkg.image_url
-                    ? <img src={pkg.image_url} alt={pkg.name} className="w-10 h-10 object-cover rounded" />
+                    ? <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={pkg.image_url} alt={pkg.name} className="w-10 h-10 object-cover rounded" />
+                      </>
                     : <div className="w-10 h-10 rounded bg-[#222] flex items-center justify-center"><ImageIcon className="w-4 h-4 text-gray-600" /></div>
                   }
                 </td>
@@ -149,6 +163,7 @@ export default function PackagesManager({ packages: initial }: Props) {
                 <td className="px-4 py-3 text-amber-400 font-semibold">{pkg.cps.toLocaleString()}</td>
                 <td className="px-4 py-3 text-white">${pkg.price_usd.toFixed(2)}</td>
                 <td className="px-4 py-3 text-gray-300">{VERSION_LABELS[pkg.version] ?? pkg.version}</td>
+                <td className="px-4 py-3 text-cyan-300 text-xs">{pkg.tebex_package_id ?? "—"}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{pkg.bonus_label ?? "—"}</td>
                 <td className="px-4 py-3">
                   <button
@@ -239,11 +254,21 @@ export default function PackagesManager({ packages: initial }: Props) {
                   className="bg-[#111] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#f39c12] w-full" placeholder="Ej: +20% esta semana" />
               </Field>
 
+              <Field label="Tebex package ID (opcional)">
+                <input value={form.tebex_package_id}
+                  onChange={e => setForm(f => ({ ...f, tebex_package_id: e.target.value }))}
+                  className="bg-[#111] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#f39c12] w-full"
+                  placeholder="Ej: 6276316" />
+              </Field>
+
               <Field label="Imagen del paquete">
                 <div className="flex items-start gap-3">
                   <div className="w-16 h-16 rounded-lg bg-[#111] border border-[rgba(255,255,255,0.1)] flex items-center justify-center overflow-hidden shrink-0">
                     {form.image_url
-                      ? <img src={form.image_url} alt="preview" className="w-full h-full object-cover" />
+                      ? <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={form.image_url} alt="preview" className="w-full h-full object-cover" />
+                        </>
                       : <ImageIcon className="w-6 h-6 text-gray-600" />
                     }
                   </div>

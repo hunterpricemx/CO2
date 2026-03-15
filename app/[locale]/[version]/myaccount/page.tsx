@@ -79,9 +79,10 @@ export default async function MyAccountPage({
   let creationDate: string | null = null;
 
   try {
-    const { conn, config } = await getGameDb();
+    const vNum = version === "1.0" ? 1 as const : 2 as const;
+    const { conn, config } = await getGameDb(vNum);
     try {
-      const charTable = version === "1.0" ? config.table_characters_v1 : config.table_characters_v2;
+      const charTable = config.table_characters;
 
       const [charRows] = await conn.execute<RowDataPacket[]>(
         `SELECT Name, Level, Reborn, CPs, Money, MoneySave, GuildName, Mesh, PKPoints, MetScrolls, Strength, Agility, Vitality, Spirit, Additional, Spouse, Status FROM \`${charTable}\` WHERE EntityID = ? LIMIT 1`,

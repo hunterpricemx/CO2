@@ -12,9 +12,13 @@ export type DropLogRow = {
   item_name: string;
   item_type: string;
   item_plus: number;
+  item_socks?: number;
+  item_bless?: number;
+  item_quality?: string;
   map_name: string;
   version: string;
   dropped_at: string;
+  dropped_time?: string;
 };
 
 export type MineLogRow = {
@@ -26,6 +30,7 @@ export type MineLogRow = {
   zone_name: string;
   version: string;
   mined_at: string;
+  mined_time?: string;
 };
 
 export type LotteryLogRow = {
@@ -33,6 +38,9 @@ export type LotteryLogRow = {
   player_name: string;
   prize_name: string;
   prize_type: string;
+  item_id?: string;
+  quality?: string;
+  won_time?: string;
   version: string;
   won_at: string;
 };
@@ -188,21 +196,129 @@ export function DropsLogTable({
   labels: DropsLabels;
 }) {
   const [search, setSearch] = useState("");
-  const [version, setVersion] = useState("");
+  const [mapFilter, setMapFilter] = useState("");
+  const [qualityFilter, setQualityFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<"player" | "item" | "monster" | "quality" | "plus" | "soc" | "bless" | "map" | "time">("time");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const pageSize = 50;
+
+  const mapOptions = useMemo(
+    () => Array.from(new Set(rows.map((r) => (r.map_name ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [rows],
+  );
+
+  const qualityOptions = useMemo(
+    () => Array.from(new Set(rows.map((r) => (r.item_quality ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [rows],
+  );
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (version && r.version !== version) return false;
+    const base = rows.filter((r) => {
+      if (mapFilter && r.map_name !== mapFilter) return false;
+      if (qualityFilter && (r.item_quality ?? "") !== qualityFilter) return false;
       if (
         term &&
         !r.player_name.toLowerCase().includes(term) &&
-        !r.item_name.toLowerCase().includes(term)
+        !r.item_name.toLowerCase().includes(term) &&
+        !r.monster.toLowerCase().includes(term)
       )
         return false;
       return true;
     });
-  }, [rows, search, version]);
+
+    const qualityRank = (q?: string) => {
+      const v = (q ?? "None").trim().toLowerCase();
+      if (v === "none") return 0;
+      if (v === "refined") return 1;
+      if (v === "unique") return 2;
+      if (v === "elite") return 3;
+      if (v === "super") return 4;
+      return 99;
+    };
+
+    return [...base].sort((a, b) => {
+      if (sortBy === "time") {
+        const diff = new Date(a.dropped_at).getTime() - new Date(b.dropped_at).getTime();
+        return sortDir === "asc" ? diff : -diff;
+      }
+      if (sortBy === "plus") {
+        const diff = a.item_plus - b.item_plus;
+        return sortDir === "asc" ? diff : -diff;
+      }
+      if (sortBy === "soc") {
+        const diff = (a.item_socks ?? 0) - (b.item_socks ?? 0);
+        return sortDir === "asc" ? diff : -diff;
+      }
+      if (sortBy === "bless") {
+        const diff = (a.item_bless ?? 0) - (b.item_bless ?? 0);
+        return sortDir === "asc" ? diff : -diff;
+      }
+      if (sortBy === "quality") {
+        const diff = qualityRank(a.item_quality) - qualityRank(b.item_quality);
+        return sortDir === "asc" ? diff : -diff;
+      }
+
+      const av =
+        sortBy === "player"
+          ? a.player_name
+          : sortBy === "item"
+          ? a.item_name
+          : sortBy === "monster"
+          ? a.monster
+          : a.map_name;
+      const bv =
+        sortBy === "player"
+          ? b.player_name
+          : sortBy === "item"
+          ? b.item_name
+          : sortBy === "monster"
+          ? b.monster
+          : b.map_name;
+
+      const diff = av.localeCompare(bv);
+      return sortDir === "asc" ? diff : -diff;
+    });
+  }, [rows, search, mapFilter, qualityFilter, sortBy, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = useMemo(
+    () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filtered, currentPage],
+  );
+
+  const qualityClass = (quality?: string) => {
+    const q = (quality ?? "None").toLowerCase();
+    if (q === "none") return "text-slate-100 bg-slate-500/60 border-slate-400/30";
+    if (q === "refined") return "text-cyan-100 bg-cyan-500/80 border-cyan-400/40";
+    if (q === "unique") return "text-blue-100 bg-blue-600/80 border-blue-400/40";
+    if (q === "elite") return "text-purple-100 bg-purple-600/80 border-purple-400/40";
+    if (q === "super") return "text-amber-100 bg-amber-500/80 border-amber-400/40";
+    return "text-white bg-white/20 border-white/20";
+  };
+
+  const goToPage = (next: number) => {
+    if (next < 1 || next > totalPages) return;
+    setPage(next);
+  };
+
+  const toggleSort = (col: "player" | "item" | "monster" | "quality" | "plus" | "soc" | "bless" | "map" | "time") => {
+    setPage(1);
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortBy(col);
+    setSortDir(col === "time" ? "desc" : "asc");
+  };
+
+  const sortMark = (col: "player" | "item" | "monster" | "quality" | "plus" | "soc" | "bless" | "map" | "time") => {
+    if (sortBy !== col) return "";
+    return sortDir === "asc" ? " ↑" : " ↓";
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -211,14 +327,38 @@ export function DropsLogTable({
       <div className="flex items-center gap-3 flex-wrap">
         <SearchBar
           value={search}
-          onChange={setSearch}
+          onChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
           placeholder={labels.search_placeholder}
         />
-        <VersionFilter
-          value={version}
-          onChange={setVersion}
-          allLabel={labels.filter_all_versions}
-        />
+        <select
+          value={mapFilter}
+          onChange={(e) => {
+            setMapFilter(e.target.value);
+            setPage(1);
+          }}
+          className="bg-surface/40 border border-surface/50 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-gold/40 transition-colors cursor-pointer"
+        >
+          <option value="">Todos los mapas</option>
+          {mapOptions.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+        <select
+          value={qualityFilter}
+          onChange={(e) => {
+            setQualityFilter(e.target.value);
+            setPage(1);
+          }}
+          className="bg-surface/40 border border-surface/50 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-gold/40 transition-colors cursor-pointer"
+        >
+          <option value="">Todas las calidades</option>
+          {qualityOptions.map((q) => (
+            <option key={q} value={q}>{q}</option>
+          ))}
+        </select>
       </div>
 
       {filtered.length === 0 ? (
@@ -228,31 +368,25 @@ export function DropsLogTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-surface/60 border-b border-surface/50 text-xs text-muted-foreground uppercase tracking-wider">
-                <th className="px-4 py-3 text-left w-14">{labels.col_time}</th>
-                <th className="px-4 py-3 text-left">{labels.col_player}</th>
-                <th className="px-4 py-3 text-left hidden md:table-cell">{labels.col_monster}</th>
-                <th className="px-4 py-3 text-left">{labels.col_item}</th>
-                <th className="px-4 py-3 text-right hidden sm:table-cell w-14">{labels.col_grade}</th>
-                <th className="px-4 py-3 text-left hidden lg:table-cell">{labels.col_map}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("player")}>{labels.col_player}{sortMark("player")}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("item")}>{labels.col_item}{sortMark("item")}</th>
+                <th className="px-4 py-3 text-left hidden md:table-cell cursor-pointer select-none" onClick={() => toggleSort("monster")}>{labels.col_monster}{sortMark("monster")}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("quality")}>Calidad{sortMark("quality")}</th>
+                <th className="px-4 py-3 text-right w-14 cursor-pointer select-none" onClick={() => toggleSort("plus")}>Más{sortMark("plus")}</th>
+                <th className="px-4 py-3 text-right w-14 cursor-pointer select-none" onClick={() => toggleSort("soc")}>Soc{sortMark("soc")}</th>
+                <th className="px-4 py-3 text-right w-14 hidden lg:table-cell cursor-pointer select-none" onClick={() => toggleSort("bless")}>Bless{sortMark("bless")}</th>
+                <th className="px-4 py-3 text-left hidden sm:table-cell cursor-pointer select-none" onClick={() => toggleSort("map")}>{labels.col_map}{sortMark("map")}</th>
+                <th className="px-4 py-3 text-right w-24 cursor-pointer select-none" onClick={() => toggleSort("time")}>{labels.col_time}{sortMark("time")}</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
+              {pagedRows.map((r) => (
                 <tr
                   key={r.id}
                   className="border-b border-surface/30 hover:bg-surface/30 transition-colors"
                 >
-                  <td className="px-4 py-3 text-xs text-muted-foreground/50 tabular-nums whitespace-nowrap">
-                    {timeAgo(r.dropped_at)}
-                  </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-foreground/90">{r.player_name}</span>
-                      <VersionBadge v={r.version} />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground/60 hidden md:table-cell text-xs">
-                    {r.monster}
+                    <span className="font-medium text-foreground/90">{r.player_name}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
@@ -260,16 +394,58 @@ export function DropsLogTable({
                       <span className="font-semibold text-foreground/90">{r.item_name}</span>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-right hidden sm:table-cell">
+                  <td className="px-4 py-3 text-muted-foreground/60 hidden md:table-cell text-xs">
+                    {r.monster}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-md border px-3 py-1 text-xs font-semibold ${qualityClass(r.item_quality)}`}>
+                      {r.item_quality ?? "None"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-right">
                     <PlusGrade n={r.item_plus} />
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground/50 hidden lg:table-cell">
+                  <td className="px-4 py-3 text-right tabular-nums font-semibold text-foreground/85">
+                    {r.item_socks ?? 0}
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums text-xs text-foreground/75 hidden lg:table-cell">
+                    {r.item_bless ?? 0}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground/50 hidden sm:table-cell">
                     {r.map_name}
+                  </td>
+                  <td className="px-4 py-3 text-right text-xs text-muted-foreground/50 tabular-nums whitespace-nowrap">
+                    {r.dropped_time ?? timeAgo(r.dropped_at)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {filtered.length > pageSize && (
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>
+            Mostrando {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filtered.length)} de {filtered.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="px-3 py-1.5 rounded-md border border-surface/60 bg-surface/40 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gold/40"
+            >
+              Anterior
+            </button>
+            <span className="tabular-nums">{currentPage}/{totalPages}</span>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="px-3 py-1.5 rounded-md border border-surface/60 bg-surface/40 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gold/40"
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       )}
     </div>
@@ -286,12 +462,19 @@ export function MiningLogTable({
   labels: MiningLabels;
 }) {
   const [search, setSearch] = useState("");
-  const [version, setVersion] = useState("");
+  const [zone, setZone] = useState("");
+  const [sortBy, setSortBy] = useState<"time" | "player" | "item" | "qty" | "zone">("time");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const zoneOptions = useMemo(
+    () => Array.from(new Set(rows.map((r) => (r.zone_name ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [rows],
+  );
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (version && r.version !== version) return false;
+    const base = rows.filter((r) => {
+      if (zone && r.zone_name !== zone) return false;
       if (
         term &&
         !r.player_name.toLowerCase().includes(term) &&
@@ -300,7 +483,37 @@ export function MiningLogTable({
         return false;
       return true;
     });
-  }, [rows, search, version]);
+
+    return [...base].sort((a, b) => {
+      if (sortBy === "time") {
+        const diff = new Date(a.mined_at).getTime() - new Date(b.mined_at).getTime();
+        return sortDir === "asc" ? diff : -diff;
+      }
+      if (sortBy === "qty") {
+        const diff = a.quantity - b.quantity;
+        return sortDir === "asc" ? diff : -diff;
+      }
+
+      const av = sortBy === "player" ? a.player_name : sortBy === "item" ? a.item_name : a.zone_name;
+      const bv = sortBy === "player" ? b.player_name : sortBy === "item" ? b.item_name : b.zone_name;
+      const diff = av.localeCompare(bv);
+      return sortDir === "asc" ? diff : -diff;
+    });
+  }, [rows, search, zone, sortBy, sortDir]);
+
+  function toggleSort(col: "time" | "player" | "item" | "qty" | "zone") {
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortBy(col);
+    setSortDir(col === "time" ? "desc" : "asc");
+  }
+
+  function sortMark(col: "time" | "player" | "item" | "qty" | "zone") {
+    if (sortBy !== col) return "";
+    return sortDir === "asc" ? " ↑" : " ↓";
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -312,11 +525,16 @@ export function MiningLogTable({
           onChange={setSearch}
           placeholder={labels.search_placeholder}
         />
-        <VersionFilter
-          value={version}
-          onChange={setVersion}
-          allLabel={labels.filter_all_versions}
-        />
+        <select
+          value={zone}
+          onChange={(e) => setZone(e.target.value)}
+          className="bg-surface/40 border border-surface/50 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-gold/40 transition-colors cursor-pointer"
+        >
+          <option value="">Todas las zonas</option>
+          {zoneOptions.map((z) => (
+            <option key={z} value={z}>{z}</option>
+          ))}
+        </select>
       </div>
 
       {filtered.length === 0 ? (
@@ -326,11 +544,11 @@ export function MiningLogTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-surface/60 border-b border-surface/50 text-xs text-muted-foreground uppercase tracking-wider">
-                <th className="px-4 py-3 text-left w-14">{labels.col_time}</th>
-                <th className="px-4 py-3 text-left">{labels.col_player}</th>
-                <th className="px-4 py-3 text-left">{labels.col_item}</th>
-                <th className="px-4 py-3 text-right w-16">{labels.col_qty}</th>
-                <th className="px-4 py-3 text-left hidden sm:table-cell">{labels.col_zone}</th>
+                <th className="px-4 py-3 text-left w-14 cursor-pointer select-none" onClick={() => toggleSort("time")}>{labels.col_time}{sortMark("time")}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("player")}>{labels.col_player}{sortMark("player")}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("item")}>{labels.col_item}{sortMark("item")}</th>
+                <th className="px-4 py-3 text-right w-16 cursor-pointer select-none" onClick={() => toggleSort("qty")}>{labels.col_qty}{sortMark("qty")}</th>
+                <th className="px-4 py-3 text-left hidden sm:table-cell cursor-pointer select-none" onClick={() => toggleSort("zone")}>{labels.col_zone}{sortMark("zone")}</th>
               </tr>
             </thead>
             <tbody>
@@ -340,7 +558,7 @@ export function MiningLogTable({
                   className="border-b border-surface/30 hover:bg-surface/30 transition-colors"
                 >
                   <td className="px-4 py-3 text-xs text-muted-foreground/50 tabular-nums whitespace-nowrap">
-                    {timeAgo(r.mined_at)}
+                    {r.mined_time ?? timeAgo(r.mined_at)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
@@ -390,21 +608,95 @@ export function LotteryLogTable({
   labels: LotteryLabels;
 }) {
   const [search, setSearch] = useState("");
-  const [version, setVersion] = useState("");
+  const [qualityFilter, setQualityFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<"time" | "player" | "item" | "quality" | "itemid">("time");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const pageSize = 50;
+
+  const qualityOptions = useMemo(
+    () => Array.from(new Set(rows.map((r) => (r.quality ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    [rows],
+  );
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (version && r.version !== version) return false;
+    const base = rows.filter((r) => {
+      if (qualityFilter && (r.quality ?? "") !== qualityFilter) return false;
       if (
         term &&
         !r.player_name.toLowerCase().includes(term) &&
-        !r.prize_name.toLowerCase().includes(term)
+        !r.prize_name.toLowerCase().includes(term) &&
+        !(r.item_id ?? "").toLowerCase().includes(term)
       )
         return false;
       return true;
     });
-  }, [rows, search, version]);
+
+    const qualityRank = (q?: string) => {
+      const v = (q ?? "None").trim().toLowerCase();
+      if (v === "none") return 0;
+      if (v === "refined") return 1;
+      if (v === "unique") return 2;
+      if (v === "elite") return 3;
+      if (v === "super") return 4;
+      return 99;
+    };
+
+    return [...base].sort((a, b) => {
+      if (sortBy === "time") {
+        const diff = new Date(a.won_at).getTime() - new Date(b.won_at).getTime();
+        return sortDir === "asc" ? diff : -diff;
+      }
+      if (sortBy === "quality") {
+        const diff = qualityRank(a.quality) - qualityRank(b.quality);
+        return sortDir === "asc" ? diff : -diff;
+      }
+
+      const av = sortBy === "player" ? a.player_name : sortBy === "item" ? a.prize_name : a.item_id ?? "";
+      const bv = sortBy === "player" ? b.player_name : sortBy === "item" ? b.prize_name : b.item_id ?? "";
+      const diff = av.localeCompare(bv);
+      return sortDir === "asc" ? diff : -diff;
+    });
+  }, [rows, search, qualityFilter, sortBy, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = useMemo(
+    () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filtered, currentPage],
+  );
+
+  const qualityClass = (quality?: string) => {
+    const q = (quality ?? "None").toLowerCase();
+    if (q === "none") return "text-slate-100 bg-slate-500/60 border-slate-400/30";
+    if (q === "refined") return "text-cyan-100 bg-cyan-500/80 border-cyan-400/40";
+    if (q === "unique") return "text-blue-100 bg-blue-600/80 border-blue-400/40";
+    if (q === "elite") return "text-purple-100 bg-purple-600/80 border-purple-400/40";
+    if (q === "super") return "text-amber-100 bg-amber-500/80 border-amber-400/40";
+    return "text-white bg-white/20 border-white/20";
+  };
+
+  const toggleSort = (col: "time" | "player" | "item" | "quality" | "itemid") => {
+    setPage(1);
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortBy(col);
+    setSortDir(col === "time" ? "desc" : "asc");
+  };
+
+  const sortMark = (col: "time" | "player" | "item" | "quality" | "itemid") => {
+    if (sortBy !== col) return "";
+    return sortDir === "asc" ? " ↑" : " ↓";
+  };
+
+  const goToPage = (next: number) => {
+    if (next < 1 || next > totalPages) return;
+    setPage(next);
+  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -413,14 +705,25 @@ export function LotteryLogTable({
       <div className="flex items-center gap-3 flex-wrap">
         <SearchBar
           value={search}
-          onChange={setSearch}
+          onChange={(v) => {
+            setSearch(v);
+            setPage(1);
+          }}
           placeholder={labels.search_placeholder}
         />
-        <VersionFilter
-          value={version}
-          onChange={setVersion}
-          allLabel={labels.filter_all_versions}
-        />
+        <select
+          value={qualityFilter}
+          onChange={(e) => {
+            setQualityFilter(e.target.value);
+            setPage(1);
+          }}
+          className="bg-surface/40 border border-surface/50 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-gold/40 transition-colors cursor-pointer"
+        >
+          <option value="">Todas las calidades</option>
+          {qualityOptions.map((q) => (
+            <option key={q} value={q}>{q}</option>
+          ))}
+        </select>
       </div>
 
       {filtered.length === 0 ? (
@@ -430,42 +733,68 @@ export function LotteryLogTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-surface/60 border-b border-surface/50 text-xs text-muted-foreground uppercase tracking-wider">
-                <th className="px-4 py-3 text-left w-14">{labels.col_time}</th>
-                <th className="px-4 py-3 text-left">{labels.col_player}</th>
-                <th className="px-4 py-3 text-left">{labels.col_prize}</th>
-                <th className="px-4 py-3 text-left hidden sm:table-cell">{labels.col_type}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("player")}>{labels.col_player}{sortMark("player")}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("item")}>{labels.col_prize}{sortMark("item")}</th>
+                <th className="px-4 py-3 text-left hidden sm:table-cell cursor-pointer select-none" onClick={() => toggleSort("itemid")}>Item ID{sortMark("itemid")}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("quality")}>Calidad{sortMark("quality")}</th>
+                <th className="px-4 py-3 text-right w-24 cursor-pointer select-none" onClick={() => toggleSort("time")}>{labels.col_time}{sortMark("time")}</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((r) => (
+              {pagedRows.map((r) => (
                 <tr
                   key={r.id}
                   className="border-b border-surface/30 hover:bg-surface/30 transition-colors"
                 >
-                  <td className="px-4 py-3 text-xs text-muted-foreground/50 tabular-nums whitespace-nowrap">
-                    {timeAgo(r.won_at)}
-                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <Gift className="h-3.5 w-3.5 text-gold/50 shrink-0" />
                       <span className="font-medium text-foreground/90">{r.player_name}</span>
-                      <VersionBadge v={r.version} />
                     </div>
                   </td>
                   <td className="px-4 py-3">
                     <span className="font-semibold text-foreground/90">{r.prize_name}</span>
                   </td>
-                  <td className="px-4 py-3 hidden sm:table-cell">
-                    <span
-                      className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${PRIZE_TYPE_CLS[r.prize_type] ?? PRIZE_TYPE_CLS.other}`}
-                    >
-                      {r.prize_type}
+                  <td className="px-4 py-3 hidden sm:table-cell text-xs text-muted-foreground/70">
+                    {r.item_id ?? "-"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center rounded-md border px-3 py-1 text-xs font-semibold ${qualityClass(r.quality)}`}>
+                      {r.quality ?? "None"}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 text-right text-xs text-muted-foreground/50 tabular-nums whitespace-nowrap">
+                    {r.won_time ?? timeAgo(r.won_at)}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {filtered.length > pageSize && (
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>
+            Mostrando {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filtered.length)} de {filtered.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => goToPage(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="px-3 py-1.5 rounded-md border border-surface/60 bg-surface/40 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gold/40"
+            >
+              Anterior
+            </button>
+            <span className="tabular-nums">{currentPage}/{totalPages}</span>
+            <button
+              onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="px-3 py-1.5 rounded-md border border-surface/60 bg-surface/40 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gold/40"
+            >
+              Siguiente
+            </button>
+          </div>
         </div>
       )}
     </div>

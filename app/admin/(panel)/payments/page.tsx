@@ -17,7 +17,7 @@ export default async function PaymentsPage() {
         <div>
           <h1 className="text-2xl font-bebas tracking-widest text-white">Pagos</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Configura Stripe y Tebex. Las secret keys nunca se devuelven al cliente.
+            Configura Stripe y Tebex. Las claves privadas y secretos webhook nunca se devuelven al cliente.
           </p>
         </div>
       </div>

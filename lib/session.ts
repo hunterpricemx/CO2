@@ -20,6 +20,7 @@ export interface GameSessionData {
   uid: number;      // accounts.EntityID
   username: string; // accounts.Username
   email: string;    // accounts.Email
+  version?: 1 | 2;
 }
 
 function getSecret(): string {
@@ -62,7 +63,7 @@ function verifyToken(token: string): GameSessionData | null {
   }
 
   if (!data.exp || data.exp < Date.now()) return null;
-  return { uid: data.uid, username: data.username, email: data.email };
+  return { uid: data.uid, username: data.username, email: data.email, version: data.version };
 }
 
 /** Read and verify the game session from the request cookie. */

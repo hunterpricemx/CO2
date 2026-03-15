@@ -8,33 +8,84 @@ import {
   type MineLogRow,
   type MiningLabels,
 } from "@/components/shared/LogTable";
+import { getGameDb } from "@/lib/game-db";
+import type { RowDataPacket } from "mysql2";
 
 export const metadata: Metadata = { title: "Registro Mineros" };
 
-// ── Mock data (replace with Supabase query once game server syncs) ────────────
+interface MiningDbRow extends RowDataPacket {
+  id: number;
+  Type: string;
+  Name: string;
+  ITEMID: string;
+  MapID: string;
+  Hour: string;
+}
 
-const MOCK_MINES: MineLogRow[] = [
-  { id: "m1",  player_name: "DragonMaster_X",  item_name: "Dragon Ball",  item_type: "dragonball", quantity: 1,  zone_name: "Phoenix Cave",  version: "1.0", mined_at: "2026-03-12T10:50:00Z" },
-  { id: "m2",  player_name: "CrystalMage",     item_name: "Meteor",       item_type: "meteor",     quantity: 2,  zone_name: "Mine",          version: "2.0", mined_at: "2026-03-12T10:40:00Z" },
-  { id: "m3",  player_name: "VoidReaper",      item_name: "Super Gem",    item_type: "gem",        quantity: 1,  zone_name: "Dragon Cave",   version: "1.0", mined_at: "2026-03-12T10:25:00Z" },
-  { id: "m4",  player_name: "FrostWarden",     item_name: "Gold Mineral", item_type: "mineral",    quantity: 5,  zone_name: "Mine",          version: "2.0", mined_at: "2026-03-12T10:00:00Z" },
-  { id: "m5",  player_name: "GoldenArrow",     item_name: "Dragon Ball",  item_type: "dragonball", quantity: 1,  zone_name: "Phoenix Cave",  version: "1.0", mined_at: "2026-03-12T09:35:00Z" },
-  { id: "m6",  player_name: "ThunderStrike",   item_name: "Moon Box",     item_type: "scroll",     quantity: 1,  zone_name: "Dragon Cave",   version: "2.0", mined_at: "2026-03-12T09:10:00Z" },
-  { id: "m7",  player_name: "StormWarrior",    item_name: "Iron Ore",     item_type: "mineral",    quantity: 8,  zone_name: "Mine",          version: "1.0", mined_at: "2026-03-12T08:55:00Z" },
-  { id: "m8",  player_name: "EternalGuard",    item_name: "Kylin Gem",    item_type: "gem",        quantity: 1,  zone_name: "Mine",          version: "2.0", mined_at: "2026-03-12T08:30:00Z" },
-  { id: "m9",  player_name: "MysticBlade",     item_name: "Meteor",       item_type: "meteor",     quantity: 3,  zone_name: "Phoenix Cave",  version: "1.0", mined_at: "2026-03-12T08:10:00Z" },
-  { id: "m10", player_name: "SilverFang",      item_name: "Dragon Ball",  item_type: "dragonball", quantity: 1,  zone_name: "Dragon Cave",   version: "2.0", mined_at: "2026-03-12T07:50:00Z" },
-  { id: "m11", player_name: "DarkTemplar",     item_name: "Gem Scroll",   item_type: "scroll",     quantity: 2,  zone_name: "Mine",          version: "1.0", mined_at: "2026-03-12T07:25:00Z" },
-  { id: "m12", player_name: "FireArcher99",    item_name: "Silver Ore",   item_type: "mineral",    quantity: 6,  zone_name: "Mine",          version: "2.0", mined_at: "2026-03-12T06:50:00Z" },
-  { id: "m13", player_name: "NightStalker",    item_name: "Super Gem",    item_type: "gem",        quantity: 1,  zone_name: "Phoenix Cave",  version: "1.0", mined_at: "2026-03-12T06:20:00Z" },
-  { id: "m14", player_name: "PhoenixRising",   item_name: "Dragon Ball",  item_type: "dragonball", quantity: 1,  zone_name: "Dragon Cave",   version: "2.0", mined_at: "2026-03-11T23:00:00Z" },
-  { id: "m15", player_name: "CrimsonBlade",    item_name: "Gold Mineral", item_type: "mineral",    quantity: 4,  zone_name: "Mine",          version: "1.0", mined_at: "2026-03-11T21:30:00Z" },
-  { id: "m16", player_name: "BlazeHunter",     item_name: "Meteor",       item_type: "meteor",     quantity: 2,  zone_name: "Phoenix Cave",  version: "2.0", mined_at: "2026-03-11T20:00:00Z" },
-  { id: "m17", player_name: "SoulBreaker",     item_name: "Kylin Gem",    item_type: "gem",        quantity: 1,  zone_name: "Mine",          version: "1.0", mined_at: "2026-03-11T18:45:00Z" },
-  { id: "m18", player_name: "StarFallArcher",  item_name: "Dragon Ball",  item_type: "dragonball", quantity: 1,  zone_name: "Dragon Cave",   version: "2.0", mined_at: "2026-03-11T17:20:00Z" },
-  { id: "m19", player_name: "IronWarrior",     item_name: "Iron Ore",     item_type: "mineral",    quantity: 10, zone_name: "Mine",          version: "1.0", mined_at: "2026-03-11T15:00:00Z" },
-  { id: "m20", player_name: "VoidReaper",      item_name: "Moon Box",     item_type: "scroll",     quantity: 1,  zone_name: "Phoenix Cave",  version: "2.0", mined_at: "2026-03-11T13:30:00Z" },
-];
+function parseTodayHourToIso(hourRaw: string): string {
+  const s = (hourRaw ?? "").trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (!m) return new Date().toISOString();
+
+  let hh = Number(m[1]);
+  const mm = Number(m[2]);
+  const ss = Number(m[3] ?? "0");
+  const ap = m[4].toUpperCase();
+
+  if (ap === "AM" && hh === 12) hh = 0;
+  if (ap === "PM" && hh !== 12) hh += 12;
+
+  const d = new Date();
+  d.setHours(hh, mm, ss, 0);
+  return d.toISOString();
+}
+
+function parseTodayHourToTs(hourRaw: string): number {
+  return new Date(parseTodayHourToIso(hourRaw)).getTime();
+}
+
+function getItemType(itemName: string): MineLogRow["item_type"] {
+  const n = itemName.toLowerCase();
+  if (n.includes("dragonball") || n.includes("dragon ball")) return "dragonball";
+  if (n.includes("meteor")) return "meteor";
+  if (n.includes("gem")) return "gem";
+  if (n.includes("scroll")) return "scroll";
+  if (n.includes("ore") || n.includes("mineral")) return "mineral";
+  return "other";
+}
+
+async function getMiningRows(versionNum: 1 | 2): Promise<MineLogRow[]> {
+  let conn: import("mysql2/promise").Connection | undefined;
+
+  try {
+    const { conn: c } = await getGameDb(versionNum);
+    conn = c;
+
+    const [rows] = await conn.execute<MiningDbRow[]>(
+      "SELECT id, Type, Name, ITEMID, MapID, Hour FROM `mineloggs` ORDER BY id DESC LIMIT 300",
+    );
+
+    const mapped = rows.map((r) => ({
+      id: String(r.id),
+      player_name: r.Name ?? "-",
+      item_name: r.ITEMID ?? "Unknown",
+      item_type: getItemType(r.ITEMID ?? ""),
+      quantity: 1,
+      zone_name: r.MapID ?? "-",
+      version: versionNum === 1 ? "1.0" : "2.0",
+      mined_at: parseTodayHourToIso(r.Hour ?? ""),
+      mined_time: r.Hour ?? "",
+    }));
+
+    mapped.sort((a, b) => parseTodayHourToTs(b.mined_time ?? "") - parseTodayHourToTs(a.mined_time ?? ""));
+
+    return mapped;
+  } catch {
+    return [];
+  } finally {
+    await conn?.end();
+  }
+}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -45,17 +96,13 @@ export default async function MiningPage({
 }) {
   const { locale, version } = await params;
   const t = await getTranslations("mining");
+  const versionNum: 1 | 2 = version === "1.0" ? 1 : 2;
 
   const { heroBg, logoSrc } = getVersionAssets(await getSiteSettings(), version);
 
   const homeHref = locale === "es" ? `/${version}` : `/${locale}/${version}`;
 
-  const rows =
-    version === "1.0"
-      ? MOCK_MINES.filter((r) => r.version !== "2.0")
-      : version === "2.0"
-      ? MOCK_MINES.filter((r) => r.version !== "1.0")
-      : MOCK_MINES;
+  const rows = await getMiningRows(versionNum);
 
   const labels: MiningLabels = {
     col_time:            t("col_time"),
@@ -65,7 +112,7 @@ export default async function MiningPage({
     col_zone:            t("col_zone"),
     search_placeholder:  t("search_placeholder"),
     filter_all_versions: t("filter_all_versions"),
-    simulated_notice:    t("simulated_notice"),
+    simulated_notice:    "Datos en vivo desde mineloggs (reinicia 23:59 servidor).",
     no_results:          t("no_results"),
   };
 

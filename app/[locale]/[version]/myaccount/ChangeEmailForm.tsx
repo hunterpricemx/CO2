@@ -18,10 +18,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useParams } from "next/navigation";
 
 export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
   const t = useTranslations("myaccount");
   const ta = useTranslations("auth");
+  const { version } = useParams() as { version: string };
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -45,7 +47,8 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
       return;
     }
     startTransition(async () => {
-      const result = await changeEmailAction({ currentPassword, newEmail });
+      const versionNum = version === "1.0" ? 1 : 2;
+      const result = await changeEmailAction({ currentPassword, newEmail, version: versionNum });
       if (result.success) {
         toast.success(t("email_changed"));
         form.reset();

@@ -274,6 +274,9 @@ export function RankingTable({
 }) {
   const [tab, setTab] = useState<RankTab>(defaultTab);
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  const pageSize = 10;
 
   const tabs: { key: RankTab; label: string }[] = [
     { key: "players", label: labels.tab_players },
@@ -300,6 +303,25 @@ export function RankingTable({
   const filteredKO      = term ? koPlayers.filter(p => p.name.toLowerCase().includes(term)) : koPlayers;
   const filteredGuilds  = term ? guilds.filter(g => g.name.toLowerCase().includes(term)) : guilds;
 
+  const activeTotal =
+    tab === "players"
+      ? filteredPlayers.length
+      : tab === "pk"
+      ? filteredPK.length
+      : tab === "ko"
+      ? filteredKO.length
+      : filteredGuilds.length;
+
+  const totalPages = Math.max(1, Math.ceil(activeTotal / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+
+  const pagedPlayers = filteredPlayers.slice(start, end);
+  const pagedPK = filteredPK.slice(start, end);
+  const pagedKO = filteredKO.slice(start, end);
+  const pagedGuilds = filteredGuilds.slice(start, end);
+
   return (
     <div className="flex flex-col gap-6">
       {/* Simulated notice */}
@@ -315,7 +337,10 @@ export function RankingTable({
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => {
+            setSearch(e.target.value);
+            setPage(1);
+          }}
           placeholder={labels.search_placeholder}
           className="w-full bg-surface/40 border border-surface/50 rounded-lg pl-9 pr-9 py-2 text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-gold/40 transition-colors"
         />
@@ -334,7 +359,10 @@ export function RankingTable({
         {tabs.map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => {
+              setTab(t.key);
+              setPage(1);
+            }}
             className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-150 cursor-pointer ${
               tab === t.key
                 ? "bg-gold text-background"
@@ -348,10 +376,35 @@ export function RankingTable({
       </div>
 
       {/* Table */}
-      {tab === "players" && <PlayersTable rows={filteredPlayers} labels={labels} />}
-      {tab === "pk"      && <PKTable rows={filteredPK} labels={labels} />}
-      {tab === "ko"      && <KOTable rows={filteredKO} labels={labels} />}
-      {tab === "guilds"  && <GuildsTable rows={filteredGuilds} labels={labels} />}
+      {tab === "players" && <PlayersTable rows={pagedPlayers} labels={labels} />}
+      {tab === "pk"      && <PKTable rows={pagedPK} labels={labels} />}
+      {tab === "ko"      && <KOTable rows={pagedKO} labels={labels} />}
+      {tab === "guilds"  && <GuildsTable rows={pagedGuilds} labels={labels} />}
+
+      {activeTotal > pageSize && (
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>
+            Mostrando {start + 1}-{Math.min(end, activeTotal)} de {activeTotal}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage <= 1}
+              className="px-3 py-1.5 rounded-md border border-surface/60 bg-surface/40 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gold/40"
+            >
+              Anterior
+            </button>
+            <span className="tabular-nums">{currentPage}/{totalPages}</span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage >= totalPages}
+              className="px-3 py-1.5 rounded-md border border-surface/60 bg-surface/40 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gold/40"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

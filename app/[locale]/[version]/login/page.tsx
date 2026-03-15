@@ -66,6 +66,7 @@ export default function LoginPage() {
   function onSubmit(data: FormData) {
     startTransition(async () => {
       const captchaToken = recaptchaRef.current?.getValue() ?? "";
+      const versionNum = version === "1.0" ? 1 : 2;
       if (!captchaToken) {
         toast.error(t("errors.captcha_error"));
         return;
@@ -74,6 +75,7 @@ export default function LoginPage() {
       const result = await gameLoginAction({
         ...data,
         captchaToken,
+        version: versionNum,
       });
       if (!result.success) {
         recaptchaRef.current?.reset();

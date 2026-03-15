@@ -18,10 +18,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { useParams } from "next/navigation";
 
 export function ChangePasswordForm() {
   const t = useTranslations("myaccount");
   const ta = useTranslations("auth");
+  const { version } = useParams() as { version: string };
   const [isPending, startTransition] = useTransition();
   const [open, setOpen] = useState(false);
   const [showCurrent, setShowCurrent] = useState(false);
@@ -56,7 +58,8 @@ export function ChangePasswordForm() {
 
   function onSubmit({ currentPassword, newPassword }: FormData) {
     startTransition(async () => {
-      const result = await changePasswordAction({ currentPassword, newPassword });
+      const versionNum = version === "1.0" ? 1 : 2;
+      const result = await changePasswordAction({ currentPassword, newPassword, version: versionNum });
       if (result.success) {
         toast.success(t("password_changed"));
         form.reset();

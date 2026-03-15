@@ -2,11 +2,11 @@
 
 import { useState, useTransition } from "react";
 import { CreditCard, Save, CheckCircle, XCircle, ExternalLink, FlaskConical, Loader2, Eye, EyeOff, KeyRound } from "lucide-react";
-import { savePaymentConfig, testStripeConnection, getSecretValues, type PaymentConfigData } from "./actions";
+import { savePaymentConfig, testStripeConnection, testTebexConnection, getSecretValues, type PaymentConfigData } from "./actions";
 
 type Props = {
   initial: PaymentConfigData | null;
-  hasSecrets: { has_stripe_sk_test: boolean; has_stripe_sk_live: boolean; has_tebex_secret: boolean };
+  hasSecrets: { has_stripe_sk_test: boolean; has_stripe_sk_live: boolean; has_tebex_secret: boolean; has_tebex_webhook_secret: boolean };
 };
 
 function SecretInput({
@@ -45,12 +45,19 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
     stripe_sk_live:    "",
     tebex_enabled:     initial?.tebex_enabled     ?? false,
     tebex_secret:      "",
+    tebex_webhook_secret: "",
     tebex_webstore_id: initial?.tebex_webstore_id ?? "",
+    tebex_uri_v1:      initial?.tebex_uri_v1      ?? "",
+    tebex_uri_v2:      initial?.tebex_uri_v2      ?? "",
+    tebex_payment_table: initial?.tebex_payment_table ?? "dbb_payments",
+    tebex_category_id: initial?.tebex_category_id ?? "",
+    tebex_product_id:  initial?.tebex_product_id  ?? "",
   });
 
   const [showSkTest,    setShowSkTest]    = useState(false);
   const [showSkLive,    setShowSkLive]    = useState(false);
   const [showTebexSk,   setShowTebexSk]   = useState(false);
+  const [showTebexWebhookSk, setShowTebexWebhookSk] = useState(false);
   const [revealed,      setRevealed]      = useState(false);
   const [isRevealing,   setIsRevealing]   = useState(false);
   const [result,        setResult]        = useState<{ ok: boolean; msg: string; extra?: string } | null>(null);
@@ -67,6 +74,7 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
       stripe_sk_test: secrets.stripe_sk_test,
       stripe_sk_live: secrets.stripe_sk_live,
       tebex_secret:   secrets.tebex_secret,
+      tebex_webhook_secret: secrets.tebex_webhook_secret,
     }));
     setRevealed(true);
     setIsRevealing(false);
@@ -84,6 +92,16 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
       const r = await testStripeConnection();
       const extra = r.data
         ? `Balance disponible: ${Number(r.data.available) / 100} ${String(r.data.currency)}`
+        : undefined;
+      setResult({ ok: r.success, msg: r.message, extra });
+    });
+  };
+
+  const handleTestTebex = () => {
+    startTransition(async () => {
+      const r = await testTebexConnection();
+      const extra = r.data
+        ? `Tienda: ${String(r.data.name)} · ${String(r.data.currency)} · ${String(r.data.domain)}`
         : undefined;
       setResult({ ok: r.success, msg: r.message, extra });
     });
@@ -208,6 +226,38 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
               <input className={inputCls} placeholder="xxxxxxxx" value={form.tebex_webstore_id}
                 onChange={e => set("tebex_webstore_id", e.target.value)} />
             </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>URL base V1.0</label>
+                <input className={inputCls} placeholder="https://tusitio.com/1.0" value={form.tebex_uri_v1}
+                  onChange={e => set("tebex_uri_v1", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>URL base V2.0</label>
+                <input className={inputCls} placeholder="https://tusitio.com/2.0" value={form.tebex_uri_v2}
+                  onChange={e => set("tebex_uri_v2", e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className={labelCls}>Tabla de pagos</label>
+                <input className={inputCls} placeholder="dbb_payments" value={form.tebex_payment_table}
+                  onChange={e => set("tebex_payment_table", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>Category ID</label>
+                <input className={inputCls} placeholder="1406723" value={form.tebex_category_id}
+                  onChange={e => set("tebex_category_id", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>Product ID</label>
+                <input className={inputCls} placeholder="6468425" value={form.tebex_product_id}
+                  onChange={e => set("tebex_product_id", e.target.value)} />
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              Los campos de URL/tabla/category/product se guardan para administración y referencia. El checkout headless actual usa el Webstore ID, la private key, el webhook secret y el mapeo por paquete.
+            </p>
             <div>
               <label className={labelCls}>Secret key</label>
               <SecretInput
@@ -215,7 +265,17 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
                 onChange={v => set("tebex_secret", v)}
                 show={showTebexSk}
                 onToggle={() => setShowTebexSk(p => !p)}
-                placeholder={hasSecrets.has_tebex_secret ? "Guardada - escribe para reemplazar" : "t_xxxxxxxx..."}
+                placeholder={hasSecrets.has_tebex_secret ? "Guardada - escribe para reemplazar" : "Private key de Headless API"}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Webhook secret</label>
+              <SecretInput
+                value={form.tebex_webhook_secret}
+                onChange={v => set("tebex_webhook_secret", v)}
+                show={showTebexWebhookSk}
+                onToggle={() => setShowTebexWebhookSk(p => !p)}
+                placeholder={hasSecrets.has_tebex_webhook_secret ? "Guardado - escribe para reemplazar" : "Secret del endpoint webhook"}
               />
             </div>
           </div>
@@ -241,7 +301,7 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
       )}
 
       {/* Revelar claves guardadas */}
-      {!revealed && (hasSecrets.has_stripe_sk_test || hasSecrets.has_stripe_sk_live || hasSecrets.has_tebex_secret) && (
+      {!revealed && (hasSecrets.has_stripe_sk_test || hasSecrets.has_stripe_sk_live || hasSecrets.has_tebex_secret || hasSecrets.has_tebex_webhook_secret) && (
         <button
           type="button"
           onClick={handleReveal}
@@ -260,6 +320,13 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/20 transition-colors disabled:opacity-50">
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
             Probar Stripe (test)
+          </button>
+        )}
+        {form.tebex_enabled && (
+          <button onClick={handleTestTebex} disabled={isPending}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition-colors disabled:opacity-50">
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
+            Probar Tebex
           </button>
         )}
         <button onClick={handleSave} disabled={isPending}

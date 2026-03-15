@@ -8,6 +8,8 @@
 
 import type { UserRole } from "@/types";
 
+export type GameVersion = 1 | 2;
+
 /** The authenticated user as returned by Supabase Auth + profile data. */
 export interface AuthUser {
   id: string;
@@ -26,6 +28,15 @@ export interface RegisterInput {
   captchaToken: string;
 }
 
+/** Shape of the game registration form. */
+export interface GameRegisterInput {
+  username: string;
+  email: string;
+  password: string;
+  captchaToken: string;
+  version: GameVersion;
+}
+
 /** Shape of the login form (Supabase / admin — uses email). */
 export interface LoginInput {
   email: string;
@@ -37,4 +48,5 @@ export interface GameLoginInput {
   username: string;
   password: string;
   captchaToken: string;
+  version: GameVersion;
 }

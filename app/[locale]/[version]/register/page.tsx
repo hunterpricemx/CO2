@@ -86,11 +86,12 @@ export default function RegisterPage() {
   function onSubmit({ username, email, password }: FormData) {
     startTransition(async () => {
       const captchaToken = recaptchaRef.current?.getValue() ?? "";
+      const versionNum = version === "1.0" ? 1 : 2;
       if (!captchaToken) {
         toast.error(t("errors.captcha_error"));
         return;
       }
-      const result = await gameRegisterAction({ username, email, password, captchaToken });
+      const result = await gameRegisterAction({ username, email, password, captchaToken, version: versionNum });
       if (result.success) {
         toast.success(t("success_register"));
         router.push(vp("/"));

@@ -5,14 +5,24 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export type ServerConfigData = {
-  db_host: string;
-  db_port: number;
-  db_name: string;
-  db_user: string;
-  db_pass: string;
-  table_accounts: string;
-  table_characters_v1: string;
+  // V2.0
+  db_host_v2: string;
+  db_port_v2: number;
+  db_name_v2: string;
+  db_user_v2: string;
+  db_pass_v2: string;
+  table_accounts_v2: string;
   table_characters_v2: string;
+  table_payments_v2: string;
+  // V1.0
+  db_host_v1: string;
+  db_port_v1: number;
+  db_name_v1: string;
+  db_user_v1: string;
+  db_pass_v1: string;
+  table_accounts_v1: string;
+  table_characters_v1: string;
+  table_payments_v1: string;
 };
 
 export type ActionResult = {
@@ -51,25 +61,27 @@ export async function saveServerConfig(config: ServerConfigData): Promise<Action
 
   const payload: Record<string, unknown> = {
     id: 1,
-    db_host:             config.db_host,
-    db_port:             config.db_port,
-    db_name:             config.db_name,
-    db_user:             config.db_user,
-    table_accounts:      config.table_accounts,
-    table_characters_v1: config.table_characters_v1,
+    db_host_v2:          config.db_host_v2,
+    db_port_v2:          config.db_port_v2,
+    db_name_v2:          config.db_name_v2,
+    db_user_v2:          config.db_user_v2,
+    table_accounts_v2:   config.table_accounts_v2,
     table_characters_v2: config.table_characters_v2,
+    table_payments_v2:   config.table_payments_v2,
+    db_host_v1:          config.db_host_v1,
+    db_port_v1:          config.db_port_v1,
+    db_name_v1:          config.db_name_v1,
+    db_user_v1:          config.db_user_v1,
+    table_accounts_v1:   config.table_accounts_v1,
+    table_characters_v1: config.table_characters_v1,
+    table_payments_v1:   config.table_payments_v1,
     updated_at:          new Date().toISOString(),
   };
 
-  // Solo actualizar la contraseña si el usuario escribió una nueva
-  if (config.db_pass.trim() !== "") {
-    payload.db_pass = config.db_pass;
-  }
+  if (config.db_pass_v2.trim() !== "") payload.db_pass_v2 = config.db_pass_v2;
+  if (config.db_pass_v1.trim() !== "") payload.db_pass_v1 = config.db_pass_v1;
 
-  const { error } = await supabase
-    .from("server_config")
-    .upsert(payload);
-
+  const { error } = await supabase.from("server_config").upsert(payload);
   if (error) return { success: false, message: error.message };
 
   revalidatePath("/admin/game-server");
@@ -77,66 +89,51 @@ export async function saveServerConfig(config: ServerConfigData): Promise<Action
 }
 
 // ── Probar conexión ──────────────────────────────────────────────
-export async function testGameServerConnection(config: ServerConfigData): Promise<ActionResult> {
-  // La conexión MySQL se hace en el servidor — nunca expone credenciales al cliente
+export async function testGameServerConnection(config: ServerConfigData, version: 1 | 2): Promise<ActionResult> {
   try {
-    const host = config.db_host.trim();
-    const user = config.db_user.trim();
-    const dbName = config.db_name.trim();
-    const port = Number.isFinite(config.db_port) ? config.db_port : 3306;
+    const v = version === 1 ? "v1" : "v2";
+    const host   = (config[`db_host_${v}` as keyof ServerConfigData] as string).trim();
+    const user   = (config[`db_user_${v}` as keyof ServerConfigData] as string).trim();
+    const dbName = (config[`db_name_${v}` as keyof ServerConfigData] as string).trim();
+    const port   = config[`db_port_${v}` as keyof ServerConfigData] as number;
+    const tableAccounts = (config[`table_accounts_${v}` as keyof ServerConfigData] as string).trim();
+    const tableChars    = (config[`table_characters_${v}` as keyof ServerConfigData] as string).trim();
 
     if (!host || !user || !dbName) {
-      return { success: false, message: "Completa host, base de datos y usuario." };
+      return { success: false, message: `Completa host, base de datos y usuario para V${version}.0.` };
     }
 
-    // Si el campo contraseña está vacío en el form, usar la guardada en Supabase
-    let password = config.db_pass;
+    let password = config[`db_pass_${v}` as keyof ServerConfigData] as string;
     if (password.trim() === "") {
       const supabase = await createClient();
       const { data: stored } = await supabase
         .from("server_config")
-        .select("db_pass")
+        .select("*")
         .eq("id", 1)
         .single();
-      password = stored?.db_pass ?? "";
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      password = (stored as any)?.[`db_pass_${v}`] ?? "";
     }
 
-    // Importación dinámica para que mysql2 no vaya al bundle del cliente
     const mysql = await import("mysql2/promise");
-
     const conn = await mysql.createConnection({
-      host,
-      port,
-      user,
-      password,
-      database:        dbName,
-      connectTimeout:  8000,
+      host, port, user, password, database: dbName, connectTimeout: 8000,
     });
 
-    const [[acctRow]]    = await conn.query<RowDataPacket[]>(
-      `SELECT COUNT(*) as total FROM \`${config.table_accounts.trim()}\``
-    );
-    const [[charRowV1]]  = await conn.query<RowDataPacket[]>(
-      `SELECT COUNT(*) as total FROM \`${config.table_characters_v1.trim()}\``
-    );
-    const [[charRowV2]]  = await conn.query<RowDataPacket[]>(
-      `SELECT COUNT(*) as total FROM \`${config.table_characters_v2.trim()}\``
-    );
-
+    const [[acctRow]]  = await conn.query<RowDataPacket[]>(`SELECT COUNT(*) as total FROM \`${tableAccounts}\``);
+    const [[charRow]]  = await conn.query<RowDataPacket[]>(`SELECT COUNT(*) as total FROM \`${tableChars}\``);
     await conn.end();
 
     return {
       success: true,
-      message: "Conexión exitosa.",
-      data: {
-        accounts:       acctRow.total,
-        characters_v1:  charRowV1.total,
-        characters_v2:  charRowV2.total,
-      },
+      message: `Conexión V${version}.0 exitosa.`,
+      data: { accounts: acctRow.total, characters: charRow.total },
     };
   } catch (e: unknown) {
-    const hostInfo = `${config.db_host.trim() || "(sin host)"}:${Number.isFinite(config.db_port) ? config.db_port : 3306}`;
-    return { success: false, message: `[${hostInfo}] ${getErrorMessage(e, "Error de conexión.")}` };
+    const v = version === 1 ? "v1" : "v2";
+    const host = (config[`db_host_${v}` as keyof ServerConfigData] as string) || "(sin host)";
+    const port = config[`db_port_${v}` as keyof ServerConfigData] as number || 3306;
+    return { success: false, message: `[${host}:${port}] ${getErrorMessage(e, "Error de conexión.")}` };
   }
 }
 
@@ -144,7 +141,6 @@ export async function testGameServerConnection(config: ServerConfigData): Promis
 export async function syncGameServer(): Promise<ActionResult> {
   const supabase = await createClient();
 
-  // Leer config guardada
   const { data: cfg, error: cfgErr } = await supabase
     .from("server_config")
     .select("*")
@@ -152,41 +148,55 @@ export async function syncGameServer(): Promise<ActionResult> {
     .single();
 
   if (cfgErr || !cfg) return { success: false, message: "No hay configuración guardada." };
-  if (!cfg.db_host || !cfg.db_user) return { success: false, message: "Configura el servidor primero." };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const c = cfg as any;
+  if (!c.db_host_v2 || !c.db_user_v2) return { success: false, message: "Configura el servidor V2.0 primero." };
 
   try {
     const mysql = await import("mysql2/promise");
 
-    const conn = await mysql.createConnection({
-      host:           cfg.db_host,
-      port:           cfg.db_port,
-      user:           cfg.db_user,
-      password:       cfg.db_pass    ?? undefined,
-      database:       cfg.db_name    ?? undefined,
+    // ── V2.0 connection (accounts + chars v2) ───────────────────
+    const connV2 = await mysql.createConnection({
+      host:           c.db_host_v2,
+      port:           c.db_port_v2,
+      user:           c.db_user_v2,
+      password:       c.db_pass_v2    ?? undefined,
+      database:       c.db_name_v2    ?? undefined,
       connectTimeout: 10000,
     });
 
-    // Traer accounts (sin password ni salt)
-    const [accounts] = await conn.query<RowDataPacket[]>(
+    const [accounts] = await connV2.query<RowDataPacket[]>(
       `SELECT EntityID, Username, Email, EarthID, IP, BannedID, Creation, HWID, State
-       FROM \`${cfg.table_accounts}\``
+       FROM \`${c.table_accounts_v2}\``
     );
 
-    // Traer personajes v1.0
     const charQuery = `SELECT EntityID, Name, Money, CPs, GuildName, MoneySave, Mesh, Avatar,
               GenesisCoin, AutoHunting, PKPoints, Reborn, Strength, Agility,
               Vitality, Spirit, Additional, Spouse, Level, Status, MetScrolls
        FROM`;
-    const [charsV1] = await conn.query<RowDataPacket[]>(
-      `${charQuery} \`${cfg.table_characters_v1}\``
-    );
 
-    // Traer personajes v2.0
-    const [charsV2] = await conn.query<RowDataPacket[]>(
-      `${charQuery} \`${cfg.table_characters_v2}\``
+    const [charsV2] = await connV2.query<RowDataPacket[]>(
+      `${charQuery} \`${c.table_characters_v2}\``
     );
+    await connV2.end();
 
-    await conn.end();
+    // ── V1.0 connection (chars v1 only, if configured) ───────────
+    let charsV1: RowDataPacket[] = [];
+    if (c.db_host_v1 && c.db_user_v1) {
+      const connV1 = await mysql.createConnection({
+        host:           c.db_host_v1,
+        port:           c.db_port_v1,
+        user:           c.db_user_v1,
+        password:       c.db_pass_v1  ?? undefined,
+        database:       c.db_name_v1  ?? undefined,
+        connectTimeout: 10000,
+      });
+      const [rows] = await connV1.query<RowDataPacket[]>(
+        `${charQuery} \`${c.table_characters_v1}\``
+      );
+      charsV1 = rows;
+      await connV1.end();
+    }
 
     // Upsert accounts → Supabase
     if (accounts.length > 0) {
@@ -282,13 +292,35 @@ export async function getServerConfig() {
 
   const { data } = await supabase
     .from("server_config")
-    .select("db_host, db_port, db_name, db_user, db_pass, table_accounts, table_characters_v1, table_characters_v2, last_sync, sync_accounts_count, sync_characters_count, updated_at")
+    .select("*")
     .eq("id", 1)
     .single();
 
   if (!data) return null;
 
-  // Nunca devolver la contraseña al cliente — solo indicar si está guardada
-  const { db_pass, ...rest } = data;
-  return { ...rest, has_password: (db_pass ?? "").trim().length > 0 };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const d = data as any;
+  return {
+    db_host_v2:          d.db_host_v2          ?? "",
+    db_port_v2:          d.db_port_v2          ?? 3306,
+    db_name_v2:          d.db_name_v2          ?? "",
+    db_user_v2:          d.db_user_v2          ?? "",
+    db_pass_v2:          "",
+    table_accounts_v2:   d.table_accounts_v2   ?? "accounts",
+    table_characters_v2: d.table_characters_v2 ?? "topserver_turbo",
+    table_payments_v2:   d.table_payments_v2   ?? "dbb_payments",
+    db_host_v1:          d.db_host_v1          ?? "",
+    db_port_v1:          d.db_port_v1          ?? 3306,
+    db_name_v1:          d.db_name_v1          ?? "",
+    db_user_v1:          d.db_user_v1          ?? "",
+    db_pass_v1:          "",
+    table_accounts_v1:   d.table_accounts_v1   ?? "accounts",
+    table_characters_v1: d.table_characters_v1 ?? "topservers",
+    table_payments_v1:   d.table_payments_v1   ?? "dbb_payments",
+    has_password_v2:     ((d.db_pass_v2 ?? "") as string).trim().length > 0,
+    has_password_v1:     ((d.db_pass_v1 ?? "") as string).trim().length > 0,
+    last_sync:             d.last_sync             ?? null,
+    sync_accounts_count:   d.sync_accounts_count   ?? 0,
+    sync_characters_count: d.sync_characters_count ?? 0,
+  };
 }

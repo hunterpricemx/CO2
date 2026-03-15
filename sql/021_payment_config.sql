@@ -14,4 +14,5 @@ ALTER TABLE public.server_config
   ADD COLUMN IF NOT EXISTS stripe_sk_live      TEXT     NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS tebex_enabled       BOOLEAN  NOT NULL DEFAULT false,
   ADD COLUMN IF NOT EXISTS tebex_secret        TEXT     NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS tebex_webhook_secret TEXT    NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS tebex_webstore_id   TEXT     NOT NULL DEFAULT '';

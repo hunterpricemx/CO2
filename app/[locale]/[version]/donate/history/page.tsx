@@ -4,7 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Clock, CheckCircle2, Coins, AlertCircle, RefreshCcw, Timer } from "lucide-react";
 import { getGameSession } from "@/lib/session";
-import { createAdminClient } from "@/lib/supabase/server";
+import { getGameDb } from "@/lib/game-db";
 
 type Props = { params: Promise<{ locale: string; version: string }> };
 
@@ -20,6 +20,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.
 export default async function DonationHistoryPage({ params }: Props) {
   const { locale, version } = await params;
   const t = await getTranslations("donate");
+  const versionNum = version === "1.0" ? 1 : 2;
 
   const session = await getGameSession();
   if (!session) {
@@ -30,21 +31,106 @@ export default async function DonationHistoryPage({ params }: Props) {
     redirect(loginHref);
   }
 
-  const supabase = await createAdminClient();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: donations } = await (supabase as any)
-    .from("donations")
-    .select("id, character_name, account_name, version, cps_base, cps_total, amount_paid, currency, status, payment_provider, created_at, game_credited_at, claimed_at")
-    .eq("account_name", session.username)
-    .order("created_at", { ascending: false });
+  function mapLegacyStatus(statusNum: number): string {
+    if (statusNum <= 0) return "pending";
+    if (statusNum === 1) return "paid";
+    if (statusNum === 2) return "credited";
+    if (statusNum >= 3) return "claimed";
+    return "pending";
+  }
 
-  const rows = (donations ?? []) as {
-    id: string; character_name: string; account_name: string | null;
-    version: number; cps_base: number; cps_total: number;
-    amount_paid: number; currency: string; status: string;
-    payment_provider: string; created_at: string;
-    game_credited_at: string | null; claimed_at: string | null;
-  }[];
+  function cpsFromUsd(amountPaid: number): number {
+    const rounded = Math.round(Number(amountPaid) || 0);
+    const map: Record<number, number> = {
+      8: 530,
+      16: 1075,
+      17: 1075,
+      30: 2050,
+      32: 2050,
+      60: 4200,
+      285: 21000,
+    };
+    return map[rounded] ?? 0;
+  }
+
+  type HistoryRow = {
+    id: string;
+    character_name: string;
+    account_name: string | null;
+    version: number;
+    cps_base: number;
+    cps_total: number;
+    amount_paid: number;
+    currency: string;
+    status: string;
+    payment_provider: string;
+    created_at: string;
+    game_credited_at: string | null;
+    claimed_at: string | null;
+    product_code: string | null;
+    item_number: number;
+  };
+
+  let rows: HistoryRow[] = [];
+  try {
+    const { conn, config } = await getGameDb(versionNum as 1 | 2);
+    try {
+      const tableName = config.table_payments.replace(/`/g, "").trim() || "dbb_payments";
+
+      const [nameRows] = await conn.execute(
+        `SELECT Name FROM \`${config.table_characters}\` WHERE EntityID = ? LIMIT 1`,
+        [session.uid],
+      );
+      const charRow = nameRows as Array<{ Name?: string }>;
+      const charName = (charRow[0]?.Name ?? "").trim() || session.username;
+
+      const [legacyRows] = await conn.execute(
+        `SELECT id, user_id, product, price, item_number, status, since
+           FROM \`${tableName}\`
+          WHERE user_id = ?
+          ORDER BY id DESC`,
+        [session.username],
+      );
+
+      const payments = legacyRows as Array<{
+        id: number;
+        user_id: string;
+        product: string | null;
+        price: string | number;
+        item_number: number;
+        status: number;
+        since: string | Date;
+      }>;
+
+      rows = payments.map((p) => {
+        const status = mapLegacyStatus(Number(p.status ?? 0));
+        const createdAt = typeof p.since === "string" ? p.since : new Date(p.since).toISOString();
+        const amountPaid = Number(p.price ?? 0);
+        const cps = cpsFromUsd(amountPaid);
+        return {
+          id: String(p.id),
+          character_name: charName,
+          account_name: p.user_id,
+          version: versionNum,
+          cps_base: cps,
+          cps_total: cps,
+          amount_paid: amountPaid,
+          currency: "USD",
+          status,
+          payment_provider: "tebex",
+          created_at: createdAt,
+          game_credited_at: status === "credited" || status === "claimed" ? createdAt : null,
+          claimed_at: status === "claimed" ? createdAt : null,
+          product_code: p.product ?? null,
+          item_number: Number(p.item_number ?? 1),
+        };
+      });
+    } finally {
+      await conn.end();
+    }
+  } catch {
+    rows = [];
+  }
 
   const donateHref = locale === "es" ? `/${version}/donate` : `/${locale}/${version}/donate`;
   const homeHref   = locale === "es" ? `/${version}` : `/${locale}/${version}`;
@@ -54,7 +140,7 @@ export default async function DonationHistoryPage({ params }: Props) {
     .filter(r => r.status === "credited" || r.status === "claimed")
     .reduce((sum, r) => sum + r.cps_total, 0);
   const totalUsd = rows
-    .filter(r => r.status !== "pending" && r.status !== "refunded")
+    .filter(r => r.status !== "pending")
     .reduce((sum, r) => sum + Number(r.amount_paid), 0);
 
   return (
@@ -128,8 +214,6 @@ export default async function DonationHistoryPage({ params }: Props) {
                   <tr className="border-b border-[rgba(255,215,0,0.08)]">
                     {[
                       t("history_col_date"),
-                      t("history_col_char"),
-                      t("history_col_version"),
                       t("history_col_cps"),
                       t("history_col_amount"),
                       t("history_col_status"),
@@ -150,18 +234,10 @@ export default async function DonationHistoryPage({ params }: Props) {
                             day: "2-digit", month: "short", year: "numeric",
                           })}
                         </td>
-                        <td className="px-4 py-3 text-white font-medium">{d.character_name}</td>
-                        <td className="px-4 py-3">
-                          <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${
-                            d.version === 1
-                              ? "bg-sky-900/30 text-sky-400 border-sky-700/40"
-                              : "bg-purple-900/30 text-purple-400 border-purple-700/40"
-                          }`}>
-                            v{d.version}.0
-                          </span>
-                        </td>
                         <td className="px-4 py-3 text-[#ffd700] font-semibold">
-                          {d.cps_total.toLocaleString()} CP
+                          {d.cps_total > 0
+                            ? `${d.cps_total.toLocaleString()} CP`
+                            : "-"}
                         </td>
                         <td className="px-4 py-3 text-green-400 font-semibold">
                           ${Number(d.amount_paid).toFixed(2)}

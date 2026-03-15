@@ -13,6 +13,7 @@ export type DonationPackageRow = {
   sort_order: number;
   bonus_label: string | null;
   image_url: string | null;
+  tebex_package_id: string | null;
   created_at: string;
 };
 
@@ -25,6 +26,7 @@ export type PackageFormData = {
   sort_order: number;
   bonus_label: string;
   image_url: string;
+  tebex_package_id: string;
 };
 
 export type ActionResult = { success: boolean; message: string };
@@ -50,6 +52,7 @@ export async function createPackage(form: PackageFormData): Promise<ActionResult
     sort_order:  form.sort_order,
     bonus_label: form.bonus_label.trim() || null,
     image_url:   form.image_url.trim() || null,
+    tebex_package_id: form.tebex_package_id.trim() || null,
   });
   if (error) return { success: false, message: error.message };
   revalidatePath("/admin/donations/packages");
@@ -67,6 +70,7 @@ export async function updatePackage(id: string, form: PackageFormData): Promise<
     sort_order:  form.sort_order,
     bonus_label: form.bonus_label.trim() || null,
     image_url:   form.image_url.trim() || null,
+    tebex_package_id: form.tebex_package_id.trim() || null,
   }).eq("id", id);
   if (error) return { success: false, message: error.message };
   revalidatePath("/admin/donations/packages");

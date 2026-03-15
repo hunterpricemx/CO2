@@ -8,38 +8,85 @@ import {
   type DropLogRow,
   type DropsLabels,
 } from "@/components/shared/LogTable";
+import { getGameDb } from "@/lib/game-db";
+import type { RowDataPacket } from "mysql2";
 
 export const metadata: Metadata = { title: "Log de Caídas" };
 
-// ── Mock data (replace with Supabase query once game server syncs) ────────────
+interface DropDbRow extends RowDataPacket {
+  ID: number;
+  Type: string;
+  Name: string;
+  MonsterName: string;
+  MapID: string;
+  ITEMID: string;
+  Socks: number | string;
+  Plus: number;
+  Bless: number | string;
+  Quality: string;
+  Hour: string;
+}
 
-const MOCK_DROPS: DropLogRow[] = [
-  { id: "d1",  player_name: "DragonMaster_X",  monster: "DragonKing",    item_name: "Heavenly Blade",   item_type: "weapon",    item_plus: 9,  map_name: "Bird Island", version: "1.0", dropped_at: "2026-03-12T10:45:00Z" },
-  { id: "d2",  player_name: "ShadowKnight",    monster: "WeaponMaster",  item_name: "Phoenix Necklace", item_type: "accessory", item_plus: 6,  map_name: "TC Twin",     version: "2.0", dropped_at: "2026-03-12T10:30:00Z" },
-  { id: "d3",  player_name: "FireArcher99",    monster: "EvilTroll",     item_name: "Dragon Blade",     item_type: "weapon",    item_plus: 7,  map_name: "Desert",      version: "1.0", dropped_at: "2026-03-12T09:55:00Z" },
-  { id: "d4",  player_name: "IronWarrior",     monster: "SnakeKing",     item_name: "Super Gem",        item_type: "gem",       item_plus: 0,  map_name: "Bird Island", version: "2.0", dropped_at: "2026-03-12T09:20:00Z" },
-  { id: "d5",  player_name: "DarkTemplar",     monster: "BossMonster",   item_name: "Dragon Ball",      item_type: "gem",       item_plus: 0,  map_name: "Market",      version: "1.0", dropped_at: "2026-03-12T09:10:00Z" },
-  { id: "d6",  player_name: "StormWarrior",    monster: "WoodMonster",   item_name: "Coral Ring",       item_type: "accessory", item_plus: 5,  map_name: "GreenTown",   version: "2.0", dropped_at: "2026-03-12T08:55:00Z" },
-  { id: "d7",  player_name: "PhoenixRising",   monster: "FireBird",      item_name: "Tao Garb",         item_type: "armor",     item_plus: 8,  map_name: "Bird Island", version: "1.0", dropped_at: "2026-03-12T08:40:00Z" },
-  { id: "d8",  player_name: "NightStalker",    monster: "GhostWarrior",  item_name: "Ninja Sword",      item_type: "weapon",    item_plus: 10, map_name: "Desert",      version: "2.0", dropped_at: "2026-03-12T08:20:00Z" },
-  { id: "d9",  player_name: "BlazeHunter",     monster: "IceMonster",    item_name: "Moon Box",         item_type: "scroll",    item_plus: 0,  map_name: "Desert",      version: "1.0", dropped_at: "2026-03-12T07:45:00Z" },
-  { id: "d10", player_name: "CrystalMage",     monster: "GroundMonster", item_name: "Stone of Kilin",   item_type: "accessory", item_plus: 0,  map_name: "TC Twin",     version: "1.0", dropped_at: "2026-03-12T07:30:00Z" },
-  { id: "d11", player_name: "VoidReaper",      monster: "DragonKing",    item_name: "Heavenly Fan",     item_type: "weapon",    item_plus: 11, map_name: "Bird Island", version: "2.0", dropped_at: "2026-03-12T06:10:00Z" },
-  { id: "d12", player_name: "ThunderStrike",   monster: "WeaponMaster",  item_name: "Archer Coat",      item_type: "armor",     item_plus: 6,  map_name: "Market",      version: "1.0", dropped_at: "2026-03-12T05:50:00Z" },
-  { id: "d13", player_name: "GoldenArrow",     monster: "EvilTroll",     item_name: "Meteor Scroll",    item_type: "scroll",    item_plus: 0,  map_name: "GreenTown",   version: "2.0", dropped_at: "2026-03-11T22:30:00Z" },
-  { id: "d14", player_name: "SilverFang",      monster: "BossMonster",   item_name: "Rain Sword",       item_type: "weapon",    item_plus: 12, map_name: "TC Twin",     version: "1.0", dropped_at: "2026-03-11T21:55:00Z" },
-  { id: "d15", player_name: "EternalGuard",    monster: "FireBird",      item_name: "Emerald Ring",     item_type: "accessory", item_plus: 4,  map_name: "Bird Island", version: "2.0", dropped_at: "2026-03-11T20:15:00Z" },
-  { id: "d16", player_name: "MysticBlade",     monster: "SnakeKing",     item_name: "Dragon Ball",      item_type: "gem",       item_plus: 0,  map_name: "Desert",      version: "1.0", dropped_at: "2026-03-11T19:40:00Z" },
-  { id: "d17", player_name: "FrostWarden",     monster: "WoodMonster",   item_name: "Warrior Blade",    item_type: "weapon",    item_plus: 8,  map_name: "GreenTown",   version: "2.0", dropped_at: "2026-03-11T18:20:00Z" },
-  { id: "d18", player_name: "CrimsonBlade",    monster: "GhostWarrior",  item_name: "Bone Blade",       item_type: "weapon",    item_plus: 7,  map_name: "Market",      version: "1.0", dropped_at: "2026-03-11T17:00:00Z" },
-  { id: "d19", player_name: "DragonMaster_X",  monster: "IceMonster",    item_name: "Heaven Whip",      item_type: "weapon",    item_plus: 9,  map_name: "TC Twin",     version: "2.0", dropped_at: "2026-03-11T15:30:00Z" },
-  { id: "d20", player_name: "StarFallArcher",  monster: "GroundMonster", item_name: "Super Gem",        item_type: "gem",       item_plus: 0,  map_name: "Bird Island", version: "1.0", dropped_at: "2026-03-11T14:00:00Z" },
-  { id: "d21", player_name: "SoulBreaker",     monster: "DragonKing",    item_name: "Dragon Axe",       item_type: "weapon",    item_plus: 10, map_name: "Bird Island", version: "2.0", dropped_at: "2026-03-11T12:45:00Z" },
-  { id: "d22", player_name: "IronWarrior",     monster: "WeaponMaster",  item_name: "Phoenix Ring",     item_type: "accessory", item_plus: 6,  map_name: "TC Twin",     version: "1.0", dropped_at: "2026-03-11T11:20:00Z" },
-  { id: "d23", player_name: "PhoenixRising",   monster: "EvilTroll",     item_name: "Meteor Scroll",    item_type: "scroll",    item_plus: 0,  map_name: "Desert",      version: "2.0", dropped_at: "2026-03-11T10:00:00Z" },
-  { id: "d24", player_name: "NightStalker",    monster: "BossMonster",   item_name: "Jade Necklace",    item_type: "accessory", item_plus: 5,  map_name: "Desert",      version: "1.0", dropped_at: "2026-03-11T09:15:00Z" },
-  { id: "d25", player_name: "BlazeHunter",     monster: "FireBird",      item_name: "Heavenly Blade",   item_type: "weapon",    item_plus: 9,  map_name: "Bird Island", version: "2.0", dropped_at: "2026-03-10T22:00:00Z" },
-];
+function parseTodayHourToIso(hourRaw: string): string {
+  const s = (hourRaw ?? "").trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (!m) return new Date().toISOString();
+
+  let hh = Number(m[1]);
+  const mm = Number(m[2]);
+  const ss = Number(m[3] ?? "0");
+  const ap = m[4].toUpperCase();
+
+  if (ap === "AM" && hh === 12) hh = 0;
+  if (ap === "PM" && hh !== 12) hh += 12;
+
+  const d = new Date();
+  d.setHours(hh, mm, ss, 0);
+  return d.toISOString();
+}
+
+function getItemType(itemName: string): DropLogRow["item_type"] {
+  const n = itemName.toLowerCase();
+  if (n.includes("blade") || n.includes("sword") || n.includes("axe") || n.includes("spear") || n.includes("bow") || n.includes("club") || n.includes("whip") || n.includes("fan")) return "weapon";
+  if (n.includes("ring") || n.includes("necklace") || n.includes("bracelet") || n.includes("earring")) return "accessory";
+  if (n.includes("robe") || n.includes("armor") || n.includes("helmet") || n.includes("coronet") || n.includes("cap")) return "armor";
+  if (n.includes("dragonball") || n.includes("dragon ball") || n.includes("gem")) return "gem";
+  if (n.includes("scroll") || n.includes("box")) return "scroll";
+  return "other";
+}
+
+async function getDropRows(versionNum: 1 | 2): Promise<DropLogRow[]> {
+  let conn: import("mysql2/promise").Connection | undefined;
+
+  try {
+    const { conn: c } = await getGameDb(versionNum);
+    conn = c;
+
+    const [rows] = await conn.execute<DropDbRow[]>(
+      "SELECT ID, Type, Name, MonsterName, MapID, ITEMID, Socks, Plus, Bless, Quality, Hour FROM `droploggs` ORDER BY ID DESC LIMIT 400",
+    );
+
+    return rows.map((r) => ({
+      id: String(r.ID),
+      player_name: r.Name ?? "-",
+      monster: r.MonsterName ?? "-",
+      item_name: r.ITEMID ?? "Unknown",
+      item_type: getItemType(r.ITEMID ?? ""),
+      item_plus: Number(r.Plus ?? 0),
+      item_socks: Number(r.Socks ?? 0),
+      item_bless: Number(r.Bless ?? 0),
+      item_quality: (r.Quality ?? "None").trim() || "None",
+      map_name: r.MapID ?? "-",
+      version: versionNum === 1 ? "1.0" : "2.0",
+      dropped_at: parseTodayHourToIso(r.Hour ?? ""),
+      dropped_time: r.Hour ?? "",
+    }));
+  } catch {
+    return [];
+  } finally {
+    await conn?.end();
+  }
+}
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -50,17 +97,13 @@ export default async function DropsPage({
 }) {
   const { locale, version } = await params;
   const t = await getTranslations("drops");
+  const versionNum: 1 | 2 = version === "1.0" ? 1 : 2;
 
   const { heroBg, logoSrc } = getVersionAssets(await getSiteSettings(), version);
 
   const homeHref = locale === "es" ? `/${version}` : `/${locale}/${version}`;
 
-  const rows =
-    version === "1.0"
-      ? MOCK_DROPS.filter((r) => r.version !== "2.0")
-      : version === "2.0"
-      ? MOCK_DROPS.filter((r) => r.version !== "1.0")
-      : MOCK_DROPS;
+  const rows = await getDropRows(versionNum);
 
   const labels: DropsLabels = {
     col_time:            t("col_time"),
@@ -71,7 +114,7 @@ export default async function DropsPage({
     col_map:             t("col_map"),
     search_placeholder:  t("search_placeholder"),
     filter_all_versions: t("filter_all_versions"),
-    simulated_notice:    t("simulated_notice"),
+    simulated_notice:    "Datos en vivo desde droploggs.",
     no_results:          t("no_results"),
   };
 

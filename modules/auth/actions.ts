@@ -24,7 +24,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getGameDb, type AccountRow } from "@/lib/game-db";
 import { setGameSession, clearGameSession, getGameSession } from "@/lib/session";
 import type { ActionResult } from "@/types";
-import type { GameLoginInput, LoginInput, RegisterInput } from "./types";
+import type { GameLoginInput, GameRegisterInput, LoginInput, RegisterInput } from "./types";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,7 +61,7 @@ async function verifyRecaptcha(captchaToken: string): Promise<boolean> {
  */
 export async function gameLoginAction(input: GameLoginInput): Promise<ActionResult> {
   const username = input.username.trim();
-  const { password, captchaToken } = input;
+  const { password, captchaToken, version } = input;
 
   if (!username || !password) {
     return { success: false, error: "invalid_credentials" };
@@ -71,7 +71,7 @@ export async function gameLoginAction(input: GameLoginInput): Promise<ActionResu
     return { success: false, error: "captcha_error" };
   }
 
-  const { conn, config } = await getGameDb();
+  const { conn, config } = await getGameDb(version);
   try {
     const [rows] = await conn.execute<(AccountRow & RowDataPacket)[]>(
       `SELECT EntityID, Username, Password, Salt, Email, BannedID, State FROM \`${config.table_accounts}\` WHERE Username = ? LIMIT 1`,
@@ -98,6 +98,7 @@ export async function gameLoginAction(input: GameLoginInput): Promise<ActionResu
       uid: account.EntityID,
       username: account.Username,
       email: account.Email,
+      version,
     });
 
     return { success: true, data: undefined };
@@ -110,9 +111,9 @@ export async function gameLoginAction(input: GameLoginInput): Promise<ActionResu
  * Registers a new game account in the MariaDB accounts table.
  * Auto-logs in the player by setting the session cookie on success.
  */
-export async function gameRegisterAction(input: RegisterInput): Promise<ActionResult> {
+export async function gameRegisterAction(input: GameRegisterInput): Promise<ActionResult> {
   const username = input.username.trim();
-  const { email, password, captchaToken } = input;
+  const { email, password, captchaToken, version } = input;
 
   // ── Verify reCAPTCHA server-side ──────────────────────────────────────────
   if (!(await verifyRecaptcha(captchaToken))) {
@@ -129,7 +130,7 @@ export async function gameRegisterAction(input: RegisterInput): Promise<ActionRe
     headersList.get("x-real-ip") ??
     null;
 
-  const { conn, config } = await getGameDb();
+  const { conn, config } = await getGameDb(version);
   try {
     // Check username uniqueness
     const [uRows] = await conn.execute<RowDataPacket[]>(
@@ -164,7 +165,7 @@ export async function gameRegisterAction(input: RegisterInput): Promise<ActionRe
       return { success: false, error: "unknown_error" };
     }
 
-    await setGameSession({ uid: insertId, username, email });
+    await setGameSession({ uid: insertId, username, email, version });
 
     return { success: true, data: undefined };
   } finally {
@@ -178,17 +179,18 @@ export async function gameRegisterAction(input: RegisterInput): Promise<ActionRe
 export async function changePasswordAction(input: {
   currentPassword: string;
   newPassword: string;
+  version: 1 | 2;
 }): Promise<ActionResult> {
   const session = await getGameSession();
   if (!session) return { success: false, error: "unauthorized" };
 
-  const { currentPassword, newPassword } = input;
+  const { currentPassword, newPassword, version } = input;
 
   if (newPassword.length < 6 || newPassword.length > 16 || !/^[a-zA-Z0-9]+$/.test(newPassword)) {
     return { success: false, error: "weak_password" };
   }
 
-  const { conn, config } = await getGameDb();
+  const { conn, config } = await getGameDb(version);
   try {
     const [rows] = await conn.execute<(AccountRow & RowDataPacket)[]>(
       `SELECT Password, Salt FROM \`${config.table_accounts}\` WHERE EntityID = ? LIMIT 1`,
@@ -221,18 +223,19 @@ export async function changePasswordAction(input: {
 export async function changeEmailAction(input: {
   currentPassword: string;
   newEmail: string;
+  version: 1 | 2;
 }): Promise<ActionResult> {
   const session = await getGameSession();
   if (!session) return { success: false, error: "unauthorized" };
 
-  const { currentPassword, newEmail } = input;
+  const { currentPassword, newEmail, version } = input;
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(newEmail)) {
     return { success: false, error: "invalid_email" };
   }
 
-  const { conn, config } = await getGameDb();
+  const { conn, config } = await getGameDb(version);
   try {
     // Verify current password
     const [rows] = await conn.execute<(AccountRow & RowDataPacket)[]>(
@@ -259,7 +262,7 @@ export async function changeEmailAction(input: {
     );
 
     // Update session with new email
-    await setGameSession({ uid: session.uid, username: session.username, email: newEmail });
+    await setGameSession({ uid: session.uid, username: session.username, email: newEmail, version: session.version ?? version });
 
     return { success: true, data: undefined };
   } finally {

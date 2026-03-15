@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getGameDb } from "@/lib/game-db";
 import { ChevronRight, Trophy } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
+import type { RowDataPacket } from "mysql2";
 import {
   RankingTable,
   type PlayerRow,
@@ -12,48 +14,144 @@ import {
 
 export const metadata: Metadata = { title: "Rankings" };
 
-// ── Simulated mock data ───────────────────────────────────────────────────────
-// This data will be replaced by live Supabase queries once the game server syncs.
+interface KoBoardRow extends RowDataPacket {
+  EntityID: number;
+  Name: string;
+  Points: number;
+  Class: number;
+  Rank: number;
+}
 
-const MOCK_PLAYERS: PlayerRow[] = [
-  { rank: 0, name: "DragonMaster_X",    level: 130, reborn: 2, cps: 45_230, pkPoints: 980,  ko: 1_240, guild: "Shadow Guild",   version: "1.0 + 2.0" },
-  { rank: 0, name: "ShadowKnight",      level: 130, reborn: 2, cps: 38_100, pkPoints: 1_250, ko: 1_456, guild: "Dragon Order",   version: "2.0" },
-  { rank: 0, name: "FireArcher99",      level: 130, reborn: 1, cps: 29_500, pkPoints: 720,  ko: 1_890, guild: "Eternal Flame",  version: "1.0" },
-  { rank: 0, name: "IronWarrior",       level: 129, reborn: 2, cps: 22_800, pkPoints: 540,  ko: 2_340, guild: "Iron Legion",    version: "2.0" },
-  { rank: 0, name: "DarkTemplar",       level: 130, reborn: 1, cps: 18_900, pkPoints: 856,  ko: 987,   guild: "Shadow Guild",   version: "1.0" },
-  { rank: 0, name: "StormWarrior",      level: 128, reborn: 2, cps: 16_400, pkPoints: 410,  ko: 765,   guild: "Storm Riders",   version: "2.0" },
-  { rank: 0, name: "PhoenixRising",     level: 130, reborn: 1, cps: 14_200, pkPoints: 330,  ko: 654,   guild: "Phoenix Clan",   version: "1.0" },
-  { rank: 0, name: "NightStalker",      level: 127, reborn: 2, cps: 12_900, pkPoints: 290,  ko: 543,   guild: "Night Watch",    version: "2.0" },
-  { rank: 0, name: "BlazeHunter",       level: 130, reborn: 1, cps: 11_100, pkPoints: 245,  ko: 478,   guild: "Eternal Flame",  version: "1.0" },
-  { rank: 0, name: "CrystalMage",       level: 126, reborn: 1, cps: 9_800,  pkPoints: 198,  ko: 389,   guild: "Crystal Tower",  version: "2.0" },
-  { rank: 0, name: "VoidReaper",        level: 125, reborn: 2, cps: 8_500,  pkPoints: 167,  ko: 312,   guild: "Void Walkers",   version: "1.0" },
-  { rank: 0, name: "ThunderStrike",     level: 124, reborn: 1, cps: 7_200,  pkPoints: 134,  ko: 275,   guild: "Storm Riders",   version: "2.0" },
-  { rank: 0, name: "GoldenArrow",       level: 123, reborn: 1, cps: 6_100,  pkPoints: 112,  ko: 234,   guild: "Golden Wing",    version: "1.0" },
-  { rank: 0, name: "SilverFang",        level: 122, reborn: 1, cps: 5_400,  pkPoints: 98,   ko: 198,   guild: "Silver Pack",    version: "2.0" },
-  { rank: 0, name: "EternalGuard",      level: 121, reborn: 1, cps: 4_800,  pkPoints: 87,   ko: 167,   guild: "Iron Legion",    version: "1.0" },
-  { rank: 0, name: "MysticBlade",       level: 120, reborn: 2, cps: 4_200,  pkPoints: 76,   ko: 143,   guild: "Dragon Order",   version: "2.0" },
-  { rank: 0, name: "FrostWarden",       level: 120, reborn: 1, cps: 3_900,  pkPoints: 65,   ko: 121,   guild: "Frost Keep",     version: "1.0" },
-  { rank: 0, name: "CrimsonBlade",      level: 119, reborn: 1, cps: 3_400,  pkPoints: 54,   ko: 109,   guild: "Crimson Order",  version: "2.0" },
-  { rank: 0, name: "StarFallArcher",    level: 118, reborn: 1, cps: 2_900,  pkPoints: 43,   ko: 95,    guild: "Star Guild",     version: "1.0" },
-  { rank: 0, name: "SoulBreaker",       level: 117, reborn: 1, cps: 2_400,  pkPoints: 34,   ko: 82,    guild: "Night Watch",    version: "2.0" },
-];
+interface PkBoardRow extends RowDataPacket {
+  Name: string;
+  PKPoints: number;
+  Level: number;
+  Reborn: number;
+}
 
-const MOCK_GUILDS: GuildRow[] = [
-  { rank: 1, name: "Shadow Guild",   members: 48, totalCps: 183_400, maxLevel: 130, version: "1.0 + 2.0" },
-  { rank: 2, name: "Dragon Order",   members: 42, totalCps: 154_200, maxLevel: 130, version: "2.0" },
-  { rank: 3, name: "Eternal Flame",  members: 38, totalCps: 128_900, maxLevel: 130, version: "1.0" },
-  { rank: 4, name: "Iron Legion",    members: 35, totalCps: 109_600, maxLevel: 129, version: "2.0" },
-  { rank: 5, name: "Storm Riders",   members: 31, totalCps: 94_300,  maxLevel: 128, version: "2.0" },
-  { rank: 6, name: "Phoenix Clan",   members: 28, totalCps: 78_500,  maxLevel: 130, version: "1.0" },
-  { rank: 7, name: "Night Watch",    members: 26, totalCps: 66_200,  maxLevel: 127, version: "2.0" },
-  { rank: 8, name: "Crystal Tower",  members: 24, totalCps: 54_800,  maxLevel: 126, version: "2.0" },
-  { rank: 9, name: "Void Walkers",   members: 22, totalCps: 45_100,  maxLevel: 125, version: "1.0" },
-  { rank: 10, name: "Golden Wing",   members: 19, totalCps: 36_700,  maxLevel: 123, version: "1.0" },
-];
+const CLASS_MAP: Record<number, string> = {
+  10: "Trojan",
+  20: "Warrior",
+  40: "Archer",
+  50: "Ninja",
+  60: "Monk",
+  70: "Pirate",
+  80: "DragonWarrior",
+  100: "Taoist",
+  132: "WindWalker",
+};
 
-const SEASON = "Season 1";
+async function getKoPlayers(versionNum: 1 | 2): Promise<PlayerRow[]> {
+  let conn: import("mysql2/promise").Connection | undefined;
 
-// ── Page ──────────────────────────────────────────────────────────────────────
+  try {
+    const { conn: c } = await getGameDb(versionNum);
+    conn = c;
+
+    const [rows] = await c.execute<KoBoardRow[]>(
+      "SELECT EntityID, Name, Points, Class, Rank FROM `koboard` ORDER BY Rank ASC, Points DESC LIMIT 10",
+    );
+
+    return rows.map((r, i) => ({
+      rank: Number(r.Rank ?? 0) > 0 ? Number(r.Rank) : i + 1,
+      name: r.Name ?? "Unknown",
+      level: 0,
+      reborn: 0,
+      cps: 0,
+      pkPoints: 0,
+      ko: Number(r.Points ?? 0),
+      guild: CLASS_MAP[Number(r.Class ?? 0)] ?? `Class ${Number(r.Class ?? 0)}`,
+      version: versionNum === 1 ? "1.0" : "2.0",
+    }));
+  } catch {
+    return [];
+  } finally {
+    await conn?.end();
+  }
+}
+
+async function getPkPlayers(versionNum: 1 | 2): Promise<PlayerRow[]> {
+  let conn: import("mysql2/promise").Connection | undefined;
+
+  try {
+    const { conn: c, config } = await getGameDb(versionNum);
+    conn = c;
+
+    const [rows] = await c.execute<PkBoardRow[]>(
+      `SELECT t.Name, t.PKPoints, t.Level, t.Reborn FROM \`${config.table_characters}\` AS t ORDER BY t.PKPoints DESC LIMIT 10`,
+    );
+
+    return rows.map((r, i) => ({
+      rank: i + 1,
+      name: r.Name ?? "Unknown",
+      level: Number(r.Level ?? 0),
+      reborn: Number(r.Reborn ?? 0),
+      cps: 0,
+      pkPoints: Number(r.PKPoints ?? 0),
+      ko: 0,
+      guild: "",
+      version: versionNum === 1 ? "1.0" : "2.0",
+    }));
+  } catch {
+    return [];
+  } finally {
+    await conn?.end();
+  }
+}
+
+async function getKoPlayersSafe(versionNum: 1 | 2): Promise<PlayerRow[]> {
+  try {
+    const timeoutMs = 2500;
+    const timeoutPromise = new Promise<PlayerRow[]>((resolve) => {
+      setTimeout(() => resolve([]), timeoutMs);
+    });
+    return await Promise.race([getKoPlayers(versionNum), timeoutPromise]);
+  } catch {
+    return [];
+  }
+}
+
+async function getPkPlayersSafe(versionNum: 1 | 2): Promise<PlayerRow[]> {
+  try {
+    const timeoutMs = 2500;
+    const timeoutPromise = new Promise<PlayerRow[]>((resolve) => {
+      setTimeout(() => resolve([]), timeoutMs);
+    });
+    return await Promise.race([getPkPlayers(versionNum), timeoutPromise]);
+  } catch {
+    return [];
+  }
+}
+
+function mergePlayers(koPlayers: PlayerRow[], pkPlayers: PlayerRow[], versionNum: 1 | 2): PlayerRow[] {
+  const map = new Map<string, PlayerRow>();
+
+  for (const p of koPlayers) {
+    map.set(p.name.toLowerCase(), { ...p });
+  }
+
+  for (const p of pkPlayers) {
+    const key = p.name.toLowerCase();
+    const prev = map.get(key);
+    if (!prev) {
+      map.set(key, { ...p, ko: p.pkPoints });
+      continue;
+    }
+
+    map.set(key, {
+      ...prev,
+      level: p.level || prev.level,
+      reborn: p.reborn || prev.reborn,
+      pkPoints: p.pkPoints,
+      ko: prev.ko > 0 ? prev.ko : p.pkPoints,
+      version: versionNum === 1 ? "1.0" : "2.0",
+    });
+  }
+
+  return Array.from(map.values());
+}
+
+const SEASON = "KO + PK Board";
 
 export default async function RankingsPage({
   params,
@@ -63,27 +161,20 @@ export default async function RankingsPage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { locale, version } = await params;
-  const { tab = "players" } = await searchParams;
+  const { tab = "ko" } = await searchParams;
   const t = await getTranslations("rankings");
+  const versionNum: 1 | 2 = version === "1.0" ? 1 : 2;
 
   const { heroBg, logoSrc } = getVersionAssets(await getSiteSettings(), version);
 
   const homeHref = locale === "es" ? `/${version}` : `/${locale}/${version}`;
 
-  // Filter players by version if not 'both'
-  const players =
-    version === "1.0"
-      ? MOCK_PLAYERS.filter((p) => p.version !== "2.0")
-      : version === "2.0"
-      ? MOCK_PLAYERS.filter((p) => p.version !== "1.0")
-      : MOCK_PLAYERS;
-
-  const guilds =
-    version === "1.0"
-      ? MOCK_GUILDS.filter((g) => g.version !== "2.0")
-      : version === "2.0"
-      ? MOCK_GUILDS.filter((g) => g.version !== "1.0")
-      : MOCK_GUILDS;
+  const [koPlayers, pkPlayers] = await Promise.all([
+    getKoPlayersSafe(versionNum),
+    getPkPlayersSafe(versionNum),
+  ]);
+  const players = mergePlayers(koPlayers, pkPlayers, versionNum);
+  const guilds: GuildRow[] = [];
 
   const labels = {
     tab_players:       t("tab_players"),
@@ -100,17 +191,15 @@ export default async function RankingsPage({
     col_members:       t("col_members"),
     col_cps:           t("col_cps"),
     season_label:      t("season_label"),
-    simulated_notice:  t("simulated_notice"),
+    simulated_notice:  "Datos en vivo desde koboard y PKPoints (top 10).",
     search_placeholder: t("search_placeholder"),
   };
 
   const validTabs: RankTab[] = ["players", "pk", "ko", "guilds"];
-  const defaultTab = validTabs.includes(tab as RankTab) ? (tab as RankTab) : "players";
+  const defaultTab = validTabs.includes(tab as RankTab) ? (tab as RankTab) : "ko";
 
   return (
     <div className="flex flex-col">
-
-      {/* ═══════════════════════ HERO ═══════════════════════ */}
       <section
         className="relative flex items-center justify-center"
         style={{
@@ -150,10 +239,8 @@ export default async function RankingsPage({
         </div>
       </section>
 
-      {/* ═══════════════════════ RANKINGS ═══════════════════════ */}
       <section className="px-4 py-12" style={{ background: "#080808" }}>
         <div className="container mx-auto max-w-5xl flex flex-col gap-6">
-
           <div className="flex items-center gap-2 text-muted-foreground">
             <Trophy className="h-4 w-4 text-gold" />
             <span className="text-sm font-medium">{t("live_label")}</span>

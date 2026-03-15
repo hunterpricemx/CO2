@@ -48,16 +48,21 @@ function safeJSON<T>(str: string | undefined | null, fallback: T): T {
 
 async function _fetchSiteSettings(): Promise<SiteSettings> {
   try {
-    const url = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/site_settings?select=key,value`;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !anonKey) return DEFAULTS;
+
+    const url = `${supabaseUrl}/rest/v1/site_settings?select=key,value`;
     const res = await fetch(url, {
       headers: {
-        apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!}`,
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
       },
       // Next.js persistent cache — busted by revalidateTag("site-settings")
       cache: "force-cache",
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       next: { tags: ["site-settings"], revalidate: 60 } as any,
+      signal: AbortSignal.timeout(8000),
     });
 
     if (!res.ok) return DEFAULTS;

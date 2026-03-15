@@ -437,6 +437,8 @@ export function MarketGrid({
   const [pageSize, setPageSize] = useState<number>(25);
   const [modal,    setModal]    = useState<ModalData>(null);
   const [sideOpen, setSideOpen] = useState(false);
+  const [sortBy,   setSortBy]   = useState<"newest" | "name" | "quality" | "plus" | "minus" | "sockets" | "seller" | "price" | "currency">("newest");
+  const [sortDir,  setSortDir]  = useState<"asc" | "desc">("desc");
 
   const updateFilters = useCallback((partial: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...partial }));
@@ -445,8 +447,26 @@ export function MarketGrid({
 
   const clearFilters = useCallback(() => {
     setFilters(DEFAULT_FILTERS(defaultVersion));
+    setSortBy("newest");
+    setSortDir("desc");
     setPage(1);
   }, [defaultVersion]);
+
+  const changeFilters = useCallback((partial: Partial<Filters>) => {
+    if (partial.sort) {
+      if (partial.sort === "newest") {
+        setSortBy("newest");
+        setSortDir("desc");
+      } else if (partial.sort === "price_asc") {
+        setSortBy("price");
+        setSortDir("asc");
+      } else if (partial.sort === "price_desc") {
+        setSortBy("price");
+        setSortDir("desc");
+      }
+    }
+    updateFilters(partial);
+  }, [updateFilters]);
 
   const qualityLabel: Record<string, string> = {
     NotQuality: labels.quality_not,
@@ -477,10 +497,59 @@ export function MarketGrid({
       return true;
     });
 
-    if (filters.sort === "price_asc")  r = [...r].sort((a, b) => a.price - b.price);
-    if (filters.sort === "price_desc") r = [...r].sort((a, b) => b.price - a.price);
-    return r;
-  }, [items, filters]);
+    const qualityRank = (q: string | null) => {
+      const v = (q ?? "NotQuality").toLowerCase();
+      if (v === "notquality") return 0;
+      if (v === "normality") return 1;
+      if (v === "refined") return 2;
+      if (v === "unique") return 3;
+      if (v === "elite") return 4;
+      if (v === "super") return 5;
+      return 99;
+    };
+
+    const cmp = (a: MarketItemRow, b: MarketItemRow) => {
+      if (sortBy === "newest") {
+        return new Date(a.listed_at).getTime() - new Date(b.listed_at).getTime();
+      }
+      if (sortBy === "plus") return a.plus_enchant - b.plus_enchant;
+      if (sortBy === "minus") return a.minus_enchant - b.minus_enchant;
+      if (sortBy === "sockets") return a.sockets - b.sockets;
+      if (sortBy === "price") return a.price - b.price;
+      if (sortBy === "quality") return qualityRank(a.quality) - qualityRank(b.quality);
+
+      const av =
+        sortBy === "name"
+          ? a.item_name
+          : sortBy === "seller"
+          ? a.seller
+          : a.currency;
+      const bv =
+        sortBy === "name"
+          ? b.item_name
+          : sortBy === "seller"
+          ? b.seller
+          : b.currency;
+      return av.localeCompare(bv);
+    };
+
+    return [...r].sort((a, b) => (sortDir === "asc" ? cmp(a, b) : -cmp(a, b)));
+  }, [items, filters, sortBy, sortDir]);
+
+  const toggleSort = useCallback((col: "newest" | "name" | "quality" | "plus" | "minus" | "sockets" | "seller" | "price" | "currency") => {
+    setPage(1);
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortBy(col);
+    setSortDir(col === "newest" ? "desc" : "asc");
+  }, [sortBy]);
+
+  const sortMark = useCallback((col: "newest" | "name" | "quality" | "plus" | "minus" | "sockets" | "seller" | "price" | "currency") => {
+    if (sortBy !== col) return "";
+    return sortDir === "asc" ? " ↑" : " ↓";
+  }, [sortBy, sortDir]);
 
   const pageItems = useMemo(() => {
     const start = (page - 1) * pageSize;
@@ -504,7 +573,7 @@ export function MarketGrid({
 
       <div className="flex flex-col lg:flex-row gap-6">
         <div className={`${sideOpen ? "flex" : "hidden"} lg:flex flex-col`}>
-          <FilterSidebar filters={filters} labels={labels} onChange={updateFilters} onClear={clearFilters} />
+          <FilterSidebar filters={filters} labels={labels} onChange={changeFilters} onClear={clearFilters} />
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col gap-0 rounded-xl border border-surface/50 overflow-hidden">
@@ -513,15 +582,15 @@ export function MarketGrid({
               <thead>
                 <tr className="bg-surface text-[10px] uppercase tracking-widest text-muted-foreground/50">
                   <th className="px-3 py-3 text-left w-10">{labels.col_item}</th>
-                  <th className="px-3 py-3 text-left">{labels.col_name}</th>
-                  <th className="px-3 py-3 text-left">{labels.col_quality}</th>
-                  <th className="px-3 py-3 text-center w-10">{labels.col_plus}</th>
-                  <th className="px-3 py-3 text-center w-10">{labels.col_minus}</th>
-                  <th className="px-3 py-3 text-left">{labels.col_sockets}</th>
-                  <th className="px-3 py-3 text-left">{labels.col_seller}</th>
+                  <th className="px-3 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("name")}>{labels.col_name}{sortMark("name")}</th>
+                  <th className="px-3 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("quality")}>{labels.col_quality}{sortMark("quality")}</th>
+                  <th className="px-3 py-3 text-center w-10 cursor-pointer select-none" onClick={() => toggleSort("plus")}>{labels.col_plus}{sortMark("plus")}</th>
+                  <th className="px-3 py-3 text-center w-10 cursor-pointer select-none" onClick={() => toggleSort("minus")}>{labels.col_minus}{sortMark("minus")}</th>
+                  <th className="px-3 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("sockets")}>{labels.col_sockets}{sortMark("sockets")}</th>
+                  <th className="px-3 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("seller")}>{labels.col_seller}{sortMark("seller")}</th>
                   <th className="px-3 py-3 text-center w-10">{labels.col_location}</th>
-                  <th className="px-3 py-3 text-right">{labels.col_price}</th>
-                  <th className="px-3 py-3 text-left w-14">{labels.col_type}</th>
+                  <th className="px-3 py-3 text-right cursor-pointer select-none" onClick={() => toggleSort("price")}>{labels.col_price}{sortMark("price")}</th>
+                  <th className="px-3 py-3 text-left w-14 cursor-pointer select-none" onClick={() => toggleSort("currency")}>{labels.col_type}{sortMark("currency")}</th>
                 </tr>
               </thead>
               <tbody>

@@ -1,10 +1,49 @@
 "use server";
 
 import Stripe from "stripe";
+import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getGameSession } from "@/lib/session";
+import { createTebexHeadlessCheckout, getTebexConfig } from "@/lib/tebex";
 
 type CheckoutResult = { url: string } | { error: string };
+
+async function getBaseUrl(): Promise<string> {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
+
+  // Avoid using localhost URLs in production deployments.
+  if (configured && (!process.env.VERCEL || !configured.includes("localhost"))) {
+    return configured;
+  }
+
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) return `https://${vercelUrl}`;
+
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (host) {
+    const proto = h.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+    return `${proto}://${host}`;
+  }
+
+  return "http://localhost:3000";
+}
+
+function getLocalePrefix(locale: string): string {
+  return locale === "es" ? "" : `/${locale}`;
+}
+
+function getVersionNumber(version: string): number {
+  return version === "1.0" ? 1 : 2;
+}
+
+async function getForwardedIpv4(): Promise<string | undefined> {
+  const headerStore = await headers();
+  const forwarded = headerStore.get("x-forwarded-for") ?? "";
+  const firstIp = forwarded.split(",")[0]?.trim();
+  if (!firstIp || firstIp.includes(":")) return undefined;
+  return firstIp;
+}
 
 export async function createStripeCheckout(params: {
   packageId: string;
@@ -63,11 +102,11 @@ export async function createStripeCheckout(params: {
   }
 
   const donationId = (donationInsert.data as { id: string }).id;
-  const versionNum = version === "1.0" ? 1 : 2;
+  const versionNum = getVersionNumber(version);
 
   // Build return URLs
-  const base = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const localePath = locale === "es" ? "" : `/${locale}`;
+  const base = await getBaseUrl();
+  const localePath = getLocalePrefix(locale);
   const successUrl = `${base}${localePath}/${version}/donate/success?session={CHECKOUT_SESSION_ID}`;
   const cancelUrl  = `${base}${localePath}/${version}/donate`;
 
@@ -106,4 +145,113 @@ export async function createStripeCheckout(params: {
   }
 
   return { url: checkoutSession.url! };
+}
+
+export async function createTebexCheckout(params: {
+  packageId: string;
+  characterName: string;
+  version: string;
+  locale: string;
+}): Promise<CheckoutResult> {
+  const session = await getGameSession();
+  if (!session) return { error: "not_authenticated" };
+
+  const characterName = params.characterName.trim();
+  if (!characterName) return { error: "char_name_required" };
+
+  const versionNum = getVersionNumber(params.version);
+  const supabase = await createAdminClient();
+  const tebexConfig = await getTebexConfig();
+
+  if (!tebexConfig.enabled) return { error: "tebex_disabled" };
+  if (!tebexConfig.webstoreId || !tebexConfig.privateKey) return { error: "tebex_not_configured" };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: packageRow, error: packageError } = await (supabase as any)
+    .from("donation_packages")
+    .select("id, name, price_usd, cps, version, active, tebex_package_id")
+    .eq("id", params.packageId)
+    .single();
+
+  if (packageError || !packageRow) return { error: "package_not_found" };
+
+  const pkg = packageRow as {
+    id: string;
+    name: string;
+    price_usd: number;
+    cps: number;
+    version: number;
+    active: boolean;
+    tebex_package_id: string | null;
+  };
+
+  if (!pkg.active || ![0, versionNum].includes(pkg.version)) return { error: "package_not_available" };
+  if (!pkg.tebex_package_id?.trim()) return { error: "tebex_package_not_mapped" };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const donationInsert = await (supabase as any)
+    .from("donations")
+    .insert({
+      user_id:          null,
+      account_name:     session.username,
+      character_name:   characterName,
+      version:          versionNum,
+      package_id:       pkg.id,
+      amount_paid:      pkg.price_usd,
+      currency:         "USD",
+      cps_base:         pkg.cps,
+      cps_total:        pkg.cps,
+      payment_provider: "tebex",
+      status:           "pending",
+    })
+    .select("id")
+    .single();
+
+  if (donationInsert.error || !donationInsert.data) {
+    return { error: "db_error" };
+  }
+
+  const donationId = (donationInsert.data as { id: string }).id;
+  const baseUrl = await getBaseUrl();
+  const localePath = getLocalePrefix(params.locale);
+  const successUrl = `${baseUrl}${localePath}/${params.version}/donate/success?provider=tebex&donation=${donationId}`;
+  const cancelUrl = `${baseUrl}${localePath}/${params.version}/donate`;
+
+  try {
+    const ipAddress = await getForwardedIpv4();
+    const { basketIdent, checkoutUrl } = await createTebexHeadlessCheckout({
+      config: tebexConfig,
+      packageId: pkg.tebex_package_id,
+      accountName: session.username,
+      characterName,
+      email: session.email || undefined,
+      ipAddress,
+      completeUrl: successUrl,
+      cancelUrl,
+      custom: {
+        donation_id: donationId,
+        package_id: pkg.id,
+        package_name: pkg.name,
+        account_name: session.username,
+        character_name: characterName,
+        version: String(versionNum),
+      },
+    });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
+      .from("donations")
+      .update({ notes: `Tebex basket: ${basketIdent}` })
+      .eq("id", donationId);
+
+    return { url: checkoutUrl };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Unknown Tebex error";
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabase as any)
+      .from("donations")
+      .update({ notes: `Tebex checkout init failed: ${message}` })
+      .eq("id", donationId);
+    return { error: "tebex_checkout_failed" };
+  }
 }
