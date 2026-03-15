@@ -35,8 +35,7 @@ function formatCountdown(ms: number): string {
   const s = totalSeconds % 60;
   const mm = String(m).padStart(2, "0");
   const ss = String(s).padStart(2, "0");
-  // Keep long countdowns compact to avoid noisy UI (e.g. 12h instead of 12h 23m 11s).
-  if (h > 0) return `${h}h`;
+  if (h > 0) return `${h}h ${mm}m ${ss}s`;
   return `${mm}m ${ss}s`;
 }
 
