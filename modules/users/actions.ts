@@ -10,6 +10,8 @@ import { getCurrentAdminContext } from "@/lib/admin/auth";
 import { createAdminClient } from "@/lib/supabase/server";
 import type { ActionResult } from "@/types";
 
+const SUPER_ADMIN_EMAIL = "mariano@hunterprice.mx";
+
 export type CreateAdminInput = {
   username: string;
   email: string;
@@ -200,6 +202,20 @@ export async function updateAdminPassword(
 ): Promise<ActionResult> {
   const denied = await ensureUsersPermission();
   if (denied) return denied;
+
+  const currentAdmin = await getCurrentAdminContext();
+  if (!currentAdmin) return { success: false, error: "unauthorized" };
+
+  const isSuperAdmin =
+    currentAdmin.email.trim().toLowerCase() === SUPER_ADMIN_EMAIL;
+  const isSelfUpdate = currentAdmin.id === userId;
+
+  if (!isSuperAdmin && !isSelfUpdate) {
+    return {
+      success: false,
+      error: "Solo puedes cambiar tu propia contraseña.",
+    };
+  }
 
   const password = newPassword.trim();
   if (password.length < 8) {

@@ -33,6 +33,8 @@ const PANEL_LABELS: Record<AdminPanelPermission, string> = {
 
 type Props = {
   admins: ProfileRow[];
+  currentAdminId: string;
+  isSuperAdmin: boolean;
 };
 
 type ResultState = {
@@ -40,7 +42,7 @@ type ResultState = {
   message: string;
 } | null;
 
-export function AdminUsersManager({ admins }: Props) {
+export function AdminUsersManager({ admins, currentAdminId, isSuperAdmin }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<ResultState>(null);
@@ -197,6 +199,7 @@ export function AdminUsersManager({ admins }: Props) {
       <section className="space-y-4">
         {admins.map((admin) => {
           const permissions = draftPermissions[admin.id] ?? DEFAULT_ADMIN_PANEL_PERMISSIONS;
+          const canChangePassword = isSuperAdmin || admin.id === currentAdminId;
 
           return (
             <div key={admin.id} className="rounded-xl border border-[rgba(255,215,0,0.1)] bg-[#1a1a1a] p-5">
@@ -243,6 +246,7 @@ export function AdminUsersManager({ admins }: Props) {
                         type="password"
                         placeholder="Nueva contraseña (mín. 8)"
                         value={draftPasswords[admin.id] ?? ""}
+                        disabled={!canChangePassword || isPending}
                         onChange={(e) =>
                           setDraftPasswords((prev) => ({
                             ...prev,
@@ -253,13 +257,18 @@ export function AdminUsersManager({ admins }: Props) {
                       <button
                         type="button"
                         onClick={() => handleSavePassword(admin.id)}
-                        disabled={isPending}
+                        disabled={!canChangePassword || isPending}
                         className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-200 transition-colors hover:bg-white/10 disabled:opacity-50"
                       >
                         <KeyRound className="h-4 w-4" />
                         Actualizar
                       </button>
                     </div>
+                    {!canChangePassword && (
+                      <p className="text-xs text-gray-500">
+                        Solo el super admin puede cambiar contraseñas de otros administradores.
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
