@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { CheckCircle, Save, Shield, UserPlus, XCircle } from "lucide-react";
+import { CheckCircle, KeyRound, Save, Shield, UserPlus, XCircle } from "lucide-react";
 import {
   ADMIN_PANELS,
   DEFAULT_ADMIN_PANEL_PERMISSIONS,
@@ -11,7 +11,11 @@ import {
   type PanelPermissions,
 } from "@/lib/admin/permissions";
 import type { ProfileRow } from "@/modules/users/types";
-import { createAdminUser, updateAdminPermissions } from "@/modules/users/actions";
+import {
+  createAdminUser,
+  updateAdminPassword,
+  updateAdminPermissions,
+} from "@/modules/users/actions";
 
 const PANEL_LABELS: Record<AdminPanelPermission, string> = {
   events: "Eventos",
@@ -53,6 +57,9 @@ export function AdminUsersManager({ admins }: Props) {
         normalizePanelPermissions(admin.panel_permissions, DEFAULT_ADMIN_PANEL_PERMISSIONS),
       ]),
     ),
+  );
+  const [draftPasswords, setDraftPasswords] = useState<Record<string, string>>(
+    Object.fromEntries(admins.map((admin) => [admin.id, ""])),
   );
 
   const toggleCreatePermission = (panel: AdminPanelPermission) => {
@@ -101,6 +108,23 @@ export function AdminUsersManager({ admins }: Props) {
       });
 
       if (response.success) router.refresh();
+    });
+  };
+
+  const handleSavePassword = (userId: string) => {
+    startTransition(async () => {
+      const response = await updateAdminPassword(userId, draftPasswords[userId] ?? "");
+      setResult({
+        ok: response.success,
+        message: response.success ? "Contraseña actualizada." : response.error,
+      });
+
+      if (!response.success) return;
+
+      setDraftPasswords((prev) => ({
+        ...prev,
+        [userId]: "",
+      }));
     });
   };
 
@@ -210,6 +234,33 @@ export function AdminUsersManager({ admins }: Props) {
                     <Save className="h-4 w-4" />
                     Guardar permisos
                   </button>
+
+                  <div className="space-y-2 pt-2">
+                    <p className="text-xs uppercase tracking-wide text-gray-500">Cambiar contraseña</p>
+                    <div className="flex gap-2">
+                      <input
+                        className={inputCls}
+                        type="password"
+                        placeholder="Nueva contraseña (mín. 8)"
+                        value={draftPasswords[admin.id] ?? ""}
+                        onChange={(e) =>
+                          setDraftPasswords((prev) => ({
+                            ...prev,
+                            [admin.id]: e.target.value,
+                          }))
+                        }
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSavePassword(admin.id)}
+                        disabled={isPending}
+                        className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-sm text-gray-200 transition-colors hover:bg-white/10 disabled:opacity-50"
+                      >
+                        <KeyRound className="h-4 w-4" />
+                        Actualizar
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

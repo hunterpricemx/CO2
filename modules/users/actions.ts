@@ -193,3 +193,43 @@ export async function updateAdminPermissions(
   revalidatePath("/admin/users");
   return { success: true, data: undefined };
 }
+
+export async function updateAdminPassword(
+  userId: string,
+  newPassword: string,
+): Promise<ActionResult> {
+  const denied = await ensureUsersPermission();
+  if (denied) return denied;
+
+  const password = newPassword.trim();
+  if (password.length < 8) {
+    return { success: false, error: "La contraseña debe tener al menos 8 caracteres." };
+  }
+
+  const supabase = await createAdminClient();
+
+  const { data: authUser, error: authError } = await supabase.auth.admin.getUserById(userId);
+  if (authError || !authUser.user) {
+    return { success: false, error: authError?.message ?? "Administrador no encontrado." };
+  }
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, role")
+    .eq("id", userId)
+    .single();
+
+  if (!profile || profile.role !== "admin") {
+    return { success: false, error: "Solo puedes cambiar contraseña de usuarios admin." };
+  }
+
+  const { error } = await supabase.auth.admin.updateUserById(userId, {
+    password,
+  });
+
+  if (error) {
+    return { success: false, error: error.message };
+  }
+
+  return { success: true, data: undefined };
+}
