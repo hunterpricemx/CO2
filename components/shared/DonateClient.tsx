@@ -62,9 +62,10 @@ type Props = {
   version: string;
   locale: string;
   sessionUsername: string;
+  accountUsername: string;
 };
 
-export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, packages, version, locale, sessionUsername }: Props) {
+export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, packages, version, locale, sessionUsername, accountUsername }: Props) {
   const router = useRouter();
   const [modal, setModal] = useState<ModalState | null>(null);
   const [charName, setCharName] = useState(sessionUsername);
@@ -76,7 +77,11 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
   const tebexActive  = paymentConfig?.tebex_enabled  ?? false;
   const anyActive    = stripeActive || tebexActive;
 
+  // Only allow the test user to purchase during development mode
+  const canBuy = accountUsername === "arael120";
+
   function handleBuy(pkg: DonationPackage) {
+    if (!canBuy) return;
     if (!isLoggedIn) {
       router.push(loginHref);
       return;
@@ -235,17 +240,23 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
                     ${pkg.price_usd.toFixed(2)}{" "}
                     <span className="text-xs font-normal text-foreground/40">USD</span>
                   </span>
-                  <button
-                    onClick={() => handleBuy(pkg)}
-                    className={[
-                      "mt-3 w-full rounded-xl py-2 text-sm font-semibold transition-all duration-200",
-                      isFeatured
-                        ? "bg-amber-500 text-black hover:bg-amber-400"
-                        : "bg-white/10 text-foreground hover:bg-white/15",
-                    ].join(" ")}
-                  >
-                    {labels.btn_buy}
-                  </button>
+                  {canBuy ? (
+                    <button
+                      onClick={() => handleBuy(pkg)}
+                      className={[
+                        "mt-3 w-full rounded-xl py-2 text-sm font-semibold transition-all duration-200",
+                        isFeatured
+                          ? "bg-amber-500 text-black hover:bg-amber-400"
+                          : "bg-white/10 text-foreground hover:bg-white/15",
+                      ].join(" ")}
+                    >
+                      {labels.btn_buy}
+                    </button>
+                  ) : (
+                    <div className="mt-3 w-full rounded-xl py-2 text-sm font-semibold text-center bg-white/5 text-foreground/30 border border-white/10 cursor-not-allowed select-none">
+                      🔒 Próximamente
+                    </div>
+                  )}
                 </div>
               </div>
             );

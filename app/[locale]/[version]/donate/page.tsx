@@ -153,6 +153,7 @@ export default async function DonatePage({ params }: Props) {
         version={version}
         locale={locale}
         sessionUsername={characterName ?? session?.username ?? ""}
+        accountUsername={session?.username ?? ""}
       />
     </div>
   );

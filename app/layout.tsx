@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Chakra_Petch, Bebas_Neue, Poppins } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { getSiteSettings } from "@/lib/site-settings";
+import { DisclaimerBanner } from "@/components/shared/DisclaimerBanner";
 import "./globals.css";
 
 const chakraPetch = Chakra_Petch({
@@ -53,6 +54,7 @@ export default async function RootLayout({
           <div dangerouslySetInnerHTML={{ __html: settings.script_head }} />
         )}
         {children}
+        <DisclaimerBanner />
         <Toaster richColors position="top-right" />
         {settings.script_footer && (
           <div dangerouslySetInnerHTML={{ __html: settings.script_footer }} />
