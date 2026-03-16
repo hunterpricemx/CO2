@@ -32,9 +32,10 @@ export default async function DonationHistoryPage({ params }: Props) {
   }
 
   function mapLegacyStatus(statusNum: number): string {
+    // Legacy Tebex compatibility:
+    // 0 = pending/declined, 1 = completed via webhook, 2 = completed via return URL.
     if (statusNum <= 0) return "pending";
-    if (statusNum === 1) return "paid";
-    if (statusNum === 2) return "credited";
+    if (statusNum === 1 || statusNum === 2) return "paid";
     if (statusNum >= 3) return "claimed";
     return "pending";
   }
@@ -63,6 +64,7 @@ export default async function DonationHistoryPage({ params }: Props) {
     amount_paid: number;
     currency: string;
     status: string;
+    legacy_status: number;
     payment_provider: string;
     created_at: string;
     game_credited_at: string | null;
@@ -75,7 +77,7 @@ export default async function DonationHistoryPage({ params }: Props) {
   try {
     const { conn, config } = await getGameDb(versionNum as 1 | 2);
     try {
-      const tableName = config.table_payments.replace(/`/g, "").trim() || "dbb_payments";
+      const tableName = "dbb_payments";
 
       const [nameRows] = await conn.execute(
         `SELECT Name FROM \`${config.table_characters}\` WHERE EntityID = ? LIMIT 1`,
@@ -87,9 +89,9 @@ export default async function DonationHistoryPage({ params }: Props) {
       const [legacyRows] = await conn.execute(
         `SELECT id, user_id, product, price, item_number, status, since
            FROM \`${tableName}\`
-          WHERE user_id = ?
+          WHERE user_id IN (?, ?)
           ORDER BY id DESC`,
-        [session.username],
+        [session.username, charName],
       );
 
       const payments = legacyRows as Array<{
@@ -117,6 +119,7 @@ export default async function DonationHistoryPage({ params }: Props) {
           amount_paid: amountPaid,
           currency: "USD",
           status,
+          legacy_status: Number(p.status ?? 0),
           payment_provider: "tebex",
           created_at: createdAt,
           game_credited_at: status === "credited" || status === "claimed" ? createdAt : null,
@@ -214,6 +217,8 @@ export default async function DonationHistoryPage({ params }: Props) {
                   <tr className="border-b border-[rgba(255,215,0,0.08)]">
                     {[
                       t("history_col_date"),
+                      "User ID",
+                      "Producto",
                       t("history_col_cps"),
                       t("history_col_amount"),
                       t("history_col_status"),
@@ -230,9 +235,19 @@ export default async function DonationHistoryPage({ params }: Props) {
                     return (
                       <tr key={d.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/2 transition-colors">
                         <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
-                          {new Date(d.created_at).toLocaleDateString("es-ES", {
-                            day: "2-digit", month: "short", year: "numeric",
+                          {new Date(d.created_at).toLocaleString("es-ES", {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
                           })}
+                        </td>
+                        <td className="px-4 py-3 text-gray-300 text-xs font-mono whitespace-nowrap">
+                          {d.account_name && d.account_name.trim() ? d.account_name : "-"}
+                        </td>
+                        <td className="px-4 py-3 text-gray-300 font-medium whitespace-nowrap">
+                          {d.product_code && d.product_code.trim() ? d.product_code : "-"}
                         </td>
                         <td className="px-4 py-3 text-[#ffd700] font-semibold">
                           {d.cps_total > 0

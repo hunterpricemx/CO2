@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { CreditCard, Save, CheckCircle, XCircle, ExternalLink, FlaskConical, Loader2, Eye, EyeOff, KeyRound } from "lucide-react";
-import { savePaymentConfig, testStripeConnection, testTebexConnection, getSecretValues, type PaymentConfigData } from "./actions";
+import { savePaymentConfig, testStripeConnection, testTebexConnection, getSecretValues, insertManualPayment, insertZeroTebexPurchase, type PaymentConfigData } from "./actions";
 
 type Props = {
   initial: PaymentConfigData | null;
@@ -60,8 +60,10 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
   const [showTebexWebhookSk, setShowTebexWebhookSk] = useState(false);
   const [revealed,      setRevealed]      = useState(false);
   const [isRevealing,   setIsRevealing]   = useState(false);
-  const [result,        setResult]        = useState<{ ok: boolean; msg: string; extra?: string } | null>(null);
+  const [result,        setResult]        = useState<{ ok: boolean; msg: string; extra?: string; debug?: string[] } | null>(null);
   const [isPending,     startTransition]  = useTransition();
+  const [manualUsername, setManualUsername] = useState("");
+  const [manualVersion, setManualVersion] = useState<1 | 2>(2);
 
   const set = <K extends keyof PaymentConfigData>(k: K, v: PaymentConfigData[K]) =>
     setForm(prev => ({ ...prev, [k]: v }));
@@ -83,7 +85,31 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
   const handleSave = () => {
     startTransition(async () => {
       const r = await savePaymentConfig(form);
-      setResult({ ok: r.success, msg: r.message });
+      setResult({ ok: r.success, msg: r.message, debug: r.debug });
+    });
+  };
+
+  const handleInsertManual = () => {
+    startTransition(async () => {
+      const r = await insertManualPayment({
+        username: manualUsername,
+        version: manualVersion,
+      });
+
+      setResult({ ok: r.success, msg: r.message, debug: r.debug });
+      if (r.success) setManualUsername("");
+    });
+  };
+
+  const handleInsertZeroTebex = () => {
+    startTransition(async () => {
+      const r = await insertZeroTebexPurchase({
+        username: manualUsername,
+        version: manualVersion,
+      });
+
+      setResult({ ok: r.success, msg: r.message, debug: r.debug });
+      if (r.success) setManualUsername("");
     });
   };
 
@@ -93,7 +119,7 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
       const extra = r.data
         ? `Balance disponible: ${Number(r.data.available) / 100} ${String(r.data.currency)}`
         : undefined;
-      setResult({ ok: r.success, msg: r.message, extra });
+      setResult({ ok: r.success, msg: r.message, extra, debug: r.debug });
     });
   };
 
@@ -103,7 +129,7 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
       const extra = r.data
         ? `Tienda: ${String(r.data.name)} · ${String(r.data.currency)} · ${String(r.data.domain)}`
         : undefined;
-      setResult({ ok: r.success, msg: r.message, extra });
+      setResult({ ok: r.success, msg: r.message, extra, debug: r.debug });
     });
   };
 
@@ -282,6 +308,63 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
         )}
       </div>
 
+      {/* Insercion manual MariaDB */}
+      <div className="bg-[#111] border border-[rgba(255,255,255,0.06)] rounded-xl p-6 space-y-4">
+        <div>
+          <h2 className="text-sm font-medium text-white uppercase tracking-wide">Insercion manual MariaDB</h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Inserta un pago manual en la tabla de pagos del servidor seleccionado (1.0 o 2.0).
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="md:col-span-2">
+            <label className={labelCls}>Usuario</label>
+            <input
+              className={inputCls}
+              placeholder="Nombre de usuario de la cuenta"
+              value={manualUsername}
+              onChange={e => setManualUsername(e.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Se busca el personaje de este usuario en el servidor elegido y ese personaje se usa para insertar el pago.
+            </p>
+          </div>
+
+          <div>
+            <label className={labelCls}>Servidor</label>
+            <select
+              className={inputCls}
+              value={String(manualVersion)}
+              onChange={e => setManualVersion(e.target.value === "1" ? 1 : 2)}
+            >
+              <option value="1">1.0</option>
+              <option value="2">2.0</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleInsertManual}
+            disabled={isPending || !manualUsername.trim()}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-blue-500/10 border border-blue-500/30 text-blue-300 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+            Insertar pago manual
+          </button>
+
+          <button
+            onClick={handleInsertZeroTebex}
+            disabled={isPending || !manualUsername.trim()}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/20 transition-colors disabled:opacity-50"
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
+            Compra Tebex $0 (debug)
+          </button>
+        </div>
+      </div>
+
       {/* Resultado */}
       {result && (
         <div className={`flex items-start gap-3 px-4 py-3 rounded-lg text-sm border ${
@@ -296,6 +379,16 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
           <div>
             <p>{result.msg}</p>
             {result.extra && <p className="text-xs opacity-70 mt-0.5">{result.extra}</p>}
+            {!!result.debug?.length && (
+              <div className="mt-3 rounded-md border border-white/10 bg-black/25 p-3">
+                <p className="text-[11px] uppercase tracking-widest opacity-70 mb-2">Debug trace</p>
+                <div className="space-y-1 max-h-64 overflow-auto">
+                  {result.debug.map((line, idx) => (
+                    <p key={`${line}-${idx}`} className="text-xs font-mono opacity-90">{line}</p>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

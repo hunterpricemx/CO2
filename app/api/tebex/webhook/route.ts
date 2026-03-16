@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getGameDb } from "@/lib/game-db";
 import { getTebexConfig, verifyTebexWebhookSignature } from "@/lib/tebex";
+import { logPayment } from "@/lib/payment-logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +41,7 @@ async function upsertLegacyPayment(params: {
   const { conn, config } = await getGameDb(params.versionNum as 1 | 2);
   const table = sanitizeTableName(config.table_payments);
   const unixTime = String(Math.floor(Date.now() / 1000));
+  const normalizedPrice = Math.max(0, Math.round(Number(params.price) || 0));
 
   try {
     const lookupSql = params.txn
@@ -55,17 +57,17 @@ async function upsertLegacyPayment(params: {
     if (rows.length > 0) {
       await conn.execute(
         `UPDATE \`${table}\`
-           SET user_id = ?, txn = ?, product = ?, price = ?, basket_ident = ?, item_number = 1, status = ?, date = ?
+           SET user_id = ?, txn = ?, product = ?, price = ?, basket_ident = ?, item_number = 1, status = ?, date = ?, since = NOW()
          WHERE id = ?`,
-        [params.userId, params.txn, params.product, params.price, params.basketIdent, params.status, unixTime, rows[0].id],
+        [params.userId, params.txn, params.product, normalizedPrice, params.basketIdent, params.status, unixTime, rows[0].id],
       );
       return;
     }
 
     await conn.execute(
-      `INSERT INTO \`${table}\` (user_id, txn, product, price, basket_ident, item_number, status, date)
-       VALUES (?, ?, ?, ?, ?, 1, ?, ?)`,
-      [params.userId, params.txn, params.product, params.price, params.basketIdent, params.status, unixTime],
+      `INSERT INTO \`${table}\` (user_id, txn, product, price, basket_ident, item_number, status, date, since)
+       VALUES (?, ?, ?, ?, ?, 1, ?, ?, NOW())`,
+      [params.userId, params.txn, params.product, normalizedPrice, params.basketIdent, params.status, unixTime],
     );
   } finally {
     await conn.end();
@@ -134,6 +136,10 @@ export async function POST(req: NextRequest) {
   const transactionId = subject.transaction_id ?? null;
 
   if (!donationId) {
+    await logPayment({ source: "tebex", level: "error", event: "missing_donation_id",
+      message: `Webhook type=${payload.type} recibido sin donation_id en custom data`,
+      username: String(custom.account_name ?? custom.user_id ?? "") || null,
+      txn_id: transactionId, amount: legacyPrice });
     return NextResponse.json({ error: "Missing donation_id in Tebex custom data" }, { status: 400 });
   }
 
@@ -147,6 +153,9 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (donationQuery.error || !donationQuery.data) {
+    await logPayment({ source: "tebex", level: "error", event: "donation_not_found",
+      message: `Donation ${donationId} no encontrada en Supabase`,
+      donation_id: donationId, txn_id: transactionId });
     return NextResponse.json({ error: "Donation not found" }, { status: 404 });
   }
 
@@ -171,6 +180,10 @@ export async function POST(req: NextRequest) {
   const legacyPrice = Number(subject.price?.amount ?? donation.amount_paid ?? 0);
 
   if (payload.type === "payment.declined") {
+    await logPayment({ source: "tebex", level: "warn", event: "payment_declined",
+      message: `Pago rechazado: ${subject.status?.description ?? "motivo desconocido"}`,
+      username: legacyUser || null, product: legacyProduct || null,
+      amount: legacyPrice, donation_id: donationId, txn_id: transactionId, basket_ident: basketIdent });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from("donations")
@@ -199,6 +212,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (payload.type === "payment.refunded") {
+    await logPayment({ source: "tebex", level: "warn", event: "payment_refunded",
+      message: "Pago reembolsado por Tebex",
+      username: legacyUser || null, product: legacyProduct || null,
+      amount: legacyPrice, donation_id: donationId, txn_id: transactionId, basket_ident: basketIdent });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from("donations")
@@ -231,6 +248,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (["credited", "claimed"].includes(donation.status) && donation.tebex_transaction === transactionId) {
+    await logPayment({ source: "tebex", level: "info", event: "duplicate_skipped",
+      message: `Webhook duplicado ignorado (donation ya en estado '${donation.status}')`,
+      username: legacyUser || null, donation_id: donationId, txn_id: transactionId });
     return NextResponse.json({ received: true, duplicate: true });
   }
 
@@ -244,6 +264,11 @@ export async function POST(req: NextRequest) {
       tebex_transaction: transactionId,
     })
     .eq("id", donationId);
+
+  await logPayment({ source: "tebex", level: "info", event: "payment_completed",
+    message: `Pago completado: $${legacyPrice} | producto '${legacyProduct}' | v${resolvedVersion}`,
+    username: legacyUser || null, product: legacyProduct || null,
+    amount: legacyPrice, donation_id: donationId, txn_id: transactionId, basket_ident: basketIdent });
 
   try {
     await upsertLegacyPayment({
@@ -270,8 +295,18 @@ export async function POST(req: NextRequest) {
       .from("donations")
       .update({ status: "credited", game_credited_at: new Date().toISOString() })
       .eq("id", donationId);
+
+    await logPayment({ source: "tebex", level: "info", event: "credited",
+      message: `CPs acreditados: ${donation.cps_total} CP para '${characterName || donation.character_name}'`,
+      username: legacyUser || null, product: legacyProduct || null,
+      amount: legacyPrice, donation_id: donationId, txn_id: transactionId,
+      metadata: { cps_total: donation.cps_total, character_name: characterName || donation.character_name } });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
+    await logPayment({ source: "tebex", level: "error", event: "credit_error",
+      message: `Error acreditando CPs: ${message}`,
+      username: legacyUser || null, product: legacyProduct || null,
+      amount: legacyPrice, donation_id: donationId, txn_id: transactionId });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from("donations")

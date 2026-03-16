@@ -346,6 +346,52 @@ export interface Database {
         };
         Relationships: [];
       };
+      payment_logs: {
+        Row: {
+          id: string;
+          created_at: string;
+          source: string;
+          level: string;
+          event: string;
+          username: string | null;
+          product: string | null;
+          amount: number | null;
+          donation_id: string | null;
+          txn_id: string | null;
+          basket_ident: string | null;
+          message: string;
+          metadata: Record<string, unknown> | null;
+        };
+        Insert: {
+          id?: string;
+          created_at?: string;
+          source: string;
+          level?: string;
+          event: string;
+          username?: string | null;
+          product?: string | null;
+          amount?: number | null;
+          donation_id?: string | null;
+          txn_id?: string | null;
+          basket_ident?: string | null;
+          message: string;
+          metadata?: Record<string, unknown> | null;
+        };
+        Update: {
+          source?: string;
+          level?: string;
+          event?: string;
+          username?: string | null;
+          product?: string | null;
+          amount?: number | null;
+          donation_id?: string | null;
+          txn_id?: string | null;
+          basket_ident?: string | null;
+          message?: string;
+          metadata?: Record<string, unknown> | null;
+        };
+        Relationships: [];
+      };
       rankings: {
         Row: {
           id: string;

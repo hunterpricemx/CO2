@@ -8,6 +8,7 @@ import { Search, ChevronLeft, ChevronRight, TrendingUp, Clock, CheckCircle2, Coi
 type Donation = {
   id: string;
   character_name: string;
+  account_name: string | null;
   version: number;
   amount_paid: number;
   currency: string;
@@ -96,6 +97,7 @@ export default function AdminDonationsPage() {
       if (statusFilter !== "all" && d.status !== statusFilter) return false;
       if (versionFilter !== "all" && String(d.version) !== versionFilter) return false;
       if (q && !d.character_name?.toLowerCase().includes(q) &&
+               !d.account_name?.toLowerCase().includes(q) &&
                !d.payment_provider?.toLowerCase().includes(q) &&
                !d.influencer_code?.toLowerCase().includes(q)) return false;
       return true;
@@ -172,7 +174,7 @@ export default function AdminDonationsPage() {
             <table className="w-full text-sm font-poppins">
               <thead>
                 <tr style={{ background: "rgba(255,215,0,0.04)", borderBottom: "1px solid rgba(255,215,0,0.08)" }}>
-                  {["Jugador", "Ver.", "Monto", "CPs", "Plataforma", "Código", "Estado", "Fecha"].map((h) => (
+                  {["Jugador", "User ID", "Ver.", "Monto", "CPs", "Plataforma", "Código", "Estado", "Fecha"].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -191,6 +193,9 @@ export default function AdminDonationsPage() {
                   >
                     <td className="px-4 py-3 text-white font-medium">
                       {d.character_name || <span className="text-gray-600 italic">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-gray-300 text-xs font-mono whitespace-nowrap">
+                      {d.account_name || <span className="text-gray-700">—</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className="text-xs px-2 py-0.5 rounded bg-[#f39c12]/10 text-[#f39c12] font-medium whitespace-nowrap">
@@ -224,7 +229,7 @@ export default function AdminDonationsPage() {
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center text-gray-600">
+                    <td colSpan={9} className="px-4 py-12 text-center text-gray-600">
                       No se encontraron donaciones con los filtros aplicados.
                     </td>
                   </tr>

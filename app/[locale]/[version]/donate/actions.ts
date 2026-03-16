@@ -5,6 +5,7 @@ import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getGameSession } from "@/lib/session";
 import { createTebexHeadlessCheckout, getTebexConfig } from "@/lib/tebex";
+import { logPayment } from "@/lib/payment-logger";
 
 type CheckoutResult = { url: string } | { error: string };
 
@@ -163,8 +164,14 @@ export async function createTebexCheckout(params: {
   const supabase = await createAdminClient();
   const tebexConfig = await getTebexConfig();
 
-  if (!tebexConfig.enabled) return { error: "tebex_disabled" };
-  if (!tebexConfig.webstoreId || !tebexConfig.privateKey) return { error: "tebex_not_configured" };
+  if (!tebexConfig.enabled) {
+    console.error("[tebex-checkout] Tebex disabled in config");
+    return { error: "tebex_disabled" };
+  }
+  if (!tebexConfig.webstoreId || !tebexConfig.privateKey) {
+    console.error("[tebex-checkout] Missing webstoreId or privateKey in Tebex config");
+    return { error: "tebex_not_configured" };
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: packageRow, error: packageError } = await (supabase as any)
@@ -173,7 +180,10 @@ export async function createTebexCheckout(params: {
     .eq("id", params.packageId)
     .single();
 
-  if (packageError || !packageRow) return { error: "package_not_found" };
+  if (packageError || !packageRow) {
+    console.error("[tebex-checkout] Package not found:", params.packageId, packageError?.message);
+    return { error: "package_not_found" };
+  }
 
   const pkg = packageRow as {
     id: string;
@@ -185,8 +195,22 @@ export async function createTebexCheckout(params: {
     tebex_package_id: string | null;
   };
 
-  if (!pkg.active || ![0, versionNum].includes(pkg.version)) return { error: "package_not_available" };
-  if (!pkg.tebex_package_id?.trim()) return { error: "tebex_package_not_mapped" };
+  if (!pkg.active || ![0, versionNum].includes(pkg.version)) {
+    console.error("[tebex-checkout] Package not available: active=%s version=%s required=%s", pkg.active, pkg.version, versionNum);
+    return { error: "package_not_available" };
+  }
+  if (!pkg.tebex_package_id?.trim()) {
+    console.error("[tebex-checkout] Package has no tebex_package_id mapped:", pkg.id, pkg.name);
+    return { error: "tebex_package_not_mapped" };
+  }
+
+  await logPayment({
+    source: "tebex", level: "info", event: "checkout_initiated",
+    message: `Iniciando checkout Tebex: paquete '${pkg.name}' ($${pkg.price_usd}) para '${characterName}' (cuenta: ${session.username}) v${versionNum}`,
+    username: session.username, product: pkg.name,
+    amount: pkg.price_usd,
+    metadata: { package_id: pkg.id, tebex_package_id: pkg.tebex_package_id, version: versionNum },
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const donationInsert = await (supabase as any)
@@ -208,7 +232,14 @@ export async function createTebexCheckout(params: {
     .single();
 
   if (donationInsert.error || !donationInsert.data) {
-    return { error: "db_error" };
+    const dbErr = donationInsert.error?.message ?? "unknown db error";
+    console.error("[tebex-checkout] Donation insert failed:", dbErr);
+    await logPayment({
+      source: "tebex", level: "error", event: "checkout_db_error",
+      message: `Error insertando donation en Supabase: ${dbErr}`,
+      username: session.username, product: pkg.name, amount: pkg.price_usd,
+    });
+    return { error: `db_error: ${dbErr}` };
   }
 
   const donationId = (donationInsert.data as { id: string }).id;
@@ -244,14 +275,29 @@ export async function createTebexCheckout(params: {
       .update({ notes: `Tebex basket: ${basketIdent}` })
       .eq("id", donationId);
 
+    await logPayment({
+      source: "tebex", level: "info", event: "checkout_url_obtained",
+      message: `Basket creado OK. donation_id=${donationId}, basket=${basketIdent}`,
+      username: session.username, product: pkg.name, amount: pkg.price_usd,
+      donation_id: donationId, basket_ident: basketIdent,
+    });
+
     return { url: checkoutUrl };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown Tebex error";
+    console.error("[tebex-checkout] Tebex API error:", message);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from("donations")
       .update({ notes: `Tebex checkout init failed: ${message}` })
       .eq("id", donationId);
-    return { error: "tebex_checkout_failed" };
+    await logPayment({
+      source: "tebex", level: "error", event: "checkout_api_error",
+      message: `Error en API Tebex: ${message}`,
+      username: session.username, product: pkg.name, amount: pkg.price_usd,
+      donation_id: donationId,
+      metadata: { tebex_package_id: pkg.tebex_package_id, raw_error: message },
+    });
+    return { error: message };
   }
 }
