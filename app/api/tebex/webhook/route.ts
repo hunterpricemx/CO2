@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
     await logPayment({ source: "tebex", level: "error", event: "missing_donation_id",
       message: `Webhook type=${payload.type} recibido sin donation_id en custom data`,
       username: String(custom.account_name ?? custom.user_id ?? "") || null,
-      txn_id: transactionId, amount: legacyPrice });
+      txn_id: transactionId });
     return NextResponse.json({ error: "Missing donation_id in Tebex custom data" }, { status: 400 });
   }
 
