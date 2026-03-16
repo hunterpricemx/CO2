@@ -77,9 +77,17 @@ export async function getGameSession(): Promise<GameSessionData | null> {
 /** Write a new signed game session cookie. */
 export async function setGameSession(data: GameSessionData): Promise<void> {
   const cookieStore = await cookies();
+  const envSecure = process.env.GAME_SESSION_SECURE_COOKIE;
+  const secureCookie =
+    envSecure === "true"
+      ? true
+      : envSecure === "false"
+        ? false
+        : process.env.NODE_ENV === "production";
+
   cookieStore.set(COOKIE_NAME, buildToken(data), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: secureCookie,
     sameSite: "lax",
     path: "/",
     maxAge: MAX_AGE,
