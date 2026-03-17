@@ -80,12 +80,8 @@ export function InfluencerModal({ influencer, locale, onClose, streamerCodeLabel
           <X className="h-4 w-4" />
         </button>
 
-        {/* Photo banner: influencer always, character as floating overlay */}
-        <div
-          className="relative w-full overflow-hidden"
-          style={{ height: "280px", background: "linear-gradient(160deg,#0d0603 0%,#1a0e00 100%)" }}
-        >
-          {/* Influencer photo — always visible, main */}
+        {/* Photo banner — influencer only, full width */}
+        <div className="relative w-full overflow-hidden" style={{ aspectRatio: "1 / 1", background: "#0d0603" }}>
           {influencer.photo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -98,27 +94,26 @@ export function InfluencerModal({ influencer, locale, onClose, streamerCodeLabel
               {influencer.name.charAt(0).toUpperCase()}
             </div>
           )}
-
-          {/* Character photo — bottom-right corner */}
-          {influencer.character_photo_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={influencer.character_photo_url}
-              alt={`${influencer.name} personaje`}
-              className="absolute bottom-0 right-0 h-4/5 w-auto object-contain object-bottom"
-              style={{ filter: "drop-shadow(0 0 12px rgba(255,215,0,0.35))" }}
-            />
-          )}
-
           <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-[#111] via-transparent to-transparent" />
         </div>
 
         {/* Body */}
         <div className="px-6 pb-6 flex flex-col gap-4 -mt-4 relative z-10">
-          {/* Name */}
-          <DialogTitle className="font-bebas text-3xl tracking-widest text-white">
-            {influencer.name}
-          </DialogTitle>
+          {/* Name + character thumbnail */}
+          <div className="flex items-end justify-between gap-3">
+            <DialogTitle className="font-bebas text-3xl tracking-widest text-white">
+              {influencer.name}
+            </DialogTitle>
+            {influencer.character_photo_url && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={influencer.character_photo_url}
+                alt={`${influencer.name} personaje`}
+                className="h-20 w-20 rounded-xl object-cover border border-[rgba(255,215,0,0.25)] shrink-0"
+                style={{ background: "#0d0603" }}
+              />
+            )}
+          </div>
 
           {/* Description */}
           {description && (
