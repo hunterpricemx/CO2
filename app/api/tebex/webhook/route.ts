@@ -240,6 +240,23 @@ export async function POST(req: NextRequest) {
     amount: legacyPrice, donation_id: donationId, txn_id: transactionId, basket_ident: basketIdent });
 
   try {
+    // ── DEBUG: obtener config de DB antes de conectar ──
+    const { createAdminClient } = await import("@/lib/supabase/server");
+    const _supa = await createAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: _dbCfg } = await (_supa as any)
+      .from("server_config")
+      .select(`db_host_v${resolvedVersion === 1 ? "1" : "2"}, db_port_v${resolvedVersion === 1 ? "1" : "2"}`)
+      .eq("id", 1)
+      .single();
+    const _dbHost = _dbCfg?.[`db_host_v${resolvedVersion === 1 ? "1" : "2"}`] ?? "unknown";
+    const _dbPort = _dbCfg?.[`db_port_v${resolvedVersion === 1 ? "1" : "2"}`] ?? "unknown";
+
+    await logPayment({ source: "tebex", level: "info", event: "db_connect_attempt",
+      message: `Intentando conectar EC2→${_dbHost}:${_dbPort} (v${resolvedVersion}) para insertar en dbb_payments`,
+      username: legacyUser || null, donation_id: donationId, txn_id: transactionId,
+      metadata: { db_host: _dbHost, db_port: _dbPort, version: resolvedVersion } });
+
     await upsertLegacyPayment({
       versionNum: resolvedVersion,
       userId: legacyUser,
@@ -249,6 +266,11 @@ export async function POST(req: NextRequest) {
       basketIdent,
       status: 1,
     });
+
+    await logPayment({ source: "tebex", level: "info", event: "db_connect_ok",
+      message: `Conexión OK: EC2→${_dbHost}:${_dbPort} | dbb_payments actualizado status=1`,
+      username: legacyUser || null, donation_id: donationId, txn_id: transactionId,
+      metadata: { db_host: _dbHost, db_port: _dbPort } });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
