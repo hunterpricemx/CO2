@@ -51,6 +51,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Redirect legacy PHP language-switcher URLs, e.g. /2.0/lang?=es
+  // These come from old game launchers / bookmarks and have no page here.
+  if (/^\/(1\.0|2\.0)\/lang(\/|$)/.test(pathname)) {
+    const version = pathname.split("/")[1]; // "1.0" or "2.0"
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = `/${version}`;
+    redirectUrl.search = "";
+    return NextResponse.redirect(redirectUrl, 301);
+  }
+
   // Resolve Spanish public routes without relying on next-intl to infer
   // that `/1.0/...` should map to `/es/1.0/...`.
   const isDefaultLocaleVersionPath =
