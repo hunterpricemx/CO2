@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { getGameSession } from "@/lib/session";
 import { createTebexHeadlessCheckout, getTebexConfig } from "@/lib/tebex";
 import { logPayment } from "@/lib/payment-logger";
+import { upsertLegacyPayment } from "@/lib/payment-legacy";
 
 type CheckoutResult = { url: string } | { error: string };
 
@@ -176,7 +177,7 @@ export async function createTebexCheckout(params: {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: packageRow, error: packageError } = await (supabase as any)
     .from("donation_packages")
-    .select("id, name, price_usd, cps, version, active, tebex_package_id")
+    .select("id, name, price_usd, cps, version, active, tebex_package_id, game_product_id")
     .eq("id", params.packageId)
     .single();
 
@@ -193,6 +194,7 @@ export async function createTebexCheckout(params: {
     version: number;
     active: boolean;
     tebex_package_id: string | null;
+    game_product_id: number | null;
   };
 
   if (!pkg.active || ![0, versionNum].includes(pkg.version)) {
@@ -281,6 +283,30 @@ export async function createTebexCheckout(params: {
       username: session.username, product: pkg.name, amount: pkg.price_usd,
       donation_id: donationId, basket_ident: basketIdent,
     });
+
+    // Pre-insert into dbb_payments with status=0 (mirrors old PHP checkout.php behavior).
+    // This lets the webhook reliably find the row by basket_ident even if the
+    // game server hasn't created an in-game row yet. Failures are non-fatal.
+    if (pkg.game_product_id) {
+      try {
+        await upsertLegacyPayment({
+          versionNum,
+          userId: session.username,
+          txn: null,
+          product: String(pkg.game_product_id),
+          price: pkg.price_usd,
+          basketIdent,
+          status: 0,
+        });
+      } catch (gameDbError) {
+        const gameDbMsg = gameDbError instanceof Error ? gameDbError.message : String(gameDbError);
+        await logPayment({
+          source: "tebex", level: "warn", event: "checkout_game_db_warn",
+          message: `Pre-insert dbb_payments falló (checkout continúa): ${gameDbMsg}`,
+          username: session.username, donation_id: donationId, basket_ident: basketIdent,
+        });
+      }
+    }
 
     return { url: checkoutUrl };
   } catch (error: unknown) {

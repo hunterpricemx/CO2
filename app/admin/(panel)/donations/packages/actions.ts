@@ -14,6 +14,7 @@ export type DonationPackageRow = {
   bonus_label: string | null;
   image_url: string | null;
   tebex_package_id: string | null;
+  game_product_id: number | null;
   created_at: string;
 };
 
@@ -27,6 +28,7 @@ export type PackageFormData = {
   bonus_label: string;
   image_url: string;
   tebex_package_id: string;
+  game_product_id: number | null;
 };
 
 export type ActionResult = { success: boolean; message: string };
@@ -44,15 +46,16 @@ export async function getPackages(): Promise<DonationPackageRow[]> {
 export async function createPackage(form: PackageFormData): Promise<ActionResult> {
   const supabase = await createAdminClient();
   const { error } = await (supabase as any).from("donation_packages").insert({
-    name:        form.name.trim(),
-    price_usd:   form.price_usd,
-    cps:         form.cps,
-    version:     form.version,
-    active:      form.active,
-    sort_order:  form.sort_order,
-    bonus_label: form.bonus_label.trim() || null,
-    image_url:   form.image_url.trim() || null,
+    name:            form.name.trim(),
+    price_usd:       form.price_usd,
+    cps:             form.cps,
+    version:         form.version,
+    active:          form.active,
+    sort_order:      form.sort_order,
+    bonus_label:     form.bonus_label.trim() || null,
+    image_url:       form.image_url.trim() || null,
     tebex_package_id: form.tebex_package_id.trim() || null,
+    game_product_id: form.game_product_id || null,
   });
   if (error) return { success: false, message: error.message };
   revalidatePath("/admin/donations/packages");
@@ -62,15 +65,16 @@ export async function createPackage(form: PackageFormData): Promise<ActionResult
 export async function updatePackage(id: string, form: PackageFormData): Promise<ActionResult> {
   const supabase = await createAdminClient();
   const { error } = await (supabase as any).from("donation_packages").update({
-    name:        form.name.trim(),
-    price_usd:   form.price_usd,
-    cps:         form.cps,
-    version:     form.version,
-    active:      form.active,
-    sort_order:  form.sort_order,
-    bonus_label: form.bonus_label.trim() || null,
-    image_url:   form.image_url.trim() || null,
+    name:            form.name.trim(),
+    price_usd:       form.price_usd,
+    cps:             form.cps,
+    version:         form.version,
+    active:          form.active,
+    sort_order:      form.sort_order,
+    bonus_label:     form.bonus_label.trim() || null,
+    image_url:       form.image_url.trim() || null,
     tebex_package_id: form.tebex_package_id.trim() || null,
+    game_product_id: form.game_product_id || null,
   }).eq("id", id);
   if (error) return { success: false, message: error.message };
   revalidatePath("/admin/donations/packages");

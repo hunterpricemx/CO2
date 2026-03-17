@@ -11,7 +11,7 @@ const VERSION_LABELS: Record<number, string> = { 0: "Ambas", 1: "V1", 2: "V2" };
 
 const EMPTY_FORM: PackageFormData = {
   name: "", price_usd: 0, cps: 0, version: 0,
-  active: true, sort_order: 10, bonus_label: "", image_url: "", tebex_package_id: "",
+  active: true, sort_order: 10, bonus_label: "", image_url: "", tebex_package_id: "", game_product_id: null,
 };
 
 type Props = { packages: DonationPackageRow[] };
@@ -35,7 +35,8 @@ export default function PackagesManager({ packages: initial }: Props) {
     setForm({
       name: pkg.name, price_usd: pkg.price_usd, cps: pkg.cps,
       version: pkg.version, active: pkg.active, sort_order: pkg.sort_order,
-      bonus_label: pkg.bonus_label ?? "", image_url: pkg.image_url ?? "", tebex_package_id: pkg.tebex_package_id ?? "",
+      bonus_label: pkg.bonus_label ?? "", image_url: pkg.image_url ?? "",
+      tebex_package_id: pkg.tebex_package_id ?? "", game_product_id: pkg.game_product_id ?? null,
     });
     setModal(pkg);
     setMsg(null);
@@ -135,6 +136,7 @@ export default function PackagesManager({ packages: initial }: Props) {
                 "Precio",
                 "Versión",
                 "Tebex ID",
+                "ID Juego",
                 "Bonus label",
                 "Estado",
                 "Acciones",
@@ -164,6 +166,7 @@ export default function PackagesManager({ packages: initial }: Props) {
                 <td className="px-4 py-3 text-white">${pkg.price_usd.toFixed(2)}</td>
                 <td className="px-4 py-3 text-gray-300">{VERSION_LABELS[pkg.version] ?? pkg.version}</td>
                 <td className="px-4 py-3 text-cyan-300 text-xs">{pkg.tebex_package_id ?? "—"}</td>
+                <td className="px-4 py-3 text-emerald-400 font-mono text-xs">{pkg.game_product_id ?? "—"}</td>
                 <td className="px-4 py-3 text-gray-500 text-xs">{pkg.bonus_label ?? "—"}</td>
                 <td className="px-4 py-3">
                   <button
@@ -254,12 +257,21 @@ export default function PackagesManager({ packages: initial }: Props) {
                   className="bg-[#111] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#f39c12] w-full" placeholder="Ej: +20% esta semana" />
               </Field>
 
-              <Field label="Tebex package ID (opcional)">
-                <input value={form.tebex_package_id}
-                  onChange={e => setForm(f => ({ ...f, tebex_package_id: e.target.value }))}
-                  className="bg-[#111] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#f39c12] w-full"
-                  placeholder="Ej: 6276316" />
-              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Tebex package ID">
+                  <input value={form.tebex_package_id}
+                    onChange={e => setForm(f => ({ ...f, tebex_package_id: e.target.value }))}
+                    className="bg-[#111] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#f39c12] w-full"
+                    placeholder="Ej: 6276316" />
+                </Field>
+                <Field label="ID interno del juego (1-5)">
+                  <input type="number" min="1" max="5"
+                    value={form.game_product_id ?? ""}
+                    onChange={e => setForm(f => ({ ...f, game_product_id: e.target.value ? parseInt(e.target.value) : null }))}
+                    className="bg-[#111] border border-[rgba(255,255,255,0.1)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-emerald-500 w-full"
+                    placeholder="1-5" />
+                </Field>
+              </div>
 
               <Field label="Imagen del paquete">
                 <div className="flex items-start gap-3">

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/server";
-import { getGameDb } from "@/lib/game-db";
 import { getTebexConfig, verifyTebexWebhookSignature } from "@/lib/tebex";
 import { logPayment } from "@/lib/payment-logger";
+import { upsertLegacyPayment } from "@/lib/payment-legacy";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,58 +20,9 @@ type TebexWebhookPayload = {
   subject?: TebexPaymentSubject;
 };
 
-function sanitizeTableName(table: string): string {
-  return table.replace(/`/g, "").trim() || "dbb_payments";
-}
-
 function extractBasketIdent(note: string | null | undefined): string | null {
   const m = (note ?? "").match(/Tebex basket:\s*([^\s]+)/i);
   return m?.[1] ?? null;
-}
-
-async function upsertLegacyPayment(params: {
-  versionNum: number;
-  userId: string;
-  txn: string | null;
-  product: string;
-  price: number;
-  basketIdent: string;
-  status: number;
-}) {
-  const { conn, config } = await getGameDb(params.versionNum as 1 | 2);
-  const table = sanitizeTableName(config.table_payments);
-  const unixTime = String(Math.floor(Date.now() / 1000));
-  const normalizedPrice = Math.max(0, Math.round(Number(params.price) || 0));
-
-  try {
-    const lookupSql = params.txn
-      ? `SELECT id FROM \`${table}\` WHERE txn = ? OR basket_ident = ? ORDER BY id DESC LIMIT 1`
-      : `SELECT id FROM \`${table}\` WHERE basket_ident = ? ORDER BY id DESC LIMIT 1`;
-    const lookupArgs = params.txn
-      ? [params.txn, params.basketIdent]
-      : [params.basketIdent];
-
-    const [existing] = await conn.execute(lookupSql, lookupArgs);
-    const rows = existing as Array<{ id: number }>;
-
-    if (rows.length > 0) {
-      await conn.execute(
-        `UPDATE \`${table}\`
-           SET user_id = ?, txn = ?, product = ?, price = ?, basket_ident = ?, item_number = 1, status = ?, date = ?, since = NOW()
-         WHERE id = ?`,
-        [params.userId, params.txn, params.product, normalizedPrice, params.basketIdent, params.status, unixTime, rows[0].id],
-      );
-      return;
-    }
-
-    await conn.execute(
-      `INSERT INTO \`${table}\` (user_id, txn, product, price, basket_ident, item_number, status, date, since)
-       VALUES (?, ?, ?, ?, ?, 1, ?, ?, NOW())`,
-      [params.userId, params.txn, params.product, normalizedPrice, params.basketIdent, params.status, unixTime],
-    );
-  } finally {
-    await conn.end();
-  }
 }
 
 export async function POST(req: NextRequest) {
@@ -144,7 +95,20 @@ export async function POST(req: NextRequest) {
 
   const resolvedVersion = Number.isFinite(versionNum) ? versionNum : donation.version;
   const basketIdent = extractBasketIdent(donation.notes) ?? donationId;
-  const legacyProduct = String(custom.package_id ?? donation.package_id ?? "");
+
+  // Resolve game-internal product ID (integer 1-5) from donation_packages
+  let gameProductId: number | null = null;
+  if (donation.package_id) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: pkgRow } = await (supabase as any)
+      .from("donation_packages")
+      .select("game_product_id")
+      .eq("id", donation.package_id)
+      .single();
+    gameProductId = pkgRow?.game_product_id ?? null;
+  }
+
+  const legacyProduct = String(gameProductId ?? "");
   const legacyUser = String(accountName || donation.account_name || "");
   const legacyPrice = Number(subject.price?.amount ?? donation.amount_paid ?? 0);
 
