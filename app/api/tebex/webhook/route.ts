@@ -74,37 +74,6 @@ async function upsertLegacyPayment(params: {
   }
 }
 
-async function creditDonationToGame(params: {
-  donationId: string;
-  characterName: string;
-  accountName: string | null;
-  versionNum: number;
-  cpsBase: number;
-  cpsTotal: number;
-}) {
-  const { donationId, characterName, accountName, versionNum, cpsBase, cpsTotal } = params;
-  const { conn } = await getGameDb(versionNum as 1 | 2);
-
-  try {
-    const [rows] = await conn.execute(
-      "SELECT donation_uuid FROM cq_pending_donations WHERE donation_uuid = ? LIMIT 1",
-      [donationId],
-    );
-
-    const existingRows = rows as Array<{ donation_uuid?: string }>;
-    if (existingRows.length === 0) {
-      await conn.execute(
-        `INSERT INTO cq_pending_donations
-           (donation_uuid, char_name, account_name, version, cps_base, cps_total, status)
-         VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-        [donationId, characterName, accountName, versionNum, cpsBase, cpsTotal],
-      );
-    }
-  } finally {
-    await conn.end();
-  }
-}
-
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get("x-signature");
@@ -279,15 +248,6 @@ export async function POST(req: NextRequest) {
       price: legacyPrice,
       basketIdent,
       status: 1,
-    });
-
-    await creditDonationToGame({
-      donationId,
-      characterName: characterName || donation.character_name,
-      accountName: accountName || donation.account_name,
-      versionNum: resolvedVersion,
-      cpsBase: donation.cps_base,
-      cpsTotal: donation.cps_total,
     });
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
