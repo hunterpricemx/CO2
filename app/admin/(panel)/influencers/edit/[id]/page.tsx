@@ -24,6 +24,11 @@ export default function AdminInfluencersEditPage() {
   });
 
   const photoUrl = watch("photo_url");
+  const characterPhotoUrl = watch("character_photo_url");
+
+  // Hidden inputs so Refine's reset() hydrates these uncontrolled fields
+  const hiddenPhotoRef = register("photo_url");
+  const hiddenCharPhotoRef = register("character_photo_url");
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
@@ -41,6 +46,10 @@ export default function AdminInfluencersEditPage() {
         onSubmit={handleSubmit(onFinish)}
         className="bg-[#1a1a1a] border border-[rgba(255,215,0,0.1)] rounded-xl p-6 flex flex-col gap-5"
       >
+        {/* Hidden inputs so Refine hydrates photo fields on load */}
+        <input type="hidden" {...hiddenPhotoRef} />
+        <input type="hidden" {...hiddenCharPhotoRef} />
+
         {/* Nombre + Slug */}
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -53,13 +62,21 @@ export default function AdminInfluencersEditPage() {
           </div>
         </div>
 
-        {/* Foto */}
-        <ImageUploadField
-          label="Foto del influencer"
-          value={photoUrl}
-          onChange={(value) => setValue("photo_url", value, { shouldDirty: true })}
-          folder="influencers"
-        />
+        {/* Foto influencer + personaje */}
+        <div className="grid grid-cols-2 gap-4">
+          <ImageUploadField
+            label="Foto del influencer"
+            value={photoUrl}
+            onChange={(value) => setValue("photo_url", value, { shouldDirty: true })}
+            folder="influencers"
+          />
+          <ImageUploadField
+            label="Foto del personaje"
+            value={characterPhotoUrl}
+            onChange={(value) => setValue("character_photo_url", value, { shouldDirty: true })}
+            folder="influencers"
+          />
+        </div>
 
         {/* Descripción ES / EN / PT */}
         <div className="flex flex-col gap-1">

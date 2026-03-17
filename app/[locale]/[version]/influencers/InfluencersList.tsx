@@ -1,8 +1,37 @@
 "use client";
 
 import { useState } from "react";
+import { Facebook, Instagram, Youtube } from "lucide-react";
 import type { InfluencerRow } from "@/modules/influencers/types";
 import { InfluencerModal } from "./InfluencerModal";
+
+function TwitchIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z" />
+    </svg>
+  );
+}
+
+function TikTokIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.18 8.18 0 004.79 1.54V6.78a4.85 4.85 0 01-1.02-.09z" />
+    </svg>
+  );
+}
+
+const SOCIAL_ICONS: {
+  key: keyof InfluencerRow;
+  Icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}[] = [
+  { key: "youtube_url",   Icon: Youtube,    color: "text-red-400"    },
+  { key: "twitch_url",    Icon: TwitchIcon, color: "text-purple-400" },
+  { key: "instagram_url", Icon: Instagram,  color: "text-pink-400"   },
+  { key: "tiktok_url",    Icon: TikTokIcon, color: "text-white/70"   },
+  { key: "facebook_url",  Icon: Facebook,   color: "text-blue-400"   },
+];
 
 type Props = {
   influencers: InfluencerRow[];
@@ -57,14 +86,6 @@ export function InfluencersList({
                   ? inf.description_pt
                   : inf.description_es;
 
-            const socialCount = [
-              inf.facebook_url,
-              inf.instagram_url,
-              inf.tiktok_url,
-              inf.youtube_url,
-              inf.twitch_url,
-            ].filter(Boolean).length;
-
             return (
               <button
                 key={inf.id}
@@ -75,35 +96,45 @@ export function InfluencersList({
                   border: "1px solid rgba(255,215,0,0.15)",
                 }}
               >
-                {/* Photo banner */}
-                <div className="relative h-40 w-full overflow-hidden bg-black/30">
+                {/* Photo banner: 1:1 ratio, influencer always visible, character fades in on hover */}
+                <div
+                  className="relative w-full overflow-hidden"
+                  style={{ aspectRatio: "1 / 1", background: "linear-gradient(160deg,#0d0603 0%,#1a0e00 100%)" }}
+                >
+                  {/* Influencer photo — always visible */}
                   {inf.photo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
                       src={inf.photo_url}
                       alt={inf.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="absolute inset-0 h-full w-full object-contain transition-opacity duration-300 group-hover:opacity-0"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gold/30 text-5xl font-bebas">
+                    <div className="absolute inset-0 flex items-center justify-center text-gold/30 text-5xl font-bebas">
                       {inf.name.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
+
+                  {/* Character photo — fades in on hover */}
+                  {inf.character_photo_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={inf.character_photo_url}
+                      alt={`${inf.name} personaje`}
+                      className="absolute inset-0 h-full w-full object-contain opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+                      style={{ filter: "drop-shadow(0 0 12px rgba(255,215,0,0.3))" }}
+                    />
+                  )}
+
+                  {/* Bottom fade */}
+                  <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
                 </div>
 
                 {/* Body */}
                 <div className="p-4 flex flex-col gap-2 flex-1">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bebas text-xl tracking-widest text-white leading-tight">
-                      {inf.name}
-                    </h3>
-                    {socialCount > 0 && (
-                      <span className="text-[10px] text-white/30 font-poppins shrink-0 mt-1">
-                        {socialCount} red{socialCount !== 1 ? "es" : ""}
-                      </span>
-                    )}
-                  </div>
+                  <h3 className="font-bebas text-xl tracking-widest text-white leading-tight">
+                    {inf.name}
+                  </h3>
 
                   {description && (
                     <p className="font-poppins text-xs text-white/60 line-clamp-2 flex-1">
@@ -117,7 +148,18 @@ export function InfluencersList({
                     </span>
                   )}
 
-                  <span className="self-start mt-1 text-xs text-gold/70 font-poppins group-hover:text-gold transition-colors">
+                  {/* Social icons */}
+                  {SOCIAL_ICONS.some((s) => inf[s.key]) && (
+                    <div className="flex items-center gap-2 mt-1">
+                      {SOCIAL_ICONS.filter((s) => inf[s.key]).map(({ key, Icon, color }) => (
+                        <span key={key} className={`${color} opacity-70 group-hover:opacity-100 transition-opacity`}>
+                          <Icon className="h-4 w-4" />
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  <span className="self-start text-xs text-gold/70 font-poppins group-hover:text-gold transition-colors">
                     {viewMoreLabel} →
                   </span>
                 </div>

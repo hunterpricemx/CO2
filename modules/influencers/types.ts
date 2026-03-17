@@ -7,6 +7,7 @@ export interface InfluencerRow {
   name: string;
   slug: string;
   photo_url: string | null;
+  character_photo_url: string | null;
   description_es: string | null;
   description_en: string | null;
   description_pt: string | null;
@@ -26,6 +27,7 @@ export interface InfluencerFormData {
   name: string;
   slug: string;
   photo_url?: string | null;
+  character_photo_url?: string | null;
   description_es?: string | null;
   description_en?: string | null;
   description_pt?: string | null;

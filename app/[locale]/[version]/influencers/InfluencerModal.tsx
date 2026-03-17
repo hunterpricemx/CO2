@@ -80,21 +80,37 @@ export function InfluencerModal({ influencer, locale, onClose, streamerCodeLabel
           <X className="h-4 w-4" />
         </button>
 
-        {/* Photo */}
-        <div className="relative h-52 w-full bg-black/40">
+        {/* Photo banner: influencer always, character as floating overlay */}
+        <div
+          className="relative w-full overflow-hidden"
+          style={{ height: "280px", background: "linear-gradient(160deg,#0d0603 0%,#1a0e00 100%)" }}
+        >
+          {/* Influencer photo — always visible, main */}
           {influencer.photo_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={influencer.photo_url}
               alt={influencer.name}
-              className="w-full h-full object-cover"
+              className="absolute inset-0 h-full w-full object-contain"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gold/20 text-7xl font-bebas">
+            <div className="absolute inset-0 flex items-center justify-center text-gold/20 text-7xl font-bebas">
               {influencer.name.charAt(0).toUpperCase()}
             </div>
           )}
-          <div className="absolute inset-0 bg-linear-to-t from-[#111] via-transparent to-transparent" />
+
+          {/* Character photo — bottom-right corner */}
+          {influencer.character_photo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={influencer.character_photo_url}
+              alt={`${influencer.name} personaje`}
+              className="absolute bottom-0 right-0 h-4/5 w-auto object-contain object-bottom"
+              style={{ filter: "drop-shadow(0 0 12px rgba(255,215,0,0.35))" }}
+            />
+          )}
+
+          <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-[#111] via-transparent to-transparent" />
         </div>
 
         {/* Body */}

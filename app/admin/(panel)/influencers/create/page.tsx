@@ -25,6 +25,7 @@ function InfluencerForm({ action }: { action: "create" | "edit" }) {
   });
 
   const photoUrl = watch("photo_url");
+  const characterPhotoUrl = watch("character_photo_url");
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
@@ -64,13 +65,21 @@ function InfluencerForm({ action }: { action: "create" | "edit" }) {
           </div>
         </div>
 
-        {/* Foto */}
-        <ImageUploadField
-          label="Foto del influencer"
-          value={photoUrl}
-          onChange={(value) => setValue("photo_url", value, { shouldDirty: true })}
-          folder="influencers"
-        />
+        {/* Foto influencer + personaje */}
+        <div className="grid grid-cols-2 gap-4">
+          <ImageUploadField
+            label="Foto del influencer"
+            value={photoUrl}
+            onChange={(value) => setValue("photo_url", value, { shouldDirty: true })}
+            folder="influencers"
+          />
+          <ImageUploadField
+            label="Foto del personaje"
+            value={characterPhotoUrl}
+            onChange={(value) => setValue("character_photo_url", value, { shouldDirty: true })}
+            folder="influencers"
+          />
+        </div>
 
         {/* Descripción ES / EN / PT */}
         <div className="flex flex-col gap-1">
