@@ -23,9 +23,11 @@ export type NavItem =
 export async function Header({
   locale,
   version,
+  logoSrc,
 }: {
   locale: string;
   version: string;
+  logoSrc?: string;
 }) {
   const t = await getTranslations("nav");
 
@@ -90,7 +92,7 @@ export async function Header({
           <div className="flex items-center gap-2">
             {/* Version pill */}
             <span className="text-xs bg-gold/10 text-gold border border-gold/20 px-2 py-0.5 rounded-full font-medium">
-              {version === "1.0" ? "Classic Plus 1.0" : "Experience 2.0"}
+              {version === "1.0" ? "Evolution 2.0" : "Experience 2.0"}
             </span>
             <LanguageSelector />
           </div>
@@ -102,7 +104,7 @@ export async function Header({
         {/* Logo */}
         <Link href={lp(`/${version}`)} className="shrink-0">
           <Image
-            src={`/images/logos/conquer_classic_plus_${version === "1.0" ? "10" : "20"}_logo.png`}
+            src={logoSrc ?? `/images/logos/conquer_classic_plus_${version === "1.0" ? "10" : "20"}_logo.png`}
             alt={version === "1.0" ? "Conquer Classic Plus 1.0" : "Conquer Classic Plus 2.0"}
             width={160}
             height={50}

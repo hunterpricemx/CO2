@@ -11,9 +11,11 @@ import { useTranslations } from "next-intl";
 export function Footer({
   locale,
   version,
+  logoSrc,
 }: {
   locale: string;
   version: string;
+  logoSrc?: string;
 }) {
   const t = useTranslations("footer");
 
@@ -30,7 +32,7 @@ export function Footer({
       <div className="container mx-auto px-4 flex flex-col items-center gap-4 text-center">
         {/* Brand */}
         <Image
-          src={`/images/logos/conquer_classic_plus_${version === "1.0" ? "10" : "20"}_logo.png`}
+          src={logoSrc ?? `/images/logos/conquer_classic_plus_${version === "1.0" ? "10" : "20"}_logo.png`}
           alt={version === "1.0" ? "Conquer Classic Plus 1.0" : "Conquer Classic Plus 2.0"}
           width={180}
           height={56}

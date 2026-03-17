@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   X, ShieldAlert, LogIn, AlertCircle, CheckCircle2, ExternalLink,
-  User, Loader2, CreditCard,
+  User, Loader2, CreditCard, Copy, Check,
 } from "lucide-react";
 import type { PaymentConfig, DonationPackage } from "@/lib/game-db";
 import { createStripeCheckout, createTebexCheckout } from "@/app/[locale]/[version]/donate/actions";
@@ -65,9 +65,30 @@ type Props = {
   accountUsername: string;
 };
 
+const US_ZIP_CODES = [
+  "10001", "30301", "33101", "60601", "77001",
+  "85001", "19101", "90001", "98101", "20001",
+  "15201", "32801", "37201", "46201", "55401",
+  "64101", "73101", "84101", "72201", "53703",
+  "49503", "43215", "76102", "28202", "68102",
+  "53202", "85701", "87101",
+];
+
+function getRandomZip(): string {
+  return US_ZIP_CODES[Math.floor(Math.random() * US_ZIP_CODES.length)];
+}
+
 export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, packages, version, locale, sessionUsername, accountUsername }: Props) {
   const router = useRouter();
   const [modal, setModal] = useState<ModalState | null>(null);
+  const [tebexZip] = useState(() => getRandomZip());
+  const [zipCopied, setZipCopied] = useState(false);
+
+  function handleCopyZip() {
+    navigator.clipboard.writeText(tebexZip);
+    setZipCopied(true);
+    setTimeout(() => setZipCopied(false), 2000);
+  }
   const [charName, setCharName] = useState(sessionUsername);
   const [stripeError, setStripeError] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -382,16 +403,34 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
 
                       {/* Tebex button */}
                       {tebexActive && paymentConfig?.tebex_webstore_id && (
-                        <button
-                          onClick={handleTebexCheckout}
-                          disabled={isPending}
-                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 transition-colors disabled:opacity-60"
-                        >
-                          {isPending && pendingProvider === "tebex"
-                            ? <><Loader2 className="h-4 w-4 animate-spin" /> {labels.tebex_processing}</>
-                            : <><ExternalLink className="h-3.5 w-3.5" /> {labels.tebex_pay}</>
-                          }
-                        </button>
+                        <>
+                          <div className="flex items-start gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2.5">
+                            <AlertCircle className="w-4 h-4 text-yellow-400 shrink-0 mt-0.5" />
+                            <p className="text-xs text-yellow-200/80 leading-relaxed">
+                              La plataforma requiere un <strong className="text-yellow-300">código postal de EE.UU.</strong> al pagar con tarjeta. Copia y pega este:{" "}
+                              <button
+                                onClick={handleCopyZip}
+                                className="inline-flex items-center gap-1 font-mono font-bold text-yellow-300 bg-yellow-900/40 hover:bg-yellow-900/70 px-1.5 py-0.5 rounded transition-colors"
+                              >
+                                {tebexZip}
+                                {zipCopied
+                                  ? <Check className="w-3 h-3 text-green-400" />
+                                  : <Copy className="w-3 h-3" />
+                                }
+                              </button>
+                            </p>
+                          </div>
+                          <button
+                            onClick={handleTebexCheckout}
+                            disabled={isPending}
+                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 transition-colors disabled:opacity-60"
+                          >
+                            {isPending && pendingProvider === "tebex"
+                              ? <><Loader2 className="h-4 w-4 animate-spin" /> {labels.tebex_processing}</>
+                              : <><ExternalLink className="h-3.5 w-3.5" /> {labels.tebex_pay}</>
+                            }
+                          </button>
+                        </>
                       )}
 
                       {/* Stripe button */}

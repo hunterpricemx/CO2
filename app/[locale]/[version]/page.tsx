@@ -32,7 +32,7 @@ export default async function HomePage({
     getSiteSettings(),
   ]);
 
-  const versionLabel = version === "1.0" ? "Classic Plus 1.0" : "Experience 2.0";
+  const versionLabel = version === "1.0" ? "Evolution 2.0" : "Experience 2.0";
   const { heroBg, logoSrc: heroLogo, videoUrl, promoSlides } = getVersionAssets(siteSettings, version);
   const heroTitle = version === "1.0" ? t("hero_title_10") : t("hero_title_20");
   const downloadBg =
@@ -545,8 +545,8 @@ export default async function HomePage({
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={version === "1.0" ? "/images/icons/icon__20.png" : "/images/icons/icon__10.png"}
-            alt={version === "1.0" ? "2.0" : "1.0"}
+            src={version === "1.0" ? "/images/icons/icon__20.png" : "/images/icons/icon__evolution.png"}
+            alt={version === "1.0" ? "2.0" : "Evolution"}
             className="w-full h-full object-contain drop-shadow-lg"
           />
         </Link>

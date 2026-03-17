@@ -1,12 +1,19 @@
 ﻿import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { getSiteSettings } from "@/lib/site-settings";
 
 export const metadata: Metadata = {
-  title: "Conquer Classic Plus � Elige tu Experiencia",
+  title: "Conquer Classic Plus — Elige tu Experiencia",
 };
 
-export default function Home() {
+export default async function Home() {
+  const settings = await getSiteSettings();
+  const logo10 = settings.logo_v1;
+  const logo20 = settings.logo_v2;
+  const bg10   = settings.home_bg_v1;
+  const bg20   = settings.home_bg_v2;
+
   return (
     <>
       <style>{`
@@ -105,37 +112,38 @@ export default function Home() {
       `}</style>
 
       <main className="home-hero">
+        {/* LEFT — /1.0 */}
         <Link
           href="/1.0"
           className="home-hero-section"
-          style={{ backgroundImage: "url('/images/backgrounds/bh__home10.png')" }}
+          style={{ backgroundImage: `url('${bg10}')` }}
         >
           <div className="home-hero-overlay" />
           <div className="home-hero-content">
             <Image
-              src="/images/logos/conquer_classic_plus_10_logo.png"
+              src={logo10}
               alt="Conquer Classic Plus 1.0"
               width={200}
               height={100}
               className="home-hero-logo-img"
               priority
             />
-            <p className="home-hero-server">SERVER 1.0</p>
-            <h1 className="home-hero-title">CONQUER CLASSIC PLUS</h1>
-            <p className="home-hero-subtitle">¡ENTRA A LA VERDADERA ERA CLÁSICA!</p>
+            <p className="home-hero-server">2.0 EVOLUTION</p>
+            <h1 className="home-hero-title">CONQUER CLASSIC PLUS EVOLUTION</h1>
             <span className="home-hero-cta">ENTRAR</span>
           </div>
         </Link>
 
+        {/* RIGHT — /2.0 */}
         <Link
           href="/2.0"
           className="home-hero-section"
-          style={{ backgroundImage: "url('/images/backgrounds/bh__home20.png')" }}
+          style={{ backgroundImage: `url('${bg20}')` }}
         >
           <div className="home-hero-overlay" />
           <div className="home-hero-content">
             <Image
-              src="/images/logos/conquer_classic_plus_20_logo.png"
+              src={logo20}
               alt="Conquer Classic Plus 2.0"
               width={200}
               height={100}
@@ -143,8 +151,7 @@ export default function Home() {
               priority
             />
             <p className="home-hero-server">SERVER 2.0</p>
-            <h1 className="home-hero-title">CONQUER CLASSIC PLUS</h1>
-            <p className="home-hero-subtitle">¡ENTRA A LA ERA DEL 2008!!</p>
+            <h1 className="home-hero-title">CONQUER CLASSIC PLUS 2.0</h1>
             <span className="home-hero-cta">ENTRAR</span>
           </div>
         </Link>

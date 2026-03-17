@@ -28,6 +28,9 @@ export default function AdminLoginPage() {
     if (message.includes("email not confirmed")) {
       return "El correo no esta confirmado en Supabase.";
     }
+    if (message.includes("no tienes permisos") || message.includes("unauthorized")) {
+      return "Esta cuenta no tiene permisos de administrador.";
+    }
     if (message.includes("rate limit") || message.includes("too many requests")) {
       return "Demasiados intentos. Espera un momento e intenta de nuevo.";
     }

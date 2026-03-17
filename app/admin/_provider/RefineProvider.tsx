@@ -21,6 +21,22 @@ export function RefineProvider({ children }: { children: React.ReactNode }) {
           if (error) {
             return { success: false, error };
           }
+          // Verify admin role before allowing access.
+          const { data: { user } } = await supabaseRefineClient.auth.getUser();
+          const { data: profile } = user
+            ? await supabaseRefineClient
+                .from("profiles")
+                .select("role")
+                .eq("id", user.id)
+                .single()
+            : { data: null };
+          if (profile?.role !== "admin") {
+            await supabaseRefineClient.auth.signOut();
+            return {
+              success: false,
+              error: new Error("No tienes permisos de administrador."),
+            };
+          }
           return { success: true, redirectTo: "/admin" };
         },
         logout: async () => {

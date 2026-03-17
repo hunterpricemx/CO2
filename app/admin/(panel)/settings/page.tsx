@@ -25,9 +25,13 @@ export default function AdminSiteSettingsPage() {
   const [logoV1, setLogoV1] = useState<string | null>(null);
   const [logoV2, setLogoV2] = useState<string | null>(null);
 
-  // Backgrounds
+  // Backgrounds (páginas internas)
   const [bgV1, setBgV1] = useState<string | null>(null);
   const [bgV2, setBgV2] = useState<string | null>(null);
+
+  // Backgrounds (home / landing)
+  const [homeBgV1, setHomeBgV1] = useState<string | null>(null);
+  const [homeBgV2, setHomeBgV2] = useState<string | null>(null);
 
   // Community links
   const [discordUrlV1, setDiscordUrlV1] = useState("");
@@ -66,6 +70,8 @@ export default function AdminSiteSettingsPage() {
         setLogoV2(map.logo_v2 || "/images/logos/conquer_classic_plus_20_logo.png");
         setBgV1(map.hero_bg_v1 || "/images/backgrounds/bg__main10.jpg");
         setBgV2(map.hero_bg_v2 || "/images/backgrounds/bg__main20.jpg");
+        setHomeBgV1(map.home_bg_v1 || "/images/backgrounds/bh__home10.png");
+        setHomeBgV2(map.home_bg_v2 || "/images/backgrounds/bh__home20.png");
         setDiscordUrlV1(map.discord_url_v1 || "");
         setDiscordUrlV2(map.discord_url_v2 || "");
         setVideoV1(map.home_video_url_v1 || "");
@@ -190,6 +196,34 @@ export default function AdminSiteSettingsPage() {
             label="Fondo v2.0"
             value={bgV2}
             onChange={(v) => setBgV2(v)}
+            folder="site-settings"
+          />
+        </div>
+      </Section>
+
+      {/* ── Fondos de Landing (home) ── */}
+      <Section
+        title="Imágenes de Fondo (Landing)"
+        description="Fondos del panel de selección en la página principal (/)."
+        onSave={() =>
+          save([
+            { key: "home_bg_v1", value: homeBgV1 || "" },
+            { key: "home_bg_v2", value: homeBgV2 || "" },
+          ])
+        }
+        saving={saving}
+      >
+        <div className="grid md:grid-cols-2 gap-6">
+          <ImageUploadField
+            label="Fondo Landing 1.0"
+            value={homeBgV1}
+            onChange={(v) => setHomeBgV1(v)}
+            folder="site-settings"
+          />
+          <ImageUploadField
+            label="Fondo Landing 2.0"
+            value={homeBgV2}
+            onChange={(v) => setHomeBgV2(v)}
             folder="site-settings"
           />
         </div>

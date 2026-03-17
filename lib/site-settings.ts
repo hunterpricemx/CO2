@@ -11,6 +11,8 @@ export type SiteSettings = {
   logo_v2: string;
   hero_bg_v1: string;
   hero_bg_v2: string;
+  home_bg_v1: string;
+  home_bg_v2: string;
   discord_url_v1: string;
   discord_url_v2: string;
   home_video_url_v1: string;
@@ -28,6 +30,8 @@ const DEFAULTS: SiteSettings = {
   logo_v2:           "/images/logos/conquer_classic_plus_20_logo.png",
   hero_bg_v1:        "/images/backgrounds/bg__main10.jpg",
   hero_bg_v2:        "/images/backgrounds/bg__main20.jpg",
+  home_bg_v1:        "/images/backgrounds/bh__home10.png",
+  home_bg_v2:        "/images/backgrounds/bh__home20.png",
   discord_url_v1:    "",
   discord_url_v2:    "",
   home_video_url_v1: "",
@@ -79,6 +83,8 @@ async function _fetchSiteSettings(): Promise<SiteSettings> {
       logo_v2:           map.logo_v2           || DEFAULTS.logo_v2,
       hero_bg_v1:        map.hero_bg_v1        || DEFAULTS.hero_bg_v1,
       hero_bg_v2:        map.hero_bg_v2        || DEFAULTS.hero_bg_v2,
+      home_bg_v1:        map.home_bg_v1        || DEFAULTS.home_bg_v1,
+      home_bg_v2:        map.home_bg_v2        || DEFAULTS.home_bg_v2,
       discord_url_v1:    map.discord_url_v1    || "",
       discord_url_v2:    map.discord_url_v2    || "",
       home_video_url_v1: map.home_video_url_v1 || "",
