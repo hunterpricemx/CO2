@@ -166,23 +166,54 @@ export function GameServerForm({ initial }: Props) {
 
       {/* Resultado */}
       {result && (
-        <div className={`flex items-start gap-3 px-4 py-3 rounded-lg text-sm border ${
+        <div className={`px-4 py-3 rounded-lg text-sm border ${
           result.ok
             ? "bg-green-900/20 border-green-800/40 text-green-300"
             : "bg-red-900/20 border-red-800/40 text-red-300"
         }`}>
-          {result.ok ? <CheckCircle className="h-4 w-4 mt-0.5 shrink-0" /> : <XCircle className="h-4 w-4 mt-0.5 shrink-0" />}
-          <div>
-            <p>{result.msg}</p>
-            {result.data && (
-              <p className="text-xs mt-1 opacity-70">
-                {"accounts" in result.data && `Cuentas: ${String(result.data.accounts)}`}
-                {"characters" in result.data && ` · Personajes: ${String(result.data.characters)}`}
-                {"characters_v1" in result.data && ` · Personajes v1: ${String(result.data.characters_v1)}`}
-                {"characters_v2" in result.data && ` · Personajes v2: ${String(result.data.characters_v2)}`}
-              </p>
-            )}
+          <div className="flex items-center gap-2 font-semibold mb-2">
+            {result.ok ? <CheckCircle className="h-4 w-4 shrink-0" /> : <XCircle className="h-4 w-4 shrink-0" />}
+            {result.msg}
           </div>
+          {result.data && (
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs font-mono opacity-80 mt-1 border-t border-white/10 pt-2">
+              {"from_host" in result.data && (
+                <span>🖥 Origen: <span className="text-white">{String(result.data.from_host)}</span></span>
+              )}
+              {"to_host" in result.data && (
+                <span>🎯 Destino: <span className="text-white">{String(result.data.to_host)}:{String(result.data.to_port ?? "")}</span></span>
+              )}
+              {"db_name" in result.data && (
+                <span>🗄 DB: <span className="text-white">{String(result.data.db_name)}</span></span>
+              )}
+              {"db_user" in result.data && (
+                <span>👤 Usuario: <span className="text-white">{String(result.data.db_user)}</span></span>
+              )}
+              {"latency_ms" in result.data && (
+                <span>⚡ Latencia: <span className="text-white">{String(result.data.latency_ms)}ms</span></span>
+              )}
+              {"accounts" in result.data && (
+                <span>👥 Cuentas: <span className="text-white">{String(result.data.accounts)}</span></span>
+              )}
+              {"characters" in result.data && (
+                <span>⚔️ Personajes: <span className="text-white">{String(result.data.characters)}</span></span>
+              )}
+              {"payments_table" in result.data && (
+                <span>💳 Tabla pagos: <span className={result.data.payments_table_exists ? "text-green-400" : "text-red-400"}>
+                  {String(result.data.payments_table)} {result.data.payments_table_exists ? "✓" : "✗ NO EXISTE"}
+                </span></span>
+              )}
+              {"error" in result.data && (
+                <span className="col-span-2 text-red-300">❌ {String(result.data.error)}</span>
+              )}
+              {"characters_v1" in result.data && (
+                <span>⚔️ Personajes v1: <span className="text-white">{String(result.data.characters_v1)}</span></span>
+              )}
+              {"characters_v2" in result.data && (
+                <span>⚔️ Personajes v2: <span className="text-white">{String(result.data.characters_v2)}</span></span>
+              )}
+            </div>
+          )}
         </div>
       )}
 

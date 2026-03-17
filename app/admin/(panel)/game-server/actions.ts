@@ -116,24 +116,43 @@ export async function testGameServerConnection(config: ServerConfigData, version
     }
 
     const mysql = await import("mysql2/promise");
+    const t0 = Date.now();
     const conn = await mysql.createConnection({
       host, port, user, password, database: dbName, connectTimeout: 8000,
     });
+    const latency = Date.now() - t0;
 
     const [[acctRow]]  = await conn.query<RowDataPacket[]>(`SELECT COUNT(*) as total FROM \`${tableAccounts}\``);
     const [[charRow]]  = await conn.query<RowDataPacket[]>(`SELECT COUNT(*) as total FROM \`${tableChars}\``);
+    const tablePayments = (config[`table_payments_${v}` as keyof ServerConfigData] as string).trim();
+    const [payRows] = await conn.query<RowDataPacket[]>(
+      `SELECT COUNT(*) as total FROM information_schema.tables WHERE table_schema = ? AND table_name = ?`,
+      [dbName, tablePayments]
+    );
+    const paymentsExists = (payRows[0]?.total ?? 0) > 0;
     await conn.end();
 
     return {
       success: true,
       message: `Conexión V${version}.0 exitosa.`,
-      data: { accounts: acctRow.total, characters: charRow.total },
+      data: {
+        from_host: "EC2 (3.213.176.132)",
+        to_host: host,
+        to_port: port,
+        db_name: dbName,
+        db_user: user,
+        latency_ms: latency,
+        accounts: acctRow.total,
+        characters: charRow.total,
+        payments_table: tablePayments,
+        payments_table_exists: paymentsExists,
+      },
     };
   } catch (e: unknown) {
     const v = version === 1 ? "v1" : "v2";
     const host = (config[`db_host_${v}` as keyof ServerConfigData] as string) || "(sin host)";
     const port = config[`db_port_${v}` as keyof ServerConfigData] as number || 3306;
-    return { success: false, message: `[${host}:${port}] ${getErrorMessage(e, "Error de conexión.")}` };
+    return { success: false, message: `Error de conexión`, data: { from_host: "EC2 (3.213.176.132)", to_host: host, to_port: port, error: getErrorMessage(e, "Error desconocido") } };
   }
 }
 
