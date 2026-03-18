@@ -9,13 +9,7 @@ type SettingsLog = {
   id: string;
   created_at: string;
   source: string;
-  event: string;
-  message: string;
-  admin_username: string | null;
-  setting_key: string | null;
-  before_value: string | null;
-  after_value: string | null;
-  metadata: Record<string, unknown> | null;
+  summary: string;
 };
 
 const SOURCE_COLORS: Record<string, string> = {
@@ -38,7 +32,6 @@ export default function PublicSettingsLogsPage() {
   const [logs, setLogs] = useState<SettingsLog[]>([]);
   const [source, setSource] = useState("all");
   const [search, setSearch] = useState("");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const homeHref = locale === "es" ? `/${version}` : `/${locale}/${version}`;
@@ -100,7 +93,7 @@ export default function PublicSettingsLogsPage() {
           </select>
           <input
             type="text"
-            placeholder="Buscar admin, clave, evento, mensaje..."
+            placeholder="Buscar por tipo de ajuste..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 min-w-50 bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-1.5 text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-white/30"
@@ -118,7 +111,7 @@ export default function PublicSettingsLogsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/6">
-                    {["Fecha/Hora", "Fuente", "Admin", "Clave", "Evento", "Mensaje"].map((h) => (
+                    {["Fecha/Hora", "Tipo", "Actualizacion"].map((h) => (
                       <th key={h} className="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wider whitespace-nowrap">
                         {h}
                       </th>
@@ -127,12 +120,10 @@ export default function PublicSettingsLogsPage() {
                 </thead>
                 <tbody>
                   {logs.map((log) => {
-                    const isExpanded = expandedId === log.id;
                     return (
                       <React.Fragment key={log.id}>
                         <tr
-                          onClick={() => setExpandedId(isExpanded ? null : log.id)}
-                          className="border-b border-white/4 hover:bg-white/3 transition-colors cursor-pointer"
+                          className="border-b border-white/4 hover:bg-white/3 transition-colors"
                         >
                           <td className="px-4 py-2.5 text-gray-400 text-xs whitespace-nowrap">
                             {new Date(log.created_at).toLocaleString("es-ES", {
@@ -142,50 +133,16 @@ export default function PublicSettingsLogsPage() {
                           </td>
                           <td className="px-4 py-2.5">
                             <span className={`inline-flex text-[11px] px-2 py-0.5 rounded-full border font-medium ${SOURCE_COLORS[log.source] ?? "bg-gray-700/40 text-gray-300 border-gray-600/40"}`}>
-                              {log.source}
+                              {log.source === "payment_config" ? "Pagos" : "Ajustes del sitio"}
                             </span>
                           </td>
-                          <td className="px-4 py-2.5 text-gray-300 text-xs font-mono whitespace-nowrap">
-                            {log.admin_username ?? <span className="text-gray-600">—</span>}
-                          </td>
-                          <td className="px-4 py-2.5 text-gray-200 text-xs font-mono whitespace-nowrap">
-                            {log.setting_key ?? <span className="text-gray-600">—</span>}
-                          </td>
-                          <td className="px-4 py-2.5 text-sky-300 font-mono text-xs whitespace-nowrap">
+                          <td className="px-4 py-2.5 text-gray-300 text-sm">
                             <span className="inline-flex items-center gap-1">
                               <Info className="w-3 h-3" />
-                              {log.event}
+                              {log.summary}
                             </span>
                           </td>
-                          <td className="px-4 py-2.5 text-gray-300 text-xs max-w-xs truncate">
-                            {log.message}
-                          </td>
                         </tr>
-
-                        {isExpanded && (
-                          <tr className="border-b border-white/4 bg-[#0d0d0d]">
-                            <td colSpan={6} className="px-6 py-4">
-                              <div className="grid grid-cols-1 gap-3 text-xs">
-                                <div>
-                                  <span className="text-gray-500">before_value: </span>
-                                  <span className="text-gray-300 font-mono break-all">{log.before_value ?? "—"}</span>
-                                </div>
-                                <div>
-                                  <span className="text-gray-500">after_value: </span>
-                                  <span className="text-gray-300 font-mono break-all">{log.after_value ?? "—"}</span>
-                                </div>
-                                {log.metadata && (
-                                  <div>
-                                    <span className="text-gray-500 block mb-1">metadata:</span>
-                                    <pre className="bg-[#0a0a0a] border border-white/6 rounded-lg p-3 text-gray-400 text-[11px] overflow-x-auto">
-                                      {JSON.stringify(log.metadata, null, 2)}
-                                    </pre>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
                       </React.Fragment>
                     );
                   })}
