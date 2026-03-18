@@ -518,6 +518,7 @@
     "confirm_new_password": "Confirmar Nova Senha",
     "new_email": "Novo Endereço de E-mail",
     "current_email_label": "E-mail atual",
+    "no_email": "Sem e-mail cadastrado",
     "save_changes": "Salvar Alterações",
     "cancel": "Cancelar",
     "settings_title": "Configurações",
@@ -526,6 +527,8 @@
     "email_changed": "E-mail atualizado com sucesso!",
     "errors": {
       "wrong_password": "A senha atual está incorreta",
+      "wrong_current_email": "O e-mail atual informado não corresponde à sua conta",
+      "rate_limited": "Muitas tentativas. Aguarde 15 minutos antes de tentar novamente",
       "same_email": "O novo e-mail é igual ao atual",
       "required": "Este campo é obrigatório",
       "unknown_error": "Erro inesperado, tente novamente"

@@ -29,6 +29,7 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
   const [showPassword, setShowPassword] = useState(false);
 
   const schema = z.object({
+    currentEmail: z.string().min(1, t("errors.required")).email(ta("errors.invalid_email")),
     currentPassword: z.string().min(1, t("errors.required")),
     newEmail: z.string().email(ta("errors.invalid_email")),
   });
@@ -38,17 +39,17 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
     mode: "onChange",
-    defaultValues: { currentPassword: "", newEmail: "" },
+    defaultValues: { currentEmail: "", currentPassword: "", newEmail: "" },
   });
 
-  function onSubmit({ currentPassword, newEmail }: FormData) {
+  function onSubmit({ currentEmail, currentPassword, newEmail }: FormData) {
     if (newEmail === currentEmail) {
       form.setError("newEmail", { message: t("errors.same_email") });
       return;
     }
     startTransition(async () => {
       const versionNum = version === "1.0" ? 1 : 2;
-      const result = await changeEmailAction({ currentPassword, newEmail, version: versionNum });
+      const result = await changeEmailAction({ currentEmail, currentPassword, newEmail, version: versionNum });
       if (result.success) {
         toast.success(t("email_changed"));
         form.reset();
@@ -57,11 +58,15 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
         const msg =
           result.error === "wrong_password"
             ? t("errors.wrong_password")
-            : result.error === "email_taken"
-              ? ta("errors.email_taken")
-              : result.error === "invalid_email"
-                ? ta("errors.invalid_email")
-                : t("errors.unknown_error");
+            : result.error === "wrong_current_email"
+              ? t("errors.wrong_current_email")
+              : result.error === "rate_limited"
+                ? t("errors.rate_limited")
+                : result.error === "email_taken"
+                ? ta("errors.email_taken")
+                : result.error === "invalid_email"
+                  ? ta("errors.invalid_email")
+                  : t("errors.unknown_error");
         toast.error(msg);
       }
     });
@@ -88,12 +93,28 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
       {/* Collapsible form */}
       {open && (
         <div className="px-6 pb-6 flex flex-col gap-4 border-t border-white/10">
-          <p className="text-xs text-white/40 pt-4">
-            {t("current_email_label")}: <span className="text-white/60">{currentEmail}</span>
-          </p>
-
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+              {/* Current Email (validation) */}
+              <FormField
+                control={form.control}
+                name="currentEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-white/70">{t("current_email_label")}</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="email"
+                        placeholder="tu@correo.com"
+                        className="bg-background border-surface/50"
+                        autoComplete="email"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               {/* New Email */}
               <FormField
                 control={form.control}

@@ -253,10 +253,6 @@ export default async function MyAccountPage({
                   <span className="text-gold font-semibold">{session.username}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-white/10">
-                  <span className="text-white/60">Email</span>
-                  <span className="text-white/80 text-xs break-all text-right max-w-[60%]">{session.email}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-white/10">
                   <span className="text-white/60">VIP</span>
                   <Link
                     href={`${homeHref}/vip`}

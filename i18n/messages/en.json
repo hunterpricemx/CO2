@@ -518,6 +518,7 @@
     "confirm_new_password": "Confirm New Password",
     "new_email": "New Email Address",
     "current_email_label": "Current email",
+    "no_email": "No email registered",
     "save_changes": "Save Changes",
     "cancel": "Cancel",
     "settings_title": "Settings",
@@ -526,6 +527,8 @@
     "email_changed": "Email updated successfully!",
     "errors": {
       "wrong_password": "Current password is incorrect",
+      "wrong_current_email": "The current email you entered does not match your account",
+      "rate_limited": "Too many attempts. Please wait 15 minutes before trying again",
       "same_email": "New email is the same as current",
       "required": "This field is required",
       "unknown_error": "Unexpected error, please try again"

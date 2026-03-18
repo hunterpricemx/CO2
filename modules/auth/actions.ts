@@ -23,6 +23,7 @@ import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 import { getGameDb, type AccountRow } from "@/lib/game-db";
 import { setGameSession, clearGameSession, getGameSession } from "@/lib/session";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { ActionResult } from "@/types";
 import type { GameLoginInput, GameRegisterInput, LoginInput, RegisterInput } from "./types";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
@@ -222,13 +223,23 @@ export async function changePasswordAction(input: {
  */
 export async function changeEmailAction(input: {
   currentPassword: string;
+  currentEmail: string;
   newEmail: string;
   version: 1 | 2;
 }): Promise<ActionResult> {
   const session = await getGameSession();
   if (!session) return { success: false, error: "unauthorized" };
 
-  const { currentPassword, newEmail, version } = input;
+  // Rate limit: max 5 attempts per user per 15 minutes
+  const rl = checkRateLimit("change_email", String(session.uid), { max: 5, windowMs: 15 * 60 * 1000 });
+  if (!rl.ok) return { success: false, error: "rate_limited" };
+
+  const { currentPassword, currentEmail, newEmail, version } = input;
+
+  // Verify the user knows their current email
+  if (currentEmail.trim().toLowerCase() !== (session.email ?? "").trim().toLowerCase()) {
+    return { success: false, error: "wrong_current_email" };
+  }
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(newEmail)) {

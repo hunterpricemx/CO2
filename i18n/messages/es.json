@@ -518,6 +518,7 @@
     "confirm_new_password": "Confirmar Nueva Contraseña",
     "new_email": "Nuevo Correo Electrónico",
     "current_email_label": "Correo actual",
+    "no_email": "Sin correo registrado",
     "save_changes": "Guardar Cambios",
     "cancel": "Cancelar",
     "settings_title": "Configuración",
@@ -526,6 +527,8 @@
     "email_changed": "¡Correo actualizado correctamente!",
     "errors": {
       "wrong_password": "La contraseña actual es incorrecta",
+      "wrong_current_email": "El correo actual ingresado no coincide con tu cuenta",
+      "rate_limited": "Demasiados intentos. Espera 15 minutos antes de intentarlo de nuevo",
       "same_email": "El nuevo correo es igual al actual",
       "required": "Este campo es obligatorio",
       "unknown_error": "Error inesperado, inténtalo de nuevo"

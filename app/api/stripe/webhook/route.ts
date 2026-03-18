@@ -197,7 +197,7 @@ export async function POST(req: NextRequest) {
         product: String(meta.package_id ?? don.package_id ?? ""),
         price: Number(don.amount_paid ?? 0),
         basketIdent: String(donationId),
-        status: 3,
+        status: 1,
       });
 
       if (!accountName) {
