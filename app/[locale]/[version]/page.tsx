@@ -33,7 +33,7 @@ export default async function HomePage({
   ]);
 
   const versionLabel = version === "1.0" ? "Evolution 2.0" : "Experience 2.0";
-  const { heroBg, logoSrc: heroLogo, videoUrl, promoSlides } = getVersionAssets(siteSettings, version);
+  const { heroBg, logoSrc: heroLogo, discordUrl, videoUrl, promoSlides } = getVersionAssets(siteSettings, version);
   const heroTitle = version === "1.0" ? t("hero_title_10") : t("hero_title_20");
   const downloadBg =
     version === "1.0"
@@ -508,7 +508,7 @@ export default async function HomePage({
                   {t("sidebar_discord_text")}
                 </p>
                 <a
-                  href="https://discord.gg/"
+                  href={discordUrl || "https://discord.gg/"}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block text-center py-3 rounded-lg font-poppins font-bold text-white text-sm hover:-translate-y-0.5 transition-all duration-300"
