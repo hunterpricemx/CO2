@@ -98,8 +98,7 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
   const tebexActive  = paymentConfig?.tebex_enabled  ?? false;
   const anyActive    = stripeActive || tebexActive;
 
-  // Only allow the test user to purchase during development mode
-  const canBuy = accountUsername === "arael120";
+  const canBuy = version === "2.0";
 
   function handleBuy(pkg: DonationPackage) {
     if (!canBuy) return;
