@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { X } from "lucide-react";
 
 /**
@@ -9,8 +10,12 @@ import { X } from "lucide-react";
  */
 export function DisclaimerBanner() {
   const [dismissed, setDismissed] = useState(false);
+  const pathname = usePathname();
 
-  if (dismissed) return null;
+  // Show only on 1.0 routes, supporting both /1.0/... and /{locale}/1.0/...
+  const isVersionOneRoute = /^\/(?:[a-z]{2}\/)?1\.0(?:\/|$)/i.test(pathname ?? "");
+
+  if (dismissed || !isVersionOneRoute) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-3 bg-amber-500/95 backdrop-blur-sm px-4 py-2.5 text-black text-sm shadow-lg">
