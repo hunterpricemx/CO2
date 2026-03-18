@@ -43,6 +43,7 @@ const NAV_SYSTEM = [
   { href: "/admin/game-server",   icon: Server,      label: "Game Server",  permission: "gameServer" as AdminPanelPermission },
   { href: "/admin/payments",      icon: CreditCard,  label: "Pagos",        permission: "payments"   as AdminPanelPermission },
   { href: "/admin/payment-logs",  icon: ScrollText,  label: "→ Logs Compras", permission: "payments" as AdminPanelPermission },
+  { href: "/admin/settings-logs", icon: ScrollText,  label: "→ Log de Ajustes", permission: "settings" as AdminPanelPermission },
 ];
 
 export function AdminSidebar() {

@@ -1,0 +1,6 @@
+import { requireAdminPanelAccess } from "@/lib/admin/auth";
+
+export default async function SettingsLogsLayout({ children }: { children: React.ReactNode }) {
+  await requireAdminPanelAccess("settings");
+  return children;
+}
