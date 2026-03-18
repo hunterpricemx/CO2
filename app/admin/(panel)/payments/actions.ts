@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getGameDb } from "@/lib/game-db";
 import { revalidatePath } from "next/cache";
 import { logPayment } from "@/lib/payment-logger";
+import { getCurrentAdminContext } from "@/lib/admin/auth";
+import { logSettingChange } from "@/lib/settings-logger";
 
 export type PaymentConfigData = {
   stripe_enabled:    boolean;
@@ -32,6 +34,37 @@ export type ActionResult = {
 
 function sanitizeTableName(table: string): string {
   return table.replace(/`/g, "").trim() || "dbb_payments";
+}
+
+function normalizeTebexPrivateKey(rawSecret: string, webstoreId: string): string {
+  let secret = rawSecret.trim();
+  if (!secret) return "";
+
+  const hadBasicPrefix = /^Basic\s+/i.test(secret);
+  secret = secret.replace(/^Basic\s+/i, "").trim();
+
+  let candidate = secret;
+  if (hadBasicPrefix) {
+    try {
+      const decoded = Buffer.from(secret, "base64").toString("utf8").trim();
+      if (decoded.includes(":")) {
+        candidate = decoded;
+      }
+    } catch {
+      // Keep original value if it is not base64.
+    }
+  }
+
+  if (candidate.includes(":")) {
+    const parts = candidate.split(":");
+    const left = parts.shift()?.trim() ?? "";
+    const right = parts.join(":").trim();
+    if (right && (!left || left === webstoreId.trim())) {
+      return right;
+    }
+  }
+
+  return secret;
 }
 
 async function resolveCharacterForUsername(params: {
@@ -459,8 +492,8 @@ export async function testTebexConnection(): Promise<ActionResult & { data?: Rec
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const d = data as any;
-  const webstoreId = d?.tebex_webstore_id;
-  const privateKey = d?.tebex_secret;
+  const webstoreId = String(d?.tebex_webstore_id ?? "").trim();
+  const privateKey = normalizeTebexPrivateKey(String(d?.tebex_secret ?? ""), webstoreId);
 
   if (!webstoreId) {
     return { success: false, message: "No hay Webstore ID guardado. Guarda la configuración primero." };
@@ -517,6 +550,7 @@ export async function getSecretValues(): Promise<{ stripe_sk_test: string; strip
 
 export async function savePaymentConfig(config: PaymentConfigData): Promise<ActionResult> {
   const supabase = await createClient();
+  const admin = await getCurrentAdminContext();
 
   const { data: existingRow } = await supabase
     .from("server_config")
@@ -534,7 +568,7 @@ export async function savePaymentConfig(config: PaymentConfigData): Promise<Acti
     stripe_pk_test:    config.stripe_pk_test,
     stripe_pk_live:    config.stripe_pk_live,
     tebex_enabled:     config.tebex_enabled,
-    tebex_webstore_id: config.tebex_webstore_id,
+    tebex_webstore_id: config.tebex_webstore_id.trim(),
     tebex_uri_v1:      config.tebex_uri_v1.trim(),
     tebex_uri_v2:      config.tebex_uri_v2.trim(),
     tebex_payment_table: config.tebex_payment_table.trim(),
@@ -551,7 +585,7 @@ export async function savePaymentConfig(config: PaymentConfigData): Promise<Acti
   // Only update secret keys if the user typed a new value
   if (config.stripe_sk_test.trim() !== "") payload.stripe_sk_test = config.stripe_sk_test;
   if (config.stripe_sk_live.trim() !== "") payload.stripe_sk_live = config.stripe_sk_live;
-  if (config.tebex_secret.trim()   !== "") payload.tebex_secret   = config.tebex_secret;
+  if (config.tebex_secret.trim()   !== "") payload.tebex_secret   = normalizeTebexPrivateKey(config.tebex_secret, config.tebex_webstore_id);
   if (config.tebex_webhook_secret.trim() !== "") payload.tebex_webhook_secret = config.tebex_webhook_secret;
 
   const optionalServerConfigColumns = [
@@ -573,6 +607,29 @@ export async function savePaymentConfig(config: PaymentConfigData): Promise<Acti
 
   const { error } = await supabase.from("server_config").upsert(payload);
   if (error) return { success: false, message: error.message };
+
+  const changedEntries = Object.entries(payload).filter(([key, value]) => {
+    if (key === "id" || key === "updated_at") return false;
+    const previousValue = (existingRow as Record<string, unknown> | null)?.[key];
+    return previousValue !== value;
+  });
+
+  for (const [key, value] of changedEntries) {
+    const previousValue = (existingRow as Record<string, unknown> | null)?.[key];
+    await logSettingChange({
+      source: "payment_config",
+      event: "payment_config_updated",
+      message: `Configuración de pago actualizada: ${key}`,
+      admin_id: admin?.id ?? null,
+      admin_username: admin?.username ?? null,
+      key,
+      before_value: previousValue == null ? null : String(previousValue),
+      after_value: value == null ? null : String(value),
+      metadata: {
+        page: "/admin/payments",
+      },
+    });
+  }
 
   revalidatePath("/admin/payments");
   if (missingColumns.length > 0) {
