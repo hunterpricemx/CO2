@@ -142,15 +142,6 @@ export async function gameRegisterAction(input: GameRegisterInput): Promise<Acti
       return { success: false, error: "username_taken" };
     }
 
-    // Check email uniqueness
-    const [eRows] = await conn.execute<RowDataPacket[]>(
-      `SELECT EntityID FROM \`${config.table_accounts}\` WHERE Email = ? LIMIT 1`,
-      [email],
-    );
-    if (eRows.length > 0) {
-      return { success: false, error: "email_taken" };
-    }
-
     // Hash password using the same algorithm as the game server
     const salt = randomBytes(16).toString("hex"); // 32-char hex
     const hash = hashGamePassword(password, salt);
@@ -259,13 +250,6 @@ export async function changeEmailAction(input: {
     if (hashGamePassword(currentPassword, account.Salt) !== account.Password) {
       return { success: false, error: "wrong_password" };
     }
-
-    // Check email uniqueness
-    const [emailRows] = await conn.execute<RowDataPacket[]>(
-      `SELECT EntityID FROM \`${config.table_accounts}\` WHERE Email = ? AND EntityID != ? LIMIT 1`,
-      [newEmail, session.uid],
-    );
-    if (emailRows.length > 0) return { success: false, error: "email_taken" };
 
     await conn.execute(
       `UPDATE \`${config.table_accounts}\` SET Email = ? WHERE EntityID = ?`,

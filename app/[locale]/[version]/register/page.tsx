@@ -69,7 +69,6 @@ export default function RegisterPage() {
   type FormData = z.infer<typeof schema>;
 
   const errorMap: Record<string, string> = {
-    email_taken: t("errors.email_taken"),
     username_taken: t("errors.username_taken"),
     weak_password: t("errors.weak_password"),    "captcha_error": t("errors.captcha_error"),  };
 

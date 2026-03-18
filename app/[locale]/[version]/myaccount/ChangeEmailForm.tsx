@@ -62,8 +62,6 @@ export function ChangeEmailForm({ currentEmail }: { currentEmail: string }) {
               ? t("errors.wrong_current_email")
               : result.error === "rate_limited"
                 ? t("errors.rate_limited")
-                : result.error === "email_taken"
-                ? ta("errors.email_taken")
                 : result.error === "invalid_email"
                   ? ta("errors.invalid_email")
                   : t("errors.unknown_error");
