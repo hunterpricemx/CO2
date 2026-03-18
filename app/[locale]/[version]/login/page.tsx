@@ -83,7 +83,7 @@ export default function LoginPage() {
         return;
       }
       const next = searchParams.get("next");
-      router.push(next ?? vp("/"));
+      router.push(next ?? vp("/myaccount"));
       router.refresh();
     });
   }
