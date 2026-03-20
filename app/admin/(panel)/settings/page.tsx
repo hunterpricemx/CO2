@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Save, Code } from "lucide-react";
+import { Plus, Trash2, Save, Code, Send } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import ImageUploadField from "@/components/admin/ImageUploadField";
 import type { PromoSlide } from "@/lib/site-settings";
@@ -48,6 +48,16 @@ export default function AdminSiteSettingsPage() {
   // Custom scripts
   const [scriptHead, setScriptHead] = useState("");
   const [scriptFooter, setScriptFooter] = useState("");
+
+  // SMTP test
+  const [smtpTestEmail, setSmtpTestEmail] = useState("mariano@hunterprice.mx");
+  const [smtpTesting, setSmtpTesting] = useState(false);
+  const [smtpTestResult, setSmtpTestResult] = useState<{
+    ok: boolean;
+    message: string;
+    at: string;
+    debug?: unknown;
+  } | null>(null);
 
   /* ── Load current settings ── */
   useEffect(() => {
@@ -104,6 +114,60 @@ export default function AdminSiteSettingsPage() {
       toast.error("No se pudieron guardar los ajustes.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function sendSmtpTest() {
+    const email = smtpTestEmail.trim();
+    if (!email) {
+      toast.error("Ingresa un correo destino para la prueba SMTP.");
+      return;
+    }
+
+    setSmtpTesting(true);
+    try {
+      const res = await fetch("/api/admin/smtp-test", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ to: email }),
+      });
+
+      const data = (await res.json()) as {
+        error?: string;
+        ok?: boolean;
+        message?: string;
+        debug?: unknown;
+      };
+      if (!res.ok || !data.ok) {
+        const message = data.error || "No se pudo enviar el correo de prueba.";
+        setSmtpTestResult({
+          ok: false,
+          message,
+          at: new Date().toLocaleString(),
+          debug: data.debug,
+        });
+        throw new Error(message);
+      }
+
+      setSmtpTestResult({
+        ok: true,
+        message: data.message || `Correo de prueba enviado correctamente a ${email}`,
+        at: new Date().toLocaleString(),
+        debug: data.debug,
+      });
+      toast.success(`Correo de prueba enviado a ${email}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Error enviando correo de prueba.";
+      if (!smtpTestResult || smtpTestResult.ok) {
+        setSmtpTestResult({
+          ok: false,
+          message,
+          at: new Date().toLocaleString(),
+        });
+      }
+      toast.error(message);
+    } finally {
+      setSmtpTesting(false);
     }
   }
 
@@ -382,6 +446,48 @@ export default function AdminSiteSettingsPage() {
           </div>
         </div>
       </Section>
+
+      {/* ── SMTP Test ── */}
+      <Section
+        title="Prueba SMTP"
+        description="Envía un correo de prueba para validar la configuración SMTP actual en el servidor."
+        onSave={sendSmtpTest}
+        saving={smtpTesting}
+        saveLabel={smtpTesting ? "Enviando..." : "Enviar prueba"}
+        icon={<Send className="h-5 w-5 text-gold/60" />}
+      >
+        <div className="flex flex-col gap-2">
+          <label className="text-xs text-gray-400 uppercase tracking-wider font-poppins">
+            Correo destino
+          </label>
+          <input
+            type="email"
+            value={smtpTestEmail}
+            onChange={(e) => setSmtpTestEmail(e.target.value)}
+            placeholder="correo@dominio.com"
+            className={FIELD_CLS}
+          />
+          <p className="text-[11px] text-gray-600 font-poppins">
+            Usa este botón para confirmar que SMTP_HOST, SMTP_USER y SMTP_PASS están correctos.
+          </p>
+
+          {smtpTestResult && (
+            <div
+              className="mt-2 rounded-lg border px-3 py-2 text-xs font-mono whitespace-pre-wrap"
+              style={{
+                borderColor: smtpTestResult.ok ? "rgba(34,197,94,0.35)" : "rgba(239,68,68,0.35)",
+                background: smtpTestResult.ok ? "rgba(34,197,94,0.08)" : "rgba(239,68,68,0.08)",
+                color: smtpTestResult.ok ? "#86efac" : "#fca5a5",
+              }}
+            >
+              [{smtpTestResult.at}] {smtpTestResult.ok ? "OK" : "ERROR"}
+              {"\n"}
+              {smtpTestResult.message}
+              {smtpTestResult.debug ? `\n\nEntrada/Salida:\n${JSON.stringify(smtpTestResult.debug, null, 2)}` : ""}
+            </div>
+          )}
+        </div>
+      </Section>
     </div>
   );
 }
@@ -394,6 +500,7 @@ function Section({
   onSave,
   saving,
   icon,
+  saveLabel,
 }: {
   title: string;
   description: string;
@@ -401,6 +508,7 @@ function Section({
   onSave: () => void;
   saving: boolean;
   icon?: React.ReactNode;
+  saveLabel?: string;
 }) {
   return (
     <div
@@ -426,7 +534,7 @@ function Section({
           className="flex items-center gap-2 bg-[#f39c12] hover:bg-[#e67e22] disabled:opacity-60 text-black font-semibold px-4 py-2 rounded-lg text-sm transition-colors shrink-0"
         >
           <Save className="h-3.5 w-3.5" />
-          {saving ? "Guardando..." : "Guardar"}
+          {saveLabel ?? (saving ? "Guardando..." : "Guardar")}
         </button>
       </div>
       {children}

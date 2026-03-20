@@ -50,3 +50,19 @@ export interface GameLoginInput {
   captchaToken: string;
   version: GameVersion;
 }
+
+/** Shape of the game password recovery request form. */
+export interface GameRecoverPasswordRequestInput {
+  username: string;
+  email: string;
+  captchaToken: string;
+  version: GameVersion;
+  locale: string;
+}
+
+/** Shape of the game password reset confirmation form. */
+export interface GameRecoverPasswordConfirmInput {
+  token: string;
+  newPassword: string;
+  version: GameVersion;
+}

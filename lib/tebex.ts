@@ -131,7 +131,7 @@ async function tebexRequest<T>(config: TebexConfig, path: string, init: TebexReq
   if (!response.ok) {
     const detail = text || response.statusText;
     if ([401, 403, 422].includes(response.status) && /invalid basic auth credentials/i.test(detail)) {
-      throw new Error("Tebex auth error: invalid Webstore ID or Private key. Check Admin > Payments and save Tebex secret without prefix (only the private key).");
+      throw new Error("Tebex authentication failed. Check Admin > Payments for Tebex configuration.");
     }
     throw new Error(`Tebex API error (${response.status}): ${detail}`);
   }

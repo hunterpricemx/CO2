@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   X, ShieldAlert, LogIn, AlertCircle, CheckCircle2, ExternalLink,
@@ -100,6 +100,52 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
 
   const canBuy = version === "2.0";
 
+  const resetCheckoutUi = useCallback(() => {
+    setModal(null);
+    setStripeError("");
+    setPendingProvider(null);
+  }, []);
+
+  useEffect(() => {
+    function handlePageShow(event: PageTransitionEvent) {
+      // Browsers can restore this page from BFCache when returning from Tebex.
+      // Reset transient checkout UI so users don't see a stale open modal.
+      if (event.persisted) {
+        resetCheckoutUi();
+      }
+    }
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+    };
+  }, [resetCheckoutUi]);
+
+  /**
+   * Translate error codes to user-friendly messages.
+   * Technical errors are logged on server; only generic messages shown to client.
+   */
+  function getErrorMessage(errorCode: string): string {
+    if (errorCode.startsWith("db_error")) {
+      return "Error al procesar tu solicitud. Por favor intenta de nuevo.";
+    }
+
+    const errorMap: Record<string, string> = {
+      checkout_failed: "No pudimos iniciar el checkout. Por favor intenta de nuevo.",
+      db_error: "Error al procesar tu solicitud. Por favor intenta de nuevo.",
+      rate_limited: "Demasiados intentos en poco tiempo. Espera un momento e intenta de nuevo.",
+      cooldown_active: "Espera un momento antes de volver a intentar este paquete.",
+      tebex_disabled: "Tebex no está disponible en este momento.",
+      tebex_not_configured: "Tebex no está configurado. Por favor contacta al soporte.",
+      package_not_found: "El paquete no existe.",
+      package_not_available: "El paquete no está disponible.",
+      tebex_package_not_mapped: "El paquete no está configurado correctamente. Por favor contacta al soporte.",
+      not_authenticated: "Debes ingresar sesión para continuar.",
+      char_name_required: labels.char_name_required,
+    };
+    return errorMap[errorCode] || "Ha ocurrido un error. Por favor intenta de nuevo más tarde.";
+  }
+
   function handleBuy(pkg: DonationPackage) {
     if (!canBuy) return;
     if (!isLoggedIn) {
@@ -108,6 +154,7 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
     }
     setCharName(sessionUsername);
     setStripeError("");
+    setPendingProvider(null);
     setModal({ pkg, step: "policy" });
   }
 
@@ -136,9 +183,10 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
         cpLabel: labels.cp_points,
       });
       if ("url" in result) {
+        resetCheckoutUi();
         window.location.href = result.url;
       } else {
-        setStripeError(result.error);
+        setStripeError(getErrorMessage(result.error));
         setPendingProvider(null);
       }
     });
@@ -162,9 +210,10 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
       });
 
       if ("url" in result) {
+        resetCheckoutUi();
         window.location.href = result.url;
       } else {
-        setStripeError(result.error);
+        setStripeError(getErrorMessage(result.error));
         setPendingProvider(null);
       }
     });
@@ -316,7 +365,7 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
       {/* -------------------------- MODAL -------------------------- */}
       {modal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setModal(null)} />
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={resetCheckoutUi} />
 
           <div className="relative z-10 w-full max-w-lg rounded-2xl bg-zinc-900 border border-white/10 shadow-2xl overflow-hidden">
 
@@ -330,7 +379,7 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
                       <p className="text-[11px] text-foreground/40">{labels.policy_subtitle}</p>
                     </div>
                   </div>
-                  <button onClick={() => setModal(null)} className="text-foreground/40 hover:text-foreground transition-colors">
+                  <button onClick={resetCheckoutUi} className="text-foreground/40 hover:text-foreground transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -347,7 +396,7 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
                 </div>
 
                 <div className="flex gap-3 px-6 py-4 border-t border-white/10">
-                  <button onClick={() => setModal(null)} className="flex-1 rounded-xl border border-white/10 py-2 text-sm text-foreground/60 hover:bg-white/5 transition-colors">
+                  <button onClick={resetCheckoutUi} className="flex-1 rounded-xl border border-white/10 py-2 text-sm text-foreground/60 hover:bg-white/5 transition-colors">
                     {labels.policy_cancel}
                   </button>
                   <button onClick={handleAccept} className="flex-1 rounded-xl bg-amber-500 py-2 text-sm font-semibold text-black hover:bg-amber-400 transition-colors">
@@ -362,7 +411,7 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
                     <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
                     <h3 className="font-bold text-foreground">{labels.checkout_title}</h3>
                   </div>
-                  <button onClick={() => setModal(null)} className="text-foreground/40 hover:text-foreground transition-colors">
+                  <button onClick={resetCheckoutUi} className="text-foreground/40 hover:text-foreground transition-colors">
                     <X className="w-5 h-5" />
                   </button>
                 </div>
@@ -459,7 +508,7 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
                 </div>
 
                 <div className="px-6 py-4 border-t border-white/10">
-                  <button onClick={() => setModal(null)} className="w-full rounded-xl bg-white/10 py-2 text-sm text-foreground hover:bg-white/15 transition-colors">
+                  <button onClick={resetCheckoutUi} className="w-full rounded-xl bg-white/10 py-2 text-sm text-foreground hover:bg-white/15 transition-colors">
                     {labels.checkout_close}
                   </button>
                 </div>

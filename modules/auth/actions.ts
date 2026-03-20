@@ -21,11 +21,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 import { getGameDb, type AccountRow } from "@/lib/game-db";
 import { setGameSession, clearGameSession, getGameSession } from "@/lib/session";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { sendResetPasswordEmail } from "@/lib/mailer";
 import type { ActionResult } from "@/types";
-import type { GameLoginInput, GameRegisterInput, LoginInput, RegisterInput } from "./types";
+import type { GameLoginInput, GameRecoverPasswordConfirmInput, GameRecoverPasswordRequestInput, GameRegisterInput, LoginInput, RegisterInput } from "./types";
 import type { RowDataPacket, ResultSetHeader } from "mysql2";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -50,6 +52,44 @@ async function verifyRecaptcha(captchaToken: string): Promise<boolean> {
   const verifyData = await verifyRes.json() as { success: boolean };
 
   return verifyData.success;
+}
+
+function getLocalePrefix(locale: string): string {
+  return locale === "es" ? "" : `/${locale}`;
+}
+
+function isRecoveryDebugEnabled(): boolean {
+  return String(process.env.AUTH_RECOVERY_DEBUG ?? process.env.SMTP_DEBUG ?? "false").toLowerCase() === "true";
+}
+
+function maskEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!local || !domain) return "invalid-email";
+  return `${local.slice(0, 2)}***@${domain}`;
+}
+
+function recoveryDebug(event: string, data: Record<string, unknown>) {
+  if (!isRecoveryDebugEnabled()) return;
+  console.info(`[RECOVERY_DEBUG] ${event}`, data);
+}
+
+async function getBaseUrl(): Promise<string> {
+  const configured = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
+  if (configured && (!process.env.VERCEL || !configured.includes("localhost"))) {
+    return configured;
+  }
+
+  const vercelUrl = process.env.VERCEL_URL;
+  if (vercelUrl) return `https://${vercelUrl}`;
+
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  if (host) {
+    const proto = h.get("x-forwarded-proto") ?? (host.includes("localhost") ? "http" : "https");
+    return `${proto}://${host}`;
+  }
+
+  return "http://localhost:3000";
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -258,6 +298,178 @@ export async function changeEmailAction(input: {
 
     // Update session with new email
     await setGameSession({ uid: session.uid, username: session.username, email: newEmail, version: session.version ?? version });
+
+    return { success: true, data: undefined };
+  } finally {
+    await conn.end();
+  }
+}
+
+/**
+ * Recovers a game account password by validating username + email.
+ */
+export async function requestRecoverGamePasswordAction(input: GameRecoverPasswordRequestInput): Promise<ActionResult> {
+  const username = input.username.trim();
+  const email = input.email.trim().toLowerCase();
+  const { captchaToken, version, locale } = input;
+
+  if (!(await verifyRecaptcha(captchaToken))) {
+    return { success: false, error: "captcha_error" };
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!username || !emailRegex.test(email)) {
+    return { success: false, error: "recovery_data_invalid" };
+  }
+
+  const requestHeaders = await headers();
+  const ipAddress =
+    requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    requestHeaders.get("x-real-ip") ??
+    "unknown";
+  const rl = checkRateLimit("recover_password", `${username}:${ipAddress}`, { max: 5, windowMs: 15 * 60 * 1000 });
+  if (!rl.ok) {
+    return { success: false, error: "rate_limited" };
+  }
+
+  recoveryDebug("INBOUND_RECOVER_REQUEST", {
+    username,
+    email: maskEmail(email),
+    version,
+    locale,
+    ipAddress,
+  });
+
+  const { conn, config } = await getGameDb(version);
+  try {
+    const [rows] = await conn.execute<(AccountRow & RowDataPacket)[]>(
+      `SELECT EntityID, Email FROM \`${config.table_accounts}\` WHERE Username = ? LIMIT 1`,
+      [username],
+    );
+
+    const account = rows[0];
+    if (!account || String(account.Email ?? "").trim().toLowerCase() !== email) {
+      recoveryDebug("INBOUND_RECOVER_NO_MATCH", {
+        username,
+        email: maskEmail(email),
+        version,
+      });
+      // Generic success to prevent account enumeration.
+      return { success: true, data: undefined };
+    }
+
+    const rawToken = randomBytes(48).toString("hex");
+    const tokenHash = createHash("sha256").update(rawToken).digest("hex");
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+
+    const adminClient = await createAdminClient();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (adminClient as any)
+      .from("password_reset_tokens")
+      .insert({
+        username,
+        email,
+        version,
+        token_hash: tokenHash,
+        expires_at: expiresAt,
+        requested_ip: ipAddress,
+        requested_user_agent: requestHeaders.get("user-agent") ?? null,
+      });
+
+    const base = await getBaseUrl();
+    const localePath = getLocalePrefix(locale);
+    const resetUrl = `${base}${localePath}/${version === 1 ? "1.0" : "2.0"}/reset-password?token=${encodeURIComponent(rawToken)}`;
+
+    await sendResetPasswordEmail({
+      to: email,
+      username,
+      resetUrl,
+      expiresMinutes: 30,
+    });
+
+    recoveryDebug("OUTBOUND_RECOVER_EMAIL_SENT", {
+      username,
+      email: maskEmail(email),
+      version,
+    });
+
+    return { success: true, data: undefined };
+  } finally {
+    await conn.end();
+  }
+}
+
+export async function confirmRecoverGamePasswordAction(input: GameRecoverPasswordConfirmInput): Promise<ActionResult> {
+  const token = input.token.trim();
+  const { newPassword, version } = input;
+
+  if (!token) return { success: false, error: "invalid_token" };
+
+  if (newPassword.length < 6 || newPassword.length > 16) {
+    return { success: false, error: "weak_password" };
+  }
+  if (!/^[a-zA-Z0-9]+$/.test(newPassword)) {
+    return { success: false, error: "password_invalid" };
+  }
+
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  recoveryDebug("INBOUND_RESET_CONFIRM", {
+    version,
+    tokenHashPrefix: tokenHash.slice(0, 8),
+  });
+  const adminClient = await createAdminClient();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: tokenRow, error: tokenError } = await (adminClient as any)
+    .from("password_reset_tokens")
+    .select("id, username, email, version, expires_at, used_at")
+    .eq("token_hash", tokenHash)
+    .is("used_at", null)
+    .single();
+
+  if (tokenError || !tokenRow) {
+    return { success: false, error: "invalid_token" };
+  }
+
+  if (Number(tokenRow.version) !== version) {
+    return { success: false, error: "invalid_token" };
+  }
+
+  if (new Date(tokenRow.expires_at).getTime() < Date.now()) {
+    return { success: false, error: "token_expired" };
+  }
+
+  const { conn, config } = await getGameDb(version);
+  try {
+    const [rows] = await conn.execute<(AccountRow & RowDataPacket)[]>(
+      `SELECT EntityID, Email FROM \`${config.table_accounts}\` WHERE Username = ? LIMIT 1`,
+      [String(tokenRow.username)],
+    );
+
+    const account = rows[0];
+    if (!account || String(account.Email ?? "").trim().toLowerCase() !== String(tokenRow.email).trim().toLowerCase()) {
+      return { success: false, error: "invalid_token" };
+    }
+
+    const newSalt = randomBytes(16).toString("hex");
+    const newHash = hashGamePassword(newPassword, newSalt);
+    await conn.execute(
+      `UPDATE \`${config.table_accounts}\` SET Password = ?, Salt = ? WHERE EntityID = ?`,
+      [newHash, newSalt, account.EntityID],
+    );
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (adminClient as any)
+      .from("password_reset_tokens")
+      .update({ used_at: new Date().toISOString() })
+      .eq("id", tokenRow.id);
+
+    recoveryDebug("INBOUND_RESET_SUCCESS", {
+      username: String(tokenRow.username),
+      email: maskEmail(String(tokenRow.email)),
+      version,
+      tokenId: tokenRow.id,
+    });
 
     return { success: true, data: undefined };
   } finally {

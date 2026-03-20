@@ -32,6 +32,7 @@ export type PackageFormData = {
 };
 
 export type ActionResult = { success: boolean; message: string };
+export type CloneActionResult = ActionResult & { package?: DonationPackageRow };
 
 export async function getPackages(): Promise<DonationPackageRow[]> {
   const supabase = await createAdminClient();
@@ -99,6 +100,51 @@ export async function deletePackage(id: string): Promise<ActionResult> {
   if (error) return { success: false, message: error.message };
   revalidatePath("/admin/donations/packages");
   return { success: true, message: "Paquete eliminado" };
+}
+
+export async function clonePackage(id: string): Promise<CloneActionResult> {
+  const supabase = await createAdminClient();
+
+  const { data: original, error: findError } = await (supabase as any)
+    .from("donation_packages")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (findError || !original) {
+    return { success: false, message: findError?.message ?? "No se encontró el paquete a clonar" };
+  }
+
+  const cloneName = `${original.name} (Copia)`;
+  const payload = {
+    name: cloneName,
+    price_usd: original.price_usd,
+    cps: original.cps,
+    version: original.version,
+    active: original.active,
+    sort_order: (original.sort_order ?? 0) + 1,
+    bonus_label: original.bonus_label,
+    image_url: original.image_url,
+    tebex_package_id: null,
+    game_product_id: null,
+  };
+
+  const { data: created, error: insertError } = await (supabase as any)
+    .from("donation_packages")
+    .insert(payload)
+    .select("*")
+    .single();
+
+  if (insertError || !created) {
+    return { success: false, message: insertError?.message ?? "No se pudo clonar el paquete" };
+  }
+
+  revalidatePath("/admin/donations/packages");
+  return {
+    success: true,
+    message: "Paquete clonado",
+    package: created as DonationPackageRow,
+  };
 }
 
 export type UploadResult = ActionResult & { url?: string };

@@ -7,6 +7,7 @@ import { getGameSession } from "@/lib/session";
 import { createTebexHeadlessCheckout, getTebexConfig } from "@/lib/tebex";
 import { logPayment } from "@/lib/payment-logger";
 import { upsertLegacyPayment } from "@/lib/payment-legacy";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 type CheckoutResult = { url: string } | { error: string };
 
@@ -39,12 +40,24 @@ function getVersionNumber(version: string): number {
   return version === "1.0" ? 1 : 2;
 }
 
-async function getForwardedIpv4(): Promise<string | undefined> {
+type RequestContext = {
+  ipAddress?: string;
+  userAgent: string | null;
+  referer: string | null;
+  host: string | null;
+};
+
+async function getRequestContext(): Promise<RequestContext> {
   const headerStore = await headers();
   const forwarded = headerStore.get("x-forwarded-for") ?? "";
   const firstIp = forwarded.split(",")[0]?.trim();
-  if (!firstIp || firstIp.includes(":")) return undefined;
-  return firstIp;
+  const ipAddress = !firstIp || firstIp.includes(":") ? undefined : firstIp;
+  return {
+    ipAddress,
+    userAgent: headerStore.get("user-agent"),
+    referer: headerStore.get("referer"),
+    host: headerStore.get("x-forwarded-host") ?? headerStore.get("host"),
+  };
 }
 
 export async function createStripeCheckout(params: {
@@ -63,6 +76,67 @@ export async function createStripeCheckout(params: {
   const { packageId, packageName, packageCps, priceUsd, characterName, version, locale, cpLabel } = params;
 
   if (!characterName.trim()) return { error: "char_name_required" };
+
+  const requestContext = await getRequestContext();
+  const rateId = `${session.username}:${requestContext.ipAddress ?? "unknown"}`;
+  const stripeRate = checkRateLimit("checkout_stripe_attempt", rateId, { max: 3, windowMs: 60_000 });
+  if (!stripeRate.ok) {
+    await logPayment({
+      source: "stripe", level: "warn", event: "checkout_rate_limited",
+      message: `Rate limit Stripe para '${session.username}'`,
+      username: session.username, product: packageName, amount: priceUsd,
+      metadata: {
+        package_id: packageId,
+        version,
+        ip_address: requestContext.ipAddress,
+        user_agent: requestContext.userAgent,
+        referer: requestContext.referer,
+        host: requestContext.host,
+        reset_at: new Date(stripeRate.resetAt).toISOString(),
+      },
+    });
+    return { error: "rate_limited" };
+  }
+
+  const stripeCooldown = checkRateLimit(
+    "checkout_stripe_cooldown",
+    `${session.username}:${packageId}:${version}`,
+    { max: 1, windowMs: 90_000 },
+  );
+  if (!stripeCooldown.ok) {
+    await logPayment({
+      source: "stripe", level: "warn", event: "checkout_cooldown_active",
+      message: `Cooldown Stripe activo para '${session.username}'`,
+      username: session.username, product: packageName, amount: priceUsd,
+      metadata: {
+        package_id: packageId,
+        version,
+        ip_address: requestContext.ipAddress,
+        user_agent: requestContext.userAgent,
+        referer: requestContext.referer,
+        host: requestContext.host,
+        reset_at: new Date(stripeCooldown.resetAt).toISOString(),
+      },
+    });
+    return { error: "cooldown_active" };
+  }
+
+  await logPayment({
+    source: "stripe", level: "info", event: "checkout_initiated",
+    message: `Iniciando checkout Stripe: paquete '${packageName}' ($${priceUsd}) para '${characterName.trim()}' (cuenta: ${session.username})`,
+    username: session.username, product: packageName, amount: priceUsd,
+    metadata: {
+      package_id: packageId,
+      version,
+      ip_address: requestContext.ipAddress,
+      user_agent: requestContext.userAgent,
+      referer: requestContext.referer,
+      host: requestContext.host,
+      rate_limit_remaining: stripeRate.remaining,
+      rate_limit_reset_at: new Date(stripeRate.resetAt).toISOString(),
+      cooldown_reset_at: new Date(stripeCooldown.resetAt).toISOString(),
+    },
+  });
 
   // Get Stripe secret key from Supabase config
   const supabase = await createAdminClient();
@@ -162,6 +236,8 @@ export async function createTebexCheckout(params: {
   if (!characterName) return { error: "char_name_required" };
 
   const versionNum = getVersionNumber(params.version);
+  const requestContext = await getRequestContext();
+
   const supabase = await createAdminClient();
   const tebexConfig = await getTebexConfig();
 
@@ -211,7 +287,15 @@ export async function createTebexCheckout(params: {
     message: `Iniciando checkout Tebex: paquete '${pkg.name}' ($${pkg.price_usd}) para '${characterName}' (cuenta: ${session.username}) v${versionNum}`,
     username: session.username, product: pkg.name,
     amount: pkg.price_usd,
-    metadata: { package_id: pkg.id, tebex_package_id: pkg.tebex_package_id, version: versionNum },
+    metadata: {
+      package_id: pkg.id,
+      tebex_package_id: pkg.tebex_package_id,
+      version: versionNum,
+      ip_address: requestContext.ipAddress,
+      user_agent: requestContext.userAgent,
+      referer: requestContext.referer,
+      host: requestContext.host,
+    },
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -251,14 +335,13 @@ export async function createTebexCheckout(params: {
   const cancelUrl = `${baseUrl}${localePath}/${params.version}/donate`;
 
   try {
-    const ipAddress = await getForwardedIpv4();
     const { basketIdent, checkoutUrl } = await createTebexHeadlessCheckout({
       config: tebexConfig,
       packageId: pkg.tebex_package_id,
       accountName: session.username,
       characterName,
       email: session.email || undefined,
-      ipAddress,
+      ipAddress: requestContext.ipAddress,
       completeUrl: successUrl,
       cancelUrl,
       custom: {
@@ -322,8 +405,16 @@ export async function createTebexCheckout(params: {
       message: `Error en API Tebex: ${message}`,
       username: session.username, product: pkg.name, amount: pkg.price_usd,
       donation_id: donationId,
-      metadata: { tebex_package_id: pkg.tebex_package_id, raw_error: message },
+      metadata: {
+        tebex_package_id: pkg.tebex_package_id,
+        raw_error: message,
+        ip_address: requestContext.ipAddress,
+        user_agent: requestContext.userAgent,
+        referer: requestContext.referer,
+        host: requestContext.host,
+      },
     });
-    return { error: message };
+    // Return generic error to client — technical details logged internally
+    return { error: "checkout_failed" };
   }
 }

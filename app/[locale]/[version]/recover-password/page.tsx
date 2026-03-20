@@ -3,7 +3,14 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { gameLoginAction } from "@/modules/auth/actions";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useTransition, useState, useEffect } from "react";
+import ReCAPTCHA from "react-google-recaptcha";
+import { Loader2 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { requestRecoverGamePasswordAction } from "@/modules/auth/actions";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -14,35 +21,28 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import Link from "next/link";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { toast } from "sonner";
-import { useTransition, useState, useRef } from "react";
-import { Loader2, Eye, EyeOff } from "lucide-react";
-import ReCAPTCHA from "react-google-recaptcha";
-import { useTranslations } from "next-intl";
 
-const schema = z.object({
-  username: z.string().min(1),
-  password: z.string().min(4),
-});
-
-type FormData = z.infer<typeof schema>;
-
-export default function LoginPage() {
+export default function RecoverPasswordPage() {
   const { locale, version } = useParams() as { locale: string; version: string };
   const router = useRouter();
-  const searchParams = useSearchParams();
   const t = useTranslations("auth");
   const tn = useTranslations("nav");
   const [isPending, startTransition] = useTransition();
-  const [showPassword, setShowPassword] = useState(false);
-  const recaptchaRef = useRef<ReCAPTCHA>(null);
-  const showRecoverPassword = process.env.NEXT_PUBLIC_ENABLE_PASSWORD_RECOVERY === "true";
+  const [captchaToken, setCaptchaToken] = useState("");
+  const [captchaKey, setCaptchaKey] = useState(0);
+  const allowRecovery = process.env.NEXT_PUBLIC_ENABLE_PASSWORD_RECOVERY === "true";
 
   function vp(path: string) {
-    return `/${locale === "es" ? "" : locale + "/"}${version}${path}`;
+    return `/${locale === "es" ? "" : `${locale}/`}${version}${path}`;
   }
+
+  const loginPath = `/${locale === "es" ? "" : `${locale}/`}${version}/login`;
+
+  useEffect(() => {
+    if (!allowRecovery) {
+      router.replace(loginPath);
+    }
+  }, [allowRecovery, router, loginPath]);
 
   const heroBg =
     version === "1.0"
@@ -53,39 +53,62 @@ export default function LoginPage() {
       ? "/images/logos/conquer_classic_plus_10_logo.png"
       : "/images/logos/conquer_classic_plus_20_logo.png";
 
-  const errorMap: Record<string, string> = {
-    invalid_credentials: t("errors.invalid_credentials"),
-    account_banned: t("errors.account_banned"),
-    captcha_error: t("errors.captcha_error"),
-  };
+  const schema = z
+    .object({
+      username: z
+        .string()
+        .min(6, t("errors.username_invalid"))
+        .max(16, t("errors.username_invalid"))
+        .regex(/^[a-zA-Z0-9]+$/, t("errors.username_invalid")),
+      email: z.string().email(t("errors.invalid_email")),
+    });
+
+  type FormData = z.infer<typeof schema>;
 
   const form = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { username: "", password: "" },
+    mode: "onChange",
+    defaultValues: { username: "", email: "" },
   });
+
+  const errorMap: Record<string, string> = {
+    captcha_error: t("errors.captcha_error"),
+    recovery_data_invalid: t("errors.recovery_data_invalid"),
+    rate_limited: t("errors.rate_limited"),
+  };
 
   function onSubmit(data: FormData) {
     startTransition(async () => {
-      const captchaToken = recaptchaRef.current?.getValue() ?? "";
-      const versionNum = version === "1.0" ? 1 : 2;
+      if (!allowRecovery) {
+        toast.error("La recuperación de contraseña está deshabilitada temporalmente.");
+        router.replace(loginPath);
+        return;
+      }
+
       if (!captchaToken) {
         toast.error(t("errors.captcha_error"));
         return;
       }
 
-      const result = await gameLoginAction({
-        ...data,
+      const result = await requestRecoverGamePasswordAction({
+        username: data.username,
+        email: data.email,
         captchaToken,
-        version: versionNum,
+        version: version === "1.0" ? 1 : 2,
+        locale,
       });
+
       if (!result.success) {
-        recaptchaRef.current?.reset();
+        setCaptchaToken("");
+        setCaptchaKey((v) => v + 1);
         toast.error(errorMap[result.error ?? ""] ?? result.error ?? "Error");
         return;
       }
-      const next = searchParams.get("next");
-      router.push(next ?? vp("/myaccount"));
-      router.refresh();
+
+      toast.success(t("recover_email_sent"));
+      form.reset();
+      setCaptchaToken("");
+      setCaptchaKey((v) => v + 1);
     });
   }
 
@@ -100,7 +123,7 @@ export default function LoginPage() {
     >
       <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.78)" }} />
 
-      <div className="relative z-10 flex flex-col items-center gap-5 w-full max-w-sm">
+      <div className="relative z-10 flex flex-col items-center gap-5 w-full max-w-md">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={logoSrc} alt="Conquer" className="w-36 drop-shadow-xl" />
 
@@ -109,17 +132,13 @@ export default function LoginPage() {
             {tn("home")}
           </Link>
           <span className="mx-2 text-muted-foreground/50">›</span>
-          <span>{t("login_title")}</span>
+          <span>{t("recover_title")}</span>
         </p>
 
         <div className="w-full bg-surface/90 border border-gold/20 rounded-2xl p-8 flex flex-col gap-6">
           <div className="text-center">
-            <h1 className="font-bebas text-4xl tracking-widest text-gold">
-              {t("login_title")}
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {t("login_subtitle")}
-            </p>
+            <h1 className="font-bebas text-4xl tracking-widest text-gold">{t("recover_title")}</h1>
+            <p className="text-sm text-muted-foreground mt-1">{t("recover_subtitle")}</p>
           </div>
 
           <Form {...form}>
@@ -131,65 +150,34 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>{t("username")}</FormLabel>
                     <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="GuerreroDeLuz"
-                        className="bg-background border-surface/50"
-                        autoComplete="username"
-                        autoFocus
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>{t("password")}</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input
-                          {...field}
-                          type={showPassword ? "text" : "password"}
-                          placeholder="••••••••"
-                          className="bg-background border-surface/50 pr-10"
-                          autoComplete="current-password"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword((v) => !v)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                          tabIndex={-1}
-                          aria-label={showPassword ? t("hide_password") : t("show_password")}
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </button>
-                      </div>
+                      <Input {...field} autoComplete="username" className="bg-background border-surface/50" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {showRecoverPassword && (
-                <div className="text-right -mt-1">
-                  <Link
-                    href={vp("/recover-password")}
-                    className="text-xs text-gold hover:text-gold-light transition-colors"
-                  >
-                    {t("forgot_password")}
-                  </Link>
-                </div>
-              )}
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t("email")}</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="email" autoComplete="email" className="bg-background border-surface/50" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               <div className="flex justify-center">
                 <ReCAPTCHA
-                  ref={recaptchaRef}
+                  key={captchaKey}
                   sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY!}
                   theme="light"
+                  onChange={(value) => setCaptchaToken(value ?? "")}
+                  onExpired={() => setCaptchaToken("")}
                 />
               </div>
 
@@ -199,18 +187,17 @@ export default function LoginPage() {
                 className="mt-2 bg-gold hover:bg-gold-dark text-background font-bold h-10"
               >
                 {isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                {t("login_button")}
+                {t("recover_send_button")}
               </Button>
             </form>
           </Form>
 
           <p className="text-center text-xs text-muted-foreground">
-            {t("no_account")}{" "}
             <Link
-              href={vp("/register")}
+              href={vp("/login")}
               className="text-gold hover:text-gold-light transition-colors font-medium"
             >
-              {t("register_link")}
+              {t("recover_back_login")}
             </Link>
           </p>
         </div>

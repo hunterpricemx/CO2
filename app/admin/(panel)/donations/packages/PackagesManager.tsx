@@ -1,10 +1,10 @@
 ﻿"use client";
 
 import { useState, useRef, useTransition } from "react";
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Check, AlertCircle, Upload, ImageIcon } from "lucide-react";
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, X, Check, AlertCircle, Upload, ImageIcon, Copy } from "lucide-react";
 import type { DonationPackageRow, PackageFormData } from "./actions";
 import {
-  createPackage, updatePackage, deletePackage, togglePackage, uploadPackageImage,
+  createPackage, updatePackage, deletePackage, togglePackage, uploadPackageImage, clonePackage,
 } from "./actions";
 
 const VERSION_LABELS: Record<number, string> = { 0: "Ambas", 1: "V1", 2: "V2" };
@@ -61,6 +61,22 @@ export default function PackagesManager({ packages: initial }: Props) {
       const res = await deletePackage(pkg.id);
       if (res.success) setPackages(prev => prev.filter(p => p.id !== pkg.id));
       else setMsg({ ok: false, text: res.message });
+    });
+  }
+
+  function handleClone(pkg: DonationPackageRow) {
+    startTransition(async () => {
+      const res = await clonePackage(pkg.id);
+      if (!res.success || !res.package) {
+        setMsg({ ok: false, text: res.message });
+        return;
+      }
+
+      setPackages(prev => {
+        const next = [...prev, res.package!];
+        return next.sort((a, b) => a.sort_order - b.sort_order);
+      });
+      setMsg({ ok: true, text: res.message });
     });
   }
 
@@ -147,7 +163,7 @@ export default function PackagesManager({ packages: initial }: Props) {
           </thead>
           <tbody>
             {packages.length === 0 && (
-              <tr><td colSpan={10} className="px-4 py-8 text-center text-gray-600">Sin paquetes</td></tr>
+              <tr><td colSpan={11} className="px-4 py-8 text-center text-gray-600">Sin paquetes</td></tr>
             )}
             {packages.map(pkg => (
               <tr key={pkg.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/2">
@@ -182,6 +198,14 @@ export default function PackagesManager({ packages: initial }: Props) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleClone(pkg)}
+                      disabled={isPending}
+                      className="text-amber-400 hover:text-amber-300 transition-colors disabled:opacity-50"
+                      title="Clonar paquete"
+                    >
+                      <Copy className="w-4 h-4" />
+                    </button>
                     <button onClick={() => openEdit(pkg)} className="text-blue-400 hover:text-blue-300 transition-colors">
                       <Pencil className="w-4 h-4" />
                     </button>
