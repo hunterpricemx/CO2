@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   useState,
@@ -23,21 +23,22 @@ import type { MarketItemRow } from "@/modules/market/types";
 
 const QUALITY_TEXT: Record<string, string> = {
   NotQuality: "text-zinc-500",
-  Normality:  "text-foreground/70",
-  Elite:      "text-pink-400",
-  Super:      "text-yellow-400",
-  Refined:    "text-violet-400",
+  Normality: "text-foreground/70",
+  Elite: "text-pink-400",
+  Super: "text-yellow-400",
+  Refined: "text-violet-400",
 };
 
 const QUALITY_BADGE: Record<string, string> = {
   NotQuality: "text-zinc-500     bg-zinc-500/10     border-zinc-500/20",
-  Normality:  "text-foreground/60 bg-white/5         border-white/10",
-  Elite:      "text-pink-400     bg-pink-400/10     border-pink-400/20",
-  Super:      "text-yellow-400   bg-yellow-400/10   border-yellow-400/20",
-  Refined:    "text-violet-400   bg-violet-400/10   border-violet-400/20",
+  Normality: "text-foreground/60 bg-white/5         border-white/10",
+  Elite: "text-pink-400     bg-pink-400/10     border-pink-400/20",
+  Super: "text-yellow-400   bg-yellow-400/10   border-yellow-400/20",
+  Refined: "text-violet-400   bg-violet-400/10   border-violet-400/20",
 };
 
 // ── CO market map coordinate transform ────────────────────────────────────────
+
 function rotatePosition(n: number, t: number): [number, number] {
   const i = (n - t) * 32 + 4096;
   const r = (n + t - 383) * 16 + 4096;
@@ -87,104 +88,127 @@ function fmtPrice(n: number): string {
   return n.toLocaleString("es-ES");
 }
 
-// ── LocationModal ──────────────────────────────────────────────────────────────
+type LocationData = { seller: string; x: number; y: number } | null;
 
-type ModalData = { seller: string; x: number; y: number } | null;
+function getLocationFromItem(item: MarketItemRow): LocationData {
+  if (item.seller_x == null || item.seller_y == null) return null;
+  return {
+    seller: item.seller,
+    x: item.seller_x,
+    y: item.seller_y,
+  };
+}
 
-function LocationModal({
+function getFirstValidLocation(items: MarketItemRow[]): LocationData {
+  for (const item of items) {
+    const location = getLocationFromItem(item);
+    if (location) return location;
+  }
+  return null;
+}
+
+function sameLocation(a: LocationData, b: LocationData): boolean {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return a.seller === b.seller && a.x === b.x && a.y === b.y;
+}
+
+// ── Map Panel ──────────────────────────────────────────────────────────────────
+
+function LocationPanel({
   data,
   labels,
-  onClose,
 }: {
-  data: ModalData;
+  data: LocationData;
   labels: MarketLabels;
-  onClose: () => void;
 }) {
   const mapRef = useRef<HTMLImageElement>(null);
   const [dot, setDot] = useState<{ left: number; top: number } | null>(null);
 
-  useEffect(() => {
-    const id = setTimeout(() => {
-      if (!data || !mapRef.current) { setDot(null); return; }
-      const [rx, ry] = rotatePosition(data.x, data.y);
-      let posX = rx * 0.0625;
-      let posY = ry * 0.0625;
-      const w = mapRef.current.clientWidth;
-      const h = mapRef.current.clientHeight;
-      const scaleWidth = w / 512;
-      const scaleHeight = h / 512;
+  const recalcDot = useCallback(() => {
+    if (!data || !mapRef.current) {
+      setDot(null);
+      return;
+    }
 
-      posX *= scaleWidth;
-      posY *= scaleHeight;
+    const [rx, ry] = rotatePosition(data.x, data.y);
+    let posX = rx * 0.0625;
+    let posY = ry * 0.0625;
+    const w = mapRef.current.clientWidth;
+    const h = mapRef.current.clientHeight;
+    const scaleWidth = w / 512;
+    const scaleHeight = h / 512;
 
-      // Match the legacy conquer marker anchor for the market map.
-      posX -= 5.5;
-      posY -= 2.5;
+    posX *= scaleWidth;
+    posY *= scaleHeight;
 
-      if (posX >= 0 && posX <= w && posY >= 0 && posY <= h) {
-        setDot({ left: posX, top: posY });
-      } else {
-        setDot(null);
-      }
-    }, 250);
-    return () => clearTimeout(id);
+    // Match the legacy conquer marker anchor for the market map.
+    posX -= 5.5;
+    posY -= 2.5;
+
+    if (posX >= 0 && posX <= w && posY >= 0 && posY <= h) {
+      setDot({ left: posX, top: posY });
+    } else {
+      setDot(null);
+    }
   }, [data]);
 
-  if (!data) return null;
+  useEffect(() => {
+    const id = setTimeout(recalcDot, 120);
+    const onResize = () => recalcDot();
+    window.addEventListener("resize", onResize);
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [recalcDot]);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: "rgba(0,0,0,0.75)" }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div className="bg-[#111] border border-gold/30 rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gold/20">
-          <div className="flex items-center gap-2 text-gold font-bold">
-            <MapPin className="h-4 w-4" />
-            {labels.location_title}
-          </div>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-            <X className="h-5 w-5" />
-          </button>
+    <aside className="w-full lg:w-80 xl:w-96 shrink-0 rounded-xl border border-surface/50 overflow-hidden bg-[#0a0a0a] lg:sticky lg:top-24 h-fit">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-gold/20 text-gold font-bold text-sm">
+        <MapPin className="h-4 w-4" />
+        {labels.location_title}
+      </div>
+
+      <div className="p-4 flex flex-col gap-3">
+        <div className="text-xs text-muted-foreground">
+          {labels.seller_label}:{" "}
+          <span className="text-gold font-semibold">{data?.seller ?? "—"}</span>
         </div>
-        <div className="p-5 flex flex-col items-center gap-4">
-          <p className="text-gold font-semibold text-sm">{data.seller}</p>
-          <div className="relative w-full rounded-lg overflow-hidden border border-white/10">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              ref={mapRef}
-              src="/images/market/market.jpg"
-              alt="Market Map"
-              className="w-full h-auto block"
+
+        <div className="relative w-full rounded-lg overflow-hidden border border-white/10">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            ref={mapRef}
+            src="/images/market/market.jpg"
+            alt="Market Map"
+            className="w-full h-auto block"
+            onLoad={recalcDot}
+          />
+          {dot && (
+            <span
+              className="absolute block h-3.5 w-3.5 rounded-full bg-gold border-2 border-white animate-ping"
+              style={{ left: dot.left, top: dot.top }}
             />
-            {dot && (
-              <span
-                className="absolute block h-3.5 w-3.5 rounded-full bg-gold border-2 border-white animate-ping"
-                style={{ left: dot.left, top: dot.top }}
-              />
-            )}
-          </div>
+          )}
+        </div>
+
+        {data ? (
           <p className="text-xs text-muted-foreground">
             {labels.location_coords}:{" "}
             <span className="bg-gold/10 border border-gold/30 text-gold rounded-md px-2 py-0.5 font-mono text-xs">
               X: {data.x}, Y: {data.y}
             </span>
           </p>
-          {!dot && (
-            <p className="text-xs text-muted-foreground/50 italic">{labels.location_invalid}</p>
-          )}
-        </div>
-        <div className="px-5 pb-4 flex justify-end">
-          <button
-            onClick={onClose}
-            className="bg-gold/10 hover:bg-gold/20 border border-gold/30 text-gold text-sm font-semibold px-4 py-2 rounded-lg transition-colors cursor-pointer"
-          >
-            {labels.location_close}
-          </button>
-        </div>
+        ) : (
+          <p className="text-xs text-muted-foreground/60">{labels.col_location}</p>
+        )}
+
+        {data && !dot && (
+          <p className="text-xs text-muted-foreground/50 italic">{labels.location_invalid}</p>
+        )}
       </div>
-    </div>
+    </aside>
   );
 }
 
@@ -220,7 +244,7 @@ function PaginationBar({
 }) {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const to   = Math.min(page * pageSize, total);
+  const to = Math.min(page * pageSize, total);
 
   const pages: (number | "…")[] = [];
   if (totalPages <= 7) {
@@ -248,27 +272,37 @@ function PaginationBar({
           ))}
         </select>
       </div>
+
       <div className="flex items-center gap-1">
         <button
-          disabled={page === 1} onClick={() => onPage(page - 1)}
+          disabled={page === 1}
+          onClick={() => onPage(page - 1)}
           className="h-7 w-7 flex items-center justify-center rounded border border-surface/50 text-muted-foreground hover:text-foreground hover:border-gold/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           <ChevronLeft className="h-3.5 w-3.5" />
         </button>
+
         {pages.map((p, i) =>
           p === "…" ? (
             <span key={`e${i}`} className="px-1 text-muted-foreground/40 text-xs">…</span>
           ) : (
             <button
-              key={p} onClick={() => onPage(p as number)}
+              key={p}
+              onClick={() => onPage(p as number)}
               className={`h-7 min-w-7 px-1.5 rounded border text-xs font-medium transition-colors cursor-pointer ${
-                p === page ? "bg-gold border-gold text-background font-bold" : "border-surface/50 text-muted-foreground hover:text-foreground hover:border-gold/30"
+                p === page
+                  ? "bg-gold border-gold text-background font-bold"
+                  : "border-surface/50 text-muted-foreground hover:text-foreground hover:border-gold/30"
               }`}
-            >{p}</button>
+            >
+              {p}
+            </button>
           )
         )}
+
         <button
-          disabled={page === totalPages} onClick={() => onPage(page + 1)}
+          disabled={page === totalPages}
+          onClick={() => onPage(page + 1)}
           className="h-7 w-7 flex items-center justify-center rounded border border-surface/50 text-muted-foreground hover:text-foreground hover:border-gold/30 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
         >
           <ChevronRight className="h-3.5 w-3.5" />
@@ -303,7 +337,7 @@ function FilterSidebar({
   const lbl = "block text-xs font-semibold text-muted-foreground/70 mb-1.5 uppercase tracking-wide";
 
   return (
-    <aside className="w-full lg:w-72 shrink-0 flex flex-col gap-5">
+    <aside className="w-full lg:w-64 shrink-0 flex flex-col gap-5">
       <div className="flex items-center gap-2 text-gold font-bold text-sm">
         <SlidersHorizontal className="h-4 w-4" />
         {labels.filter_title}
@@ -313,10 +347,18 @@ function FilterSidebar({
         <label className={lbl}>{labels.col_name}</label>
         <div className="relative">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/40 pointer-events-none" />
-          <input type="text" value={filters.search} onChange={(e) => onChange({ search: e.target.value })}
-            placeholder={labels.search_placeholder} className={`${inp} pl-8 pr-8`} />
+          <input
+            type="text"
+            value={filters.search}
+            onChange={(e) => onChange({ search: e.target.value })}
+            placeholder={labels.search_placeholder}
+            className={`${inp} pl-8 pr-8`}
+          />
           {filters.search && (
-            <button onClick={() => onChange({ search: "" })} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground cursor-pointer">
+            <button
+              onClick={() => onChange({ search: "" })}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground cursor-pointer"
+            >
               <X className="h-3 w-3" />
             </button>
           )}
@@ -326,10 +368,18 @@ function FilterSidebar({
       <div>
         <label className={lbl}>{labels.col_seller}</label>
         <div className="relative">
-          <input type="text" value={filters.seller} onChange={(e) => onChange({ seller: e.target.value })}
-            placeholder={`${labels.col_seller}...`} className={`${inp} pr-8`} />
+          <input
+            type="text"
+            value={filters.seller}
+            onChange={(e) => onChange({ seller: e.target.value })}
+            placeholder={`${labels.col_seller}...`}
+            className={`${inp} pr-8`}
+          />
           {filters.seller && (
-            <button onClick={() => onChange({ seller: "" })} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground cursor-pointer">
+            <button
+              onClick={() => onChange({ seller: "" })}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/50 hover:text-foreground cursor-pointer"
+            >
               <X className="h-3 w-3" />
             </button>
           )}
@@ -381,14 +431,19 @@ function FilterSidebar({
         <label className={lbl}>{labels.filter_all_currencies}</label>
         <div className="flex gap-2">
           {(["", "CP", "Gold"] as const).map((c) => (
-            <button key={c || "all"} onClick={() => onChange({ currency: c })}
+            <button
+              key={c || "all"}
+              onClick={() => onChange({ currency: c })}
               className={`flex-1 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors ${
                 filters.currency === c
-                  ? c === "Gold" ? "bg-yellow-300/20 border-yellow-300/40 text-yellow-300"
-                    : c === "CP" ? "bg-gold/20 border-gold/40 text-gold"
-                    : "bg-white/10 border-white/20 text-foreground"
+                  ? c === "Gold"
+                    ? "bg-yellow-300/20 border-yellow-300/40 text-yellow-300"
+                    : c === "CP"
+                      ? "bg-gold/20 border-gold/40 text-gold"
+                      : "bg-white/10 border-white/20 text-foreground"
                   : "bg-surface/40 border-surface/50 text-muted-foreground hover:text-foreground hover:border-white/20"
-              }`}>
+              }`}
+            >
               {c || labels.filter_all}
             </button>
           ))}
@@ -398,13 +453,23 @@ function FilterSidebar({
       <div>
         <label className={lbl}>{labels.col_price}</label>
         <div className="flex items-center gap-2">
-          <input type="number" value={filters.priceMin} min={0}
+          <input
+            type="number"
+            value={filters.priceMin}
+            min={0}
             onChange={(e) => onChange({ priceMin: e.target.value })}
-            placeholder={labels.filter_price_from} className={inp} />
+            placeholder={labels.filter_price_from}
+            className={inp}
+          />
           <span className="text-muted-foreground/40 text-xs shrink-0">–</span>
-          <input type="number" value={filters.priceMax} min={0}
+          <input
+            type="number"
+            value={filters.priceMax}
+            min={0}
             onChange={(e) => onChange({ priceMax: e.target.value })}
-            placeholder={labels.filter_price_to} className={inp} />
+            placeholder={labels.filter_price_to}
+            className={inp}
+          />
         </div>
       </div>
 
@@ -417,8 +482,10 @@ function FilterSidebar({
         </select>
       </div>
 
-      <button onClick={onClear}
-        className="mt-1 w-full py-2.5 rounded-lg border border-surface/50 bg-surface/40 hover:border-gold/30 hover:text-gold text-sm font-semibold text-muted-foreground transition-colors cursor-pointer">
+      <button
+        onClick={onClear}
+        className="mt-1 w-full py-2.5 rounded-lg border border-surface/50 bg-surface/40 hover:border-gold/30 hover:text-gold text-sm font-semibold text-muted-foreground transition-colors cursor-pointer"
+      >
         {labels.filter_clear}
       </button>
     </aside>
@@ -432,13 +499,18 @@ export function MarketGrid({
 }: {
   items: MarketItemRow[]; labels: MarketLabels; defaultVersion: string;
 }) {
-  const [filters,  setFilters]  = useState<Filters>(DEFAULT_FILTERS(defaultVersion));
-  const [page,     setPage]     = useState(1);
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS(defaultVersion));
+  const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(25);
-  const [modal,    setModal]    = useState<ModalData>(null);
   const [sideOpen, setSideOpen] = useState(false);
-  const [sortBy,   setSortBy]   = useState<"newest" | "name" | "quality" | "plus" | "minus" | "sockets" | "seller" | "price" | "currency">("newest");
-  const [sortDir,  setSortDir]  = useState<"asc" | "desc">("desc");
+  const [hideFiltersDesktop, setHideFiltersDesktop] = useState(false);
+  const [activeLocation, setActiveLocation] = useState<LocationData>(getFirstValidLocation(items));
+  const [sortBy, setSortBy] = useState<"newest" | "name" | "quality" | "plus" | "minus" | "sockets" | "seller" | "price" | "currency">("newest");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [isDraggingTable, setIsDraggingTable] = useState(false);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const dragStartXRef = useRef(0);
+  const dragStartScrollRef = useRef(0);
 
   const updateFilters = useCallback((partial: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...partial }));
@@ -470,30 +542,30 @@ export function MarketGrid({
 
   const qualityLabel: Record<string, string> = {
     NotQuality: labels.quality_not,
-    Normality:  labels.quality_normality,
-    Elite:      labels.quality_elite,
-    Super:      labels.quality_super,
-    Refined:    labels.quality_refined,
+    Normality: labels.quality_normality,
+    Elite: labels.quality_elite,
+    Super: labels.quality_super,
+    Refined: labels.quality_refined,
   };
 
   const filtered = useMemo(() => {
-    const term       = filters.search.trim().toLowerCase();
-    const sellTerm   = filters.seller.trim().toLowerCase();
-    const priceMin   = filters.priceMin !== "" ? Number(filters.priceMin) : null;
-    const priceMax   = filters.priceMax !== "" ? Number(filters.priceMax) : null;
-    const plusMinVal = filters.plusMin  !== "" ? Number(filters.plusMin)  : null;
-    const sockVal    = filters.sockets  !== "" ? Number(filters.sockets)  : null;
+    const term = filters.search.trim().toLowerCase();
+    const sellTerm = filters.seller.trim().toLowerCase();
+    const priceMin = filters.priceMin !== "" ? Number(filters.priceMin) : null;
+    const priceMax = filters.priceMax !== "" ? Number(filters.priceMax) : null;
+    const plusMinVal = filters.plusMin !== "" ? Number(filters.plusMin) : null;
+    const sockVal = filters.sockets !== "" ? Number(filters.sockets) : null;
 
-    let r = items.filter((item) => {
-      if (filters.version  && item.version  !== filters.version)       return false;
-      if (filters.currency && item.currency !== filters.currency)       return false;
-      if (filters.quality  && (item.quality ?? "") !== filters.quality) return false;
-      if (sockVal    !== null && item.sockets      !== sockVal)          return false;
-      if (plusMinVal !== null && item.plus_enchant  < plusMinVal)        return false;
-      if (priceMin   !== null && item.price         < priceMin)          return false;
-      if (priceMax   !== null && item.price         > priceMax)          return false;
-      if (term     && !item.item_name.toLowerCase().includes(term))     return false;
-      if (sellTerm && !item.seller.toLowerCase().includes(sellTerm))    return false;
+    const r = items.filter((item) => {
+      if (filters.version && item.version !== filters.version) return false;
+      if (filters.currency && item.currency !== filters.currency) return false;
+      if (filters.quality && (item.quality ?? "") !== filters.quality) return false;
+      if (sockVal !== null && item.sockets !== sockVal) return false;
+      if (plusMinVal !== null && item.plus_enchant < plusMinVal) return false;
+      if (priceMin !== null && item.price < priceMin) return false;
+      if (priceMax !== null && item.price > priceMax) return false;
+      if (term && !item.item_name.toLowerCase().includes(term)) return false;
+      if (sellTerm && !item.seller.toLowerCase().includes(sellTerm)) return false;
       return true;
     });
 
@@ -522,14 +594,14 @@ export function MarketGrid({
         sortBy === "name"
           ? a.item_name
           : sortBy === "seller"
-          ? a.seller
-          : a.currency;
+            ? a.seller
+            : a.currency;
       const bv =
         sortBy === "name"
           ? b.item_name
           : sortBy === "seller"
-          ? b.seller
-          : b.currency;
+            ? b.seller
+            : b.currency;
       return av.localeCompare(bv);
     };
 
@@ -556,6 +628,30 @@ export function MarketGrid({
     return filtered.slice(start, start + pageSize);
   }, [filtered, page, pageSize]);
 
+  const onTableMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!tableScrollRef.current) return;
+    setIsDraggingTable(true);
+    dragStartXRef.current = e.clientX;
+    dragStartScrollRef.current = tableScrollRef.current.scrollLeft;
+  }, []);
+
+  const onTableMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isDraggingTable || !tableScrollRef.current) return;
+    const delta = e.clientX - dragStartXRef.current;
+    tableScrollRef.current.scrollLeft = dragStartScrollRef.current - delta;
+  }, [isDraggingTable]);
+
+  const stopTableDrag = useCallback(() => {
+    setIsDraggingTable(false);
+  }, []);
+
+  const displayedLocation = useMemo(() => {
+    if (activeLocation && filtered.some((item) => sameLocation(getLocationFromItem(item), activeLocation))) {
+      return activeLocation;
+    }
+    return getFirstValidLocation(filtered);
+  }, [activeLocation, filtered]);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-2 bg-gold/5 border border-gold/15 rounded-lg px-4 py-2.5 text-xs text-gold/80 w-fit">
@@ -563,21 +659,45 @@ export function MarketGrid({
         {labels.simulated_notice}
       </div>
 
-      <button
-        className="lg:hidden flex items-center gap-2 bg-surface/40 border border-surface/50 rounded-lg px-4 py-2 text-sm font-medium w-fit cursor-pointer hover:border-gold/30 transition-colors"
-        onClick={() => setSideOpen((v) => !v)}
-      >
-        <SlidersHorizontal className="h-4 w-4" />
-        {labels.filter_title}
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          className="lg:hidden flex items-center gap-2 bg-surface/40 border border-surface/50 rounded-lg px-4 py-2 text-sm font-medium w-fit cursor-pointer hover:border-gold/30 transition-colors"
+          onClick={() => setSideOpen((v) => !v)}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          {labels.filter_title}
+        </button>
+
+        <button
+          className="hidden lg:flex items-center gap-2 bg-surface/40 border border-surface/50 rounded-lg px-4 py-2 text-sm font-medium cursor-pointer hover:border-gold/30 transition-colors"
+          onClick={() => setHideFiltersDesktop((v) => !v)}
+          aria-pressed={hideFiltersDesktop}
+          title={labels.filter_title}
+        >
+          <SlidersHorizontal className="h-4 w-4" />
+          {labels.filter_title}
+          {hideFiltersDesktop ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+        </button>
+      </div>
 
       <div className="flex flex-col lg:flex-row gap-6">
-        <div className={`${sideOpen ? "flex" : "hidden"} lg:flex flex-col`}>
+        <div className={`${sideOpen ? "flex" : "hidden"} ${hideFiltersDesktop ? "lg:hidden" : "lg:flex"} flex-col order-1`}>
           <FilterSidebar filters={filters} labels={labels} onChange={changeFilters} onClear={clearFilters} />
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col gap-0 rounded-xl border border-surface/50 overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="order-2 lg:order-3">
+          <LocationPanel data={displayedLocation} labels={labels} />
+        </div>
+
+        <div className="order-3 lg:order-2 flex-1 min-w-0 flex flex-col gap-0 rounded-xl border border-surface/50 overflow-hidden">
+          <div
+            ref={tableScrollRef}
+            className={`overflow-x-auto ${isDraggingTable ? "cursor-grabbing select-none" : "cursor-grab"}`}
+            onMouseDown={onTableMouseDown}
+            onMouseMove={onTableMouseMove}
+            onMouseUp={stopTableDrag}
+            onMouseLeave={stopTableDrag}
+          >
             <table className="w-full min-w-175 text-sm border-collapse">
               <thead>
                 <tr className="bg-surface text-[10px] uppercase tracking-widest text-muted-foreground/50">
@@ -605,13 +725,21 @@ export function MarketGrid({
                   </tr>
                 ) : (
                   pageItems.map((item, i) => {
-                    const q       = item.quality ?? "Normality";
-                    const textCls = QUALITY_TEXT[q]  ?? QUALITY_TEXT.Normality;
+                    const q = item.quality ?? "Normality";
+                    const textCls = QUALITY_TEXT[q] ?? QUALITY_TEXT.Normality;
                     const badgCls = QUALITY_BADGE[q] ?? QUALITY_BADGE.Normality;
-                    const isCP    = item.currency === "CP";
+                    const isCP = item.currency === "CP";
+                    const itemLocation = getLocationFromItem(item);
+                    const isActiveLocation = sameLocation(displayedLocation, itemLocation);
 
                     return (
-                      <tr key={item.id} className={`border-t border-white/4 hover:bg-white/5 transition-colors ${i % 2 === 1 ? "bg-white/1.5" : ""}`}>
+                      <tr
+                        key={item.id}
+                        onMouseEnter={() => {
+                          if (itemLocation) setActiveLocation(itemLocation);
+                        }}
+                        className={`border-t border-white/4 hover:bg-white/5 transition-colors ${i % 2 === 1 ? "bg-white/1.5" : ""} ${isActiveLocation ? "bg-gold/10" : ""}`}
+                      >
                         <td className="px-3 py-2">
                           <div className="flex items-center justify-center h-8 w-8">
                             <ItemImage src={item.item_image} alt={item.item_name} />
@@ -630,15 +758,17 @@ export function MarketGrid({
                         <td className={`px-3 py-2 text-center font-mono text-xs ${textCls}`}>{item.minus_enchant}</td>
                         <td className={`px-3 py-2 text-xs ${textCls}`}>{socketLabel(item.sockets, labels)}</td>
                         <td className="px-3 py-2">
-                          <button onClick={() => updateFilters({ seller: item.seller })}
-                            className={`text-xs underline underline-offset-2 cursor-pointer hover:opacity-80 transition-opacity ${textCls}`}>
+                          <button
+                            onClick={() => updateFilters({ seller: item.seller })}
+                            className={`text-xs underline underline-offset-2 cursor-pointer hover:opacity-80 transition-opacity ${textCls}`}
+                          >
                             {item.seller}
                           </button>
                         </td>
                         <td className="px-3 py-2 text-center">
-                          {item.seller_x != null && item.seller_y != null ? (
+                          {itemLocation ? (
                             <button
-                              onClick={() => setModal({ seller: item.seller, x: item.seller_x!, y: item.seller_y! })}
+                              onClick={() => setActiveLocation(itemLocation)}
                               className="inline-flex items-center justify-center h-7 w-7 rounded bg-gold/15 hover:bg-gold/30 border border-gold/30 text-gold transition-colors cursor-pointer"
                               title={labels.location_title}
                             >
@@ -661,12 +791,20 @@ export function MarketGrid({
               </tbody>
             </table>
           </div>
-          <PaginationBar total={filtered.length} page={page} pageSize={pageSize}
-            labels={labels} onPage={setPage} onPageSize={(s) => { setPageSize(s); setPage(1); }} />
+
+          <PaginationBar
+            total={filtered.length}
+            page={page}
+            pageSize={pageSize}
+            labels={labels}
+            onPage={setPage}
+            onPageSize={(s) => {
+              setPageSize(s);
+              setPage(1);
+            }}
+          />
         </div>
       </div>
-
-      {modal && <LocationModal data={modal} labels={labels} onClose={() => setModal(null)} />}
     </div>
   );
 }

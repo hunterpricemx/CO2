@@ -198,7 +198,7 @@ export default async function MarketPage({ params }: Props) {
       </section>
 
       <section className="py-10" style={{ background: "#080808" }}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
           <MarketGrid items={items} labels={labels} defaultVersion={version} />
         </div>
       </section>
