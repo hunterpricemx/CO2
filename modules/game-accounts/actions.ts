@@ -14,6 +14,7 @@ import { sendResetPasswordEmail } from "@/lib/mailer";
 import { logAccountAction } from "@/lib/account-logger";
 import { getCurrentAdminContext } from "@/lib/admin/auth";
 import type { ActionResult } from "@/types";
+import type { AccountActionLog } from "./types";
 import type { RowDataPacket } from "mysql2";
 
 async function ensureUsersPermission(): Promise<ActionResult | null> {
@@ -123,6 +124,16 @@ export async function adminSendRecoveryLinkAction(input: {
   });
 
   return { success: true, data: undefined };
+}
+
+/**
+ * Admin: fetch action logs for a specific username (usable from client components).
+ */
+export async function getAccountActionLogsAction(username: string): Promise<AccountActionLog[]> {
+  const admin = await getCurrentAdminContext();
+  if (!admin) return [];
+  const { getAccountActionLogs } = await import("./queries");
+  return getAccountActionLogs(username);
 }
 
 /**

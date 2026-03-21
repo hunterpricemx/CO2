@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getAccountActionLogs } from "@/modules/game-accounts/queries";
+import { getAccountActionLogsAction } from "@/modules/game-accounts/actions";
 import { Loader2, History } from "lucide-react";
 import type { AccountActionLog } from "@/modules/game-accounts/types";
 
@@ -20,7 +20,7 @@ export function AccountActionLogsPanel({ username }: Props) {
 
   useEffect(() => {
     let cancelled = false;
-    getAccountActionLogs(username).then((rows) => {
+    getAccountActionLogsAction(username).then((rows) => {
       if (!cancelled) {
         setLogs(rows);
         setLoading(false);
