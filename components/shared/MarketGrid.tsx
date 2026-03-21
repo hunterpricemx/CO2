@@ -215,20 +215,30 @@ function LocationPanel({
 // ── ItemImage ──────────────────────────────────────────────────────────────────
 
 function ItemImage({ src, alt }: { src: string | null; alt: string }) {
-  const [failed, setFailed] = useState(false);
-  if (!src || failed) {
-    return <Package className="h-8 w-8 text-white/20 shrink-0" />;
-  }
+  const [erroredSrc, setErroredSrc] = useState<string | null>(null);
+  const showImage = Boolean(src) && erroredSrc !== src;
+
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={`/images/market/${src}`}
-      alt={alt}
-      width={32}
-      height={32}
-      className="h-8 w-8 object-contain shrink-0"
-      onError={() => setFailed(true)}
-    />
+    <div className="relative h-8 w-8 shrink-0">
+      {!showImage && (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Package className="h-8 w-8 text-white/20" />
+        </span>
+      )}
+
+      {showImage && src && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/images/market/${src}`}
+          alt=""
+          title={alt}
+          width={32}
+          height={32}
+          className="h-8 w-8 object-contain"
+          onError={() => setErroredSrc(src)}
+        />
+      )}
+    </div>
   );
 }
 
@@ -412,7 +422,7 @@ function FilterSidebar({
         <label className={lbl}>{labels.filter_plus_min}</label>
         <select value={filters.plusMin} onChange={(e) => onChange({ plusMin: e.target.value })} className={inp + " cursor-pointer"}>
           <option value="">{labels.filter_all}</option>
-          {[0, 1, 3, 5, 7, 9, 12].map((n) => (
+          {Array.from({ length: 13 }, (_, n) => n).map((n) => (
             <option key={n} value={String(n)}>+{n}{n < 12 ? "+" : ""}</option>
           ))}
         </select>
@@ -708,7 +718,7 @@ export function MarketGrid({
                   <th className="px-3 py-3 text-center w-10 cursor-pointer select-none" onClick={() => toggleSort("minus")}>{labels.col_minus}{sortMark("minus")}</th>
                   <th className="px-3 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("sockets")}>{labels.col_sockets}{sortMark("sockets")}</th>
                   <th className="px-3 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("seller")}>{labels.col_seller}{sortMark("seller")}</th>
-                  <th className="px-3 py-3 text-center w-10">{labels.col_location}</th>
+                  <th className="px-3 py-3 text-center w-10 lg:hidden">{labels.col_location}</th>
                   <th className="px-3 py-3 text-right cursor-pointer select-none" onClick={() => toggleSort("price")}>{labels.col_price}{sortMark("price")}</th>
                   <th className="px-3 py-3 text-left w-14 cursor-pointer select-none" onClick={() => toggleSort("currency")}>{labels.col_type}{sortMark("currency")}</th>
                 </tr>
@@ -765,7 +775,7 @@ export function MarketGrid({
                             {item.seller}
                           </button>
                         </td>
-                        <td className="px-3 py-2 text-center">
+                        <td className="px-3 py-2 text-center lg:hidden">
                           {itemLocation ? (
                             <button
                               onClick={() => setActiveLocation(itemLocation)}
