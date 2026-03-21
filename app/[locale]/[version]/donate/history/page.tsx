@@ -90,6 +90,8 @@ export default async function DonationHistoryPage({ params }: Props) {
         `SELECT id, user_id, product, price, item_number, status, since
            FROM \`${tableName}\`
           WHERE user_id IN (?, ?)
+            AND txn IS NOT NULL
+            AND TRIM(txn) <> ''
           ORDER BY id DESC`,
         [session.username, charName],
       );
