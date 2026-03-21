@@ -20,6 +20,7 @@ import {
   Star,
   Settings,
   ScrollText,
+  Gamepad2,
 } from "lucide-react";
 
 const NAV_CONTENT = [
@@ -37,6 +38,7 @@ const NAV_CONTENT = [
   { href: "/admin/donations",          icon: CreditCard,      label: "Donaciones",         permission: "donations" as AdminPanelPermission },
   { href: "/admin/donations/packages", icon: CreditCard,      label: "→ Paquetes",          permission: "donations" as AdminPanelPermission },
   { href: "/admin/users",            icon: Users,           label: "Administradores",    permission: "users"     as AdminPanelPermission },
+  { href: "/admin/game-accounts",    icon: Gamepad2,        label: "Cuentas de Juego",   permission: "users"     as AdminPanelPermission },
 ];
 
 const NAV_SYSTEM = [
