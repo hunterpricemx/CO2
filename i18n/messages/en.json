@@ -482,7 +482,8 @@
       "recovery_data_invalid": "We could not validate your recovery details",
       "rate_limited": "Too many attempts. Please wait 15 minutes and try again",
       "invalid_token": "The recovery link is not valid",
-      "token_expired": "The recovery link has expired"
+      "token_expired": "The recovery link has expired",
+      "unknown_error": "Unexpected error, please try again"
     }
   },
   "myaccount": {

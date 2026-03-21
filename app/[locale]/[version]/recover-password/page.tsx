@@ -75,6 +75,7 @@ export default function RecoverPasswordPage() {
     captcha_error: t("errors.captcha_error"),
     recovery_data_invalid: t("errors.recovery_data_invalid"),
     rate_limited: t("errors.rate_limited"),
+    unknown_error: t("errors.unknown_error"),
   };
 
   function onSubmit(data: FormData) {

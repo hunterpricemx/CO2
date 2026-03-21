@@ -100,8 +100,7 @@ export default function ResetPasswordPage() {
       }
 
       toast.success(t("recover_success"));
-      router.push(vp("/login"));
-      router.refresh();
+      window.location.assign(vp("/login"));
     });
   }
 

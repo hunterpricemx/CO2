@@ -364,7 +364,7 @@ export async function requestRecoverGamePasswordAction(input: GameRecoverPasswor
 
     const adminClient = await createAdminClient();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (adminClient as any)
+    const { error: insertError } = await (adminClient as any)
       .from("password_reset_tokens")
       .insert({
         username,
@@ -376,16 +376,37 @@ export async function requestRecoverGamePasswordAction(input: GameRecoverPasswor
         requested_user_agent: requestHeaders.get("user-agent") ?? null,
       });
 
+    if (insertError) {
+      recoveryDebug("OUTBOUND_RECOVER_TOKEN_INSERT_FAILED", {
+        username,
+        email: maskEmail(email),
+        version,
+        message: insertError.message,
+      });
+      return { success: false, error: "unknown_error" };
+    }
+
     const base = await getBaseUrl();
     const localePath = getLocalePrefix(locale);
     const resetUrl = `${base}${localePath}/${version === 1 ? "1.0" : "2.0"}/reset-password?token=${encodeURIComponent(rawToken)}`;
 
-    await sendResetPasswordEmail({
-      to: email,
-      username,
-      resetUrl,
-      expiresMinutes: 30,
-    });
+    try {
+      await sendResetPasswordEmail({
+        to: email,
+        username,
+        resetUrl,
+        expiresMinutes: 30,
+        version,
+      });
+    } catch (emailError) {
+      recoveryDebug("OUTBOUND_RECOVER_EMAIL_FAILED", {
+        username,
+        email: maskEmail(email),
+        version,
+        message: emailError instanceof Error ? emailError.message : String(emailError),
+      });
+      return { success: false, error: "unknown_error" };
+    }
 
     recoveryDebug("OUTBOUND_RECOVER_EMAIL_SENT", {
       username,
@@ -428,6 +449,11 @@ export async function confirmRecoverGamePasswordAction(input: GameRecoverPasswor
     .single();
 
   if (tokenError || !tokenRow) {
+    recoveryDebug("INBOUND_RESET_INVALID_TOKEN", {
+      version,
+      tokenHashPrefix: tokenHash.slice(0, 8),
+      message: tokenError?.message ?? "token_row_not_found",
+    });
     return { success: false, error: "invalid_token" };
   }
 

@@ -482,7 +482,8 @@
       "recovery_data_invalid": "Não foi possível validar os dados de recuperação",
       "rate_limited": "Muitas tentativas. Aguarde 15 minutos e tente novamente",
       "invalid_token": "O link de recuperação não é válido",
-      "token_expired": "O link de recuperação expirou"
+      "token_expired": "O link de recuperação expirou",
+      "unknown_error": "Erro inesperado, tente novamente"
     }
   },
   "myaccount": {
