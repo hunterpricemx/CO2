@@ -10,7 +10,6 @@ import type { RowDataPacket } from "mysql2";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 import { ChangeEmailForm } from "./ChangeEmailForm";
 import { Coins } from "lucide-react";
-import { createAdminClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
   title: "Mi Cuenta",
@@ -27,16 +26,6 @@ function meshToClassKey(mesh: number): string {
 
 function meshToGender(mesh: number): "male" | "female" {
   return mesh === 1007 ? "male" : mesh % 2 === 0 ? "female" : "male";
-}
-
-function getVipLevel(total: number): number {
-  if (total >= 2000) return 6;
-  if (total >= 1500) return 5;
-  if (total >= 999)  return 4;
-  if (total >= 399)  return 3;
-  if (total >= 199)  return 2;
-  if (total >= 0.99) return 1;
-  return 0;
 }
 
 const VIP_BADGE: Record<number, string> = {
@@ -72,7 +61,7 @@ export default async function MyAccountPage({
     Money: number; MoneySave: number; GuildName: string | null; Mesh: number;
     PKPoints: number; MetScrolls: number; Strength: number; Agility: number;
     Vitality: number; Spirit: number; Additional: number;
-    Spouse: string | null; Status: number;
+    Spouse: string | null; Status: number; VipLevel: number | null;
   };
 
   let character: CharData | null = null;
@@ -85,7 +74,7 @@ export default async function MyAccountPage({
       const charTable = config.table_characters;
 
       const [charRows] = await conn.execute<RowDataPacket[]>(
-        `SELECT Name, Level, Reborn, CPs, Money, MoneySave, GuildName, Mesh, PKPoints, MetScrolls, Strength, Agility, Vitality, Spirit, Additional, Spouse, Status FROM \`${charTable}\` WHERE EntityID = ? LIMIT 1`,
+        `SELECT Name, Level, Reborn, CPs, Money, MoneySave, GuildName, Mesh, PKPoints, MetScrolls, Strength, Agility, Vitality, Spirit, Additional, Spouse, Status, VipLevel FROM \`${charTable}\` WHERE EntityID = ? LIMIT 1`,
         [session.uid],
       );
       if (charRows.length > 0) character = charRows[0] as CharData;
@@ -107,22 +96,7 @@ export default async function MyAccountPage({
     // DB may not be reachable; show page without character data
   }
 
-  let vipLevel = 0;
-  try {
-    const supabase = await createAdminClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data: donRows } = await (supabase as any)
-      .from("donations")
-      .select("amount_paid, status")
-      .eq("account_name", session.username);
-    const donData = (donRows ?? []) as { amount_paid: number | string; status: string }[];
-    const totalDonated = donData
-      .filter(r => r.status === "credited" || r.status === "claimed")
-      .reduce((s, r) => s + Number(r.amount_paid), 0);
-    vipLevel = getVipLevel(totalDonated);
-  } catch {
-    // Supabase unreachable — show page without VIP data
-  }
+  const vipLevel = character?.VipLevel ?? 0;
 
   const classNames: Record<string, string> = {
     class_trojan: t("class_trojan"),

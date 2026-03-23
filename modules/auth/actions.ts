@@ -507,6 +507,11 @@ export async function confirmRecoverGamePasswordAction(input: GameRecoverPasswor
  * Signs the current game player out and clears the session cookie.
  */
 export async function gameLogoutAction(): Promise<void> {
+  // Clear both the game session cookie and the Supabase session
+  try {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+  } catch { /* ignore */ }
   await clearGameSession();
   revalidatePath("/", "layout");
   redirect("/");

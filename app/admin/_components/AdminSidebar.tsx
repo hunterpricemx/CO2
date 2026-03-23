@@ -21,6 +21,7 @@ import {
   Settings,
   ScrollText,
   Gamepad2,
+  TicketCheck,
 } from "lucide-react";
 
 const NAV_CONTENT = [
@@ -34,6 +35,7 @@ const NAV_CONTENT = [
   { href: "/admin/news-categories",  icon: FolderTree,      label: "Categorías Noticias",permission: "news"      as AdminPanelPermission },
   { href: "/admin/downloads",        icon: Download,        label: "Descargas",          permission: "downloads" as AdminPanelPermission },
   { href: "/admin/influencers",       icon: Star,            label: "Influencers",        permission: "influencers" as AdminPanelPermission },
+  { href: "/admin/tickets",           icon: TicketCheck,     label: "Tickets",            permission: "tickets"   as AdminPanelPermission },
   { href: "/admin/settings",           icon: Settings,        label: "Ajustes del Sitio",  permission: "settings"    as AdminPanelPermission },
   { href: "/admin/donations",          icon: CreditCard,      label: "Donaciones",         permission: "donations" as AdminPanelPermission },
   { href: "/admin/donations/packages", icon: CreditCard,      label: "→ Paquetes",          permission: "donations" as AdminPanelPermission },

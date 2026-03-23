@@ -154,19 +154,7 @@ async function sendViaSmtp(payload: MailPayload): Promise<MailProviderResponse> 
 }
 
 async function sendMail(payload: MailPayload): Promise<MailProviderResponse> {
-  const resend = getResendConfig();
-  if (resend) {
-    try {
-      return await sendViaResend(payload);
-    } catch (err) {
-      smtpDebug("OUTBOUND_RESEND_FAILED", {
-        to: maskEmail(payload.to),
-        error: err instanceof Error ? err.message : String(err),
-      });
-    }
-  }
-
-  return sendViaSmtp(payload);
+  return sendViaResend(payload);
 }
 
 export async function sendResetPasswordEmail(params: {
@@ -300,4 +288,21 @@ export async function sendSmtpTestEmail(params: {
     messageId: info.messageId,
     response: info.response,
   };
+}
+
+/**
+ * Generic fire-and-forget email. Uses Resend if configured, falls back to SMTP.
+ * Never throws — failures are silently ignored.
+ */
+export async function sendGenericMail(payload: {
+  to:      string;
+  subject: string;
+  text:    string;
+  html:    string;
+}): Promise<void> {
+  try {
+    await sendMail(payload);
+  } catch {
+    // fire-and-forget — never crash the caller
+  }
 }

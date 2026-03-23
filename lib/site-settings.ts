@@ -23,6 +23,8 @@ export type SiteSettings = {
   script_head: string;
   /** Raw HTML injected just before </body> closes (footer pixels, etc.). */
   script_footer: string;
+  /** Whether the player-facing support ticket system is enabled. */
+  tickets_enabled: boolean;
 };
 
 const DEFAULTS: SiteSettings = {
@@ -40,6 +42,7 @@ const DEFAULTS: SiteSettings = {
   promo_slides_v2:   [],
   script_head:       "",
   script_footer:     "",
+  tickets_enabled:   false,
 };
 
 function safeJSON<T>(str: string | undefined | null, fallback: T): T {
@@ -93,6 +96,7 @@ async function _fetchSiteSettings(): Promise<SiteSettings> {
       promo_slides_v2:   safeJSON<PromoSlide[]>(map.promo_slides_v2, []),
       script_head:       map.script_head   || "",
       script_footer:     map.script_footer || "",
+      tickets_enabled:   map.tickets_enabled === "true",
     };
   } catch {
     return DEFAULTS;

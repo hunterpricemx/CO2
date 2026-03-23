@@ -6,9 +6,11 @@ import { LanguageSelector } from "./LanguageSelector";
 import { MobileMenu } from "./MobileMenu";
 import { NavLinks } from "./NavLinks";
 import { getGameSession } from "@/lib/session";
+import { getSiteSettings } from "@/lib/site-settings";
 import { gameLogoutAction } from "@/modules/auth/actions";
 import { Button } from "@/components/ui/button";
 import { NavDropdown } from "./NavDropdown";
+import { PlayerTicketsBell } from "./PlayerTicketsBell";
 
 export type NavItem =
   | { type: "link"; href: string; label: string }
@@ -32,6 +34,8 @@ export async function Header({
   const t = await getTranslations("nav");
 
   const session = await getGameSession();
+  const settings = await getSiteSettings();
+  const ticketsEnabled = settings.tickets_enabled;
 
   // Build locale-aware path: omit prefix for default locale (es) with as-needed routing
   const lp = (path: string) => locale === "es" ? path : `/${locale}${path}`;
@@ -121,14 +125,20 @@ export async function Header({
         {/* Right side */}
         <div className="flex items-center gap-2 shrink-0">
           {session ? (
-            <NavDropdown
-              label={session.username}
-              items={[
-                { href: lp(`/${version}/myaccount`),        label: t("myaccount") },
-                { href: lp(`/${version}/donate/history`),   label: t("donate_history") },
-                { action: gameLogoutAction,                 label: t("logout") },
-              ]}
-            />
+            <>
+              {ticketsEnabled && (
+                <PlayerTicketsBell ticketsHref={lp(`/${version}/tickets`)} locale={locale} version={version} />
+              )}
+              <NavDropdown
+                label={session.username}
+                items={[
+                  { href: lp(`/${version}/myaccount`),        label: t("myaccount") },
+                  { href: lp(`/${version}/donate/history`),   label: t("donate_history") },
+                  ...(ticketsEnabled ? [{ href: lp(`/${version}/tickets`), label: t("tickets") }] : []),
+                  { action: gameLogoutAction,                 label: t("logout") },
+                ]}
+              />
+            </>
           ) : (
             <>
               <Link href={lp(`/${version}/login`)}>

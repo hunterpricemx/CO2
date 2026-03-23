@@ -49,6 +49,10 @@ export default function AdminSiteSettingsPage() {
   const [scriptHead, setScriptHead] = useState("");
   const [scriptFooter, setScriptFooter] = useState("");
 
+  // Soporte
+  const [supportEmail, setSupportEmail] = useState("");
+  const [ticketsEnabled, setTicketsEnabled] = useState(false);
+
   // SMTP test
   const [smtpTestEmail, setSmtpTestEmail] = useState("mariano@hunterprice.mx");
   const [smtpTesting, setSmtpTesting] = useState(false);
@@ -90,6 +94,8 @@ export default function AdminSiteSettingsPage() {
         try { setSlidesV2(JSON.parse(map.promo_slides_v2 || "[]")); } catch { setSlidesV2([]); }
         setScriptHead(map.script_head || "");
         setScriptFooter(map.script_footer || "");
+        setSupportEmail(map.support_notification_email || "");
+        setTicketsEnabled(map.tickets_enabled === "true");
       } catch {
         toast.error("No se pudieron cargar los ajustes actuales.");
       } finally {
@@ -443,6 +449,60 @@ export default function AdminSiteSettingsPage() {
               placeholder={"<!-- GTM noscript -->\n<noscript>\n  <iframe src=\"https://www.googletagmanager.com/ns.html?id=GTM-XXXXXXX\"\n    height=\"0\" width=\"0\" style=\"display:none;visibility:hidden\">\n  </iframe>\n</noscript>"}
               className="bg-[#0a0a0a] border border-[rgba(255,215,0,0.15)] rounded-lg px-3 py-2.5 text-xs text-green-400 placeholder:text-gray-700 focus:outline-none focus:border-[#f39c12] transition-colors w-full font-mono resize-y"
             />
+          </div>
+        </div>
+      </Section>
+
+      {/* ── Soporte ── */}
+      <Section
+        title="Soporte"
+        description="Correo de notificaciones y estado del sistema de tickets para jugadores."
+        onSave={() => save([
+          { key: "support_notification_email", value: supportEmail },
+          { key: "tickets_enabled",            value: ticketsEnabled ? "true" : "false" },
+        ])}
+        saving={saving}
+      >
+        <div className="flex flex-col gap-5">
+          {/* Toggle */}
+          <div className="flex items-center justify-between gap-4 py-1">
+            <div>
+              <p className="text-sm text-white font-medium font-poppins">Sistema de tickets</p>
+              <p className="text-[11px] text-gray-500 font-poppins mt-0.5">
+                Habilita o deshabilita el acceso de jugadores al sistema de soporte.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTicketsEnabled((v) => !v)}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${
+                ticketsEnabled ? "bg-[#f39c12]" : "bg-gray-700"
+              }`}
+              aria-checked={ticketsEnabled}
+              role="switch"
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  ticketsEnabled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-gray-400 uppercase tracking-wider font-poppins">
+              Correo de notificaciones de tickets
+            </label>
+            <input
+              type="email"
+              value={supportEmail}
+              onChange={(e) => setSupportEmail(e.target.value)}
+              placeholder="soporte@tudominio.com"
+              className={FIELD_CLS}
+            />
+            <p className="text-[11px] text-gray-600 font-poppins">
+              Deja en blanco para desactivar las notificaciones por email de tickets.
+            </p>
           </div>
         </div>
       </Section>
