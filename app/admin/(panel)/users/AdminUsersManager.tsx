@@ -29,6 +29,7 @@ const PANEL_LABELS: Record<AdminPanelPermission, string> = {
   payments: "Pagos",
   influencers: "Influencers",
   settings: "Ajustes del Sitio",
+  tickets: "Tickets de Soporte",
 };
 
 type Props = {
