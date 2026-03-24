@@ -116,6 +116,10 @@ async function tebexRequest<T>(config: TebexConfig, path: string, init: TebexReq
     headers,
     body: init.body ? JSON.stringify(init.body) : undefined,
     cache: "no-store",
+    // Hard cap per request — prevents silent hangs on slow/mobile connections.
+    // The checkout flow makes up to 3 sequential requests so total worst-case
+    // is ~24s before throwing, which is still better than hanging indefinitely.
+    signal: AbortSignal.timeout(8_000),
   });
 
   const text = await response.text();
@@ -175,7 +179,10 @@ export async function createTebexHeadlessCheckout(params: {
       // invalid characters from in-game character names (e.g. '#').
       username: accountName,
       ...(email ? { email } : {}),
-      ...(ipAddress ? { ip_address: ipAddress } : {}),
+      // ip_address intentionally omitted: passing the mobile carrier's IP
+      // (shared NAT / IPv4) triggers Tebex's fraud detection and causes
+      // intermittent 422 auth errors on mobile data. Letting Tebex see the
+      // server's datacenter IP is cleaner and more reliable.
     },
   });
 

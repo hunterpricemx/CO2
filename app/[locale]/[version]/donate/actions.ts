@@ -418,3 +418,25 @@ export async function createTebexCheckout(params: {
     return { error: "checkout_failed" };
   }
 }
+
+export async function checkTebexReady(): Promise<{ ok: boolean }> {
+  try {
+    const config = await getTebexConfig();
+    if (!config.webstoreId || !config.privateKey) return { ok: false };
+    const token = Buffer.from(`${config.webstoreId}:${config.privateKey}`, "utf8").toString("base64");
+    const res = await fetch(`https://headless.tebex.io/api/accounts/${config.webstoreId}`, {
+      headers: {
+        Authorization: `Basic ${token}`,
+        "Content-Type": "application/json",
+      },
+      cache: "no-store",
+      // Fail fast on slow connections — each attempt has 4s max,
+      // so 5 retries = ~20s worst case (server→Tebex) before showing error state.
+      // 4s gives enough room for mobile data latency without hanging forever.
+      signal: AbortSignal.timeout(4000),
+    });
+    return { ok: res.ok };
+  } catch {
+    return { ok: false };
+  }
+}

@@ -4,10 +4,10 @@ import { useCallback, useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   X, ShieldAlert, LogIn, AlertCircle, CheckCircle2, ExternalLink,
-  User, Loader2, CreditCard, Copy, Check,
+  User, Loader2, CreditCard, Copy, Check, RefreshCw,
 } from "lucide-react";
 import type { PaymentConfig, DonationPackage } from "@/lib/game-db";
-import { createStripeCheckout, createTebexCheckout } from "@/app/[locale]/[version]/donate/actions";
+import { createStripeCheckout, createTebexCheckout, checkTebexReady } from "@/app/[locale]/[version]/donate/actions";
 
 // -- Types ---------------------------------------------------------------------
 
@@ -93,6 +93,8 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
   const [stripeError, setStripeError] = useState("");
   const [isPending, startTransition] = useTransition();
   const [pendingProvider, setPendingProvider] = useState<"stripe" | "tebex" | null>(null);
+  const [tebexReady, setTebexReady] = useState<"idle" | "checking" | "ok" | "error">("idle");
+  const [checkPhase, setCheckPhase] = useState(0);
 
   const stripeActive = paymentConfig?.stripe_enabled ?? false;
   const tebexActive  = paymentConfig?.tebex_enabled  ?? false;
@@ -104,6 +106,8 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
     setModal(null);
     setStripeError("");
     setPendingProvider(null);
+    setTebexReady("idle");
+    setCheckPhase(0);
   }, []);
 
   useEffect(() => {
@@ -120,6 +124,40 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
       window.removeEventListener("pageshow", handlePageShow);
     };
   }, [resetCheckoutUi]);
+
+  const TEBEX_CHECK_MESSAGES = [
+    "⛏ Enviando minero al servidor...",
+    "💀 ¡El minero fue eliminado! Reintentando...",
+    "⚔️ Minando CPs... casi listo...",
+    "📡 Señal débil... forzando conexión...",
+    "⚡ Último intento...",
+  ];
+
+  const verifyTebex = useCallback(async () => {
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      setTebexReady("checking");
+      setCheckPhase(attempt - 1);
+      // Run the check and a minimum display delay in parallel —
+      // the user always sees each phase for at least 600ms.
+      const delay = new Promise<void>((r) => setTimeout(r, 600));
+      let ok = false;
+      try {
+        const [result] = await Promise.all([checkTebexReady(), delay]);
+        ok = result.ok;
+      } catch {
+        await delay; // ensure min delay even if checkTebexReady throws
+      }
+      if (ok) { setTebexReady("ok"); return; }
+    }
+    setTebexReady("error");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (modal?.step === "checkout" && tebexActive) {
+      void verifyTebex();
+    }
+  }, [modal?.step, tebexActive, verifyTebex]);
 
   /**
    * Translate error codes to user-friendly messages.
@@ -468,16 +506,48 @@ export function DonateClient({ isLoggedIn, loginHref, labels, paymentConfig, pac
                               </button>
                             </p>
                           </div>
-                          <button
-                            onClick={handleTebexCheckout}
-                            disabled={isPending}
-                            className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 transition-colors disabled:opacity-60"
-                          >
-                            {isPending && pendingProvider === "tebex"
-                              ? <><Loader2 className="h-4 w-4 animate-spin" /> {labels.tebex_processing}</>
-                              : <><ExternalLink className="h-3.5 w-3.5" /> {labels.tebex_pay}</>
-                            }
-                          </button>
+
+                          {(tebexReady === "idle" || tebexReady === "checking") && (
+                            <div className="w-full flex flex-col items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/5 py-3 px-4">
+                              <div className="flex items-center gap-2 text-sm text-amber-300/80">
+                                <Loader2 className="h-4 w-4 animate-spin shrink-0" />
+                                <span>{TEBEX_CHECK_MESSAGES[checkPhase] ?? TEBEX_CHECK_MESSAGES[4]}</span>
+                              </div>
+                              <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-amber-400 rounded-full transition-all duration-700"
+                                  style={{ width: `${((checkPhase + 1) / 5) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {tebexReady === "ok" && (
+                            <button
+                              onClick={handleTebexCheckout}
+                              disabled={isPending}
+                              className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-500 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 transition-colors disabled:opacity-60"
+                            >
+                              {isPending && pendingProvider === "tebex"
+                                ? <><Loader2 className="h-4 w-4 animate-spin" /> {labels.tebex_processing}</>
+                                : <><ExternalLink className="h-3.5 w-3.5" /> {labels.tebex_pay}</>
+                              }
+                            </button>
+                          )}
+
+                          {tebexReady === "error" && (
+                            <div className="flex flex-col gap-2">
+                              <p className="text-xs text-red-400 bg-red-900/20 border border-red-800/30 rounded-lg px-3 py-2 text-center">
+                                El minero no logró llegar a Tebex. Inténtalo de nuevo.
+                              </p>
+                              <button
+                                onClick={() => void verifyTebex()}
+                                className="w-full flex items-center justify-center gap-2 rounded-xl border border-amber-500/40 py-2.5 text-sm font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors"
+                              >
+                                <RefreshCw className="h-3.5 w-3.5" /> Reintentar
+                              </button>
+                            </div>
+                          )}
                         </>
                       )}
 
