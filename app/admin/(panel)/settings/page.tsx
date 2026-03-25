@@ -64,6 +64,7 @@ export default function AdminSiteSettingsPage() {
     debug?: unknown;
   } | null>(null);
 
+
   /* ── Load current settings ── */
   useEffect(() => {
     async function load() {
@@ -98,6 +99,7 @@ export default function AdminSiteSettingsPage() {
         setSupportEmail(map.support_notification_email || "");
         setTicketsEnabled(map.tickets_enabled === "true");
         setGarmentsEnabled(map.garments_enabled === "true");
+
       } catch {
         toast.error("No se pudieron cargar los ajustes actuales.");
       } finally {
@@ -534,6 +536,7 @@ export default function AdminSiteSettingsPage() {
           </div>
         </div>
       </Section>
+
 
       {/* ── SMTP Test ── */}
       <Section

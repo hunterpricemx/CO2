@@ -23,6 +23,7 @@ import {
   Gamepad2,
   TicketCheck,
   ShoppingBag,
+  SearchCheck,
 } from "lucide-react";
 
 const NAV_CONTENT = [
@@ -40,6 +41,7 @@ const NAV_CONTENT = [
   { href: "/admin/garments",          icon: ShoppingBag,     label: "Garments",           permission: "garments"  as AdminPanelPermission },
   { href: "/admin/garments/orders",   icon: ShoppingBag,     label: "→ Órdenes",          permission: "garments"  as AdminPanelPermission },
   { href: "/admin/settings",           icon: Settings,        label: "Ajustes del Sitio",  permission: "settings"    as AdminPanelPermission },
+  { href: "/admin/seo",                icon: SearchCheck,     label: "SEO",                permission: "settings"    as AdminPanelPermission },
   { href: "/admin/donations",          icon: CreditCard,      label: "Donaciones",         permission: "donations" as AdminPanelPermission },
   { href: "/admin/donations/packages", icon: CreditCard,      label: "→ Paquetes",          permission: "donations" as AdminPanelPermission },
   { href: "/admin/users",            icon: Users,           label: "Administradores",    permission: "users"     as AdminPanelPermission },

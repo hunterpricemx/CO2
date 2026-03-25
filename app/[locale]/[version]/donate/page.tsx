@@ -1,13 +1,16 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import type { Metadata } from "next";
 import { getGameSession } from "@/lib/session";
 import { getPublicPaymentConfig, getDonationPackages, getCharacterName } from "@/lib/game-db";
 import { DonateClient } from "@/components/shared/DonateClient";
 import type { DonateLabels } from "@/components/shared/DonateClient";
 
-export const metadata: Metadata = { title: "Donar" };
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "donate", "Donar");
+}
 
 type Props = { params: Promise<{ locale: string; version: string }> };
 

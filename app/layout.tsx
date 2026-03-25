@@ -23,19 +23,37 @@ const poppins = Poppins({
   weight: ["300", "400", "500", "600"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Conquer Classic Plus",
-    template: "%s | Conquer Classic Plus",
-  },
-  description:
-    "Conquer Online private server — Classic Plus 1.0 & Experience 2.0. Relive the legend.",
-  keywords: ["conquer online", "private server", "classic plus", "mmorpg"],
-  openGraph: {
-    type: "website",
-    siteName: "Conquer Classic Plus",
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+  const siteName    = settings.seo_site_name;
+  const description = settings.seo_default_description;
+  const ogImage     = settings.seo_og_image || undefined;
+
+  return {
+    title: {
+      default: siteName,
+      template: `%s | ${siteName}`,
+    },
+    description,
+    keywords: ["conquer online", "private server", "classic plus", "mmorpg"],
+    icons: {
+      icon: "/images/icons/favicon.png",
+      shortcut: "/images/icons/favicon.png",
+      apple: "/images/icons/favicon.png",
+    },
+    openGraph: {
+      type: "website",
+      siteName,
+      description,
+      ...(ogImage ? { images: [{ url: ogImage }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
+  };
+}
 
 export default async function RootLayout({
   children,

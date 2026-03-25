@@ -8,7 +8,17 @@ import { getAllNewsPublished, getNewsCategories } from "@/modules/news/queries";
 import type { NewsPostRow } from "@/modules/news/types";
 import NewsFilters from "@/components/shared/NewsFilters";
 
-export const metadata: Metadata = { title: "Noticias" };
+import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; version: string }>;
+}): Promise<Metadata> {
+  void params;
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "news", "Noticias");
+}
 
 export default async function NewsPage({
   params,

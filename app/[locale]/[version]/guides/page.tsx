@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { BookOpen, ChevronRight } from "lucide-react";
-import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { getGuideCategories, getPublishedGuides } from "@/modules/guides/queries";
@@ -9,7 +9,15 @@ import type { GuideRow } from "@/modules/guides/types";
 import NewsFilters from "@/components/shared/NewsFilters";
 import { Badge } from "@/components/ui/badge";
 
-export const metadata: Metadata = { title: "Guías" };
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; version: string }>;
+}): Promise<Metadata> {
+  void params;
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "guides", "Guías");
+}
 
 function stripHtml(html: string | null | undefined): string {
   if (!html) return "";

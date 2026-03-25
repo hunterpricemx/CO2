@@ -6,7 +6,17 @@ import type { Metadata } from "next";
 import { getDownloads } from "@/modules/downloads/queries";
 import type { DownloadRow } from "@/modules/downloads/types";
 
-export const metadata: Metadata = { title: "Descargas" };
+import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; version: string }>;
+}): Promise<Metadata> {
+  void params;
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "downloads", "Descargas");
+}
 
 export default async function DownloadPage({
   params,

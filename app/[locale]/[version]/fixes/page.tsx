@@ -8,7 +8,17 @@ import type { FixRow } from "@/modules/fixes/types";
 import NewsFilters from "@/components/shared/NewsFilters";
 import { Badge } from "@/components/ui/badge";
 
-export const metadata: Metadata = { title: "Fixes" };
+import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; version: string }>;
+}): Promise<Metadata> {
+  void params;
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "fixes", "Fixes");
+}
 
 function stripHtml(html: string | null | undefined): string {
   if (!html) return "";

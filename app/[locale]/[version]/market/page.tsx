@@ -7,7 +7,17 @@ import { getGameDb } from "@/lib/game-db";
 import { MarketGrid, type MarketLabels } from "@/components/shared/MarketGrid";
 import type { MarketItemRow } from "@/modules/market/types";
 
-export const metadata: Metadata = { title: "Mercado" };
+import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; version: string }>;
+}): Promise<Metadata> {
+  void params;
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "market", "Mercado");
+}
 
 interface MarketDbRow extends RowDataPacket {
   ID: number;

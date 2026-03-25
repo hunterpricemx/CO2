@@ -12,7 +12,17 @@ import {
   type RankTab,
 } from "@/components/shared/RankingTable";
 
-export const metadata: Metadata = { title: "Rankings" };
+import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; version: string }>;
+}): Promise<Metadata> {
+  void params;
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "rankings", "Rankings");
+}
 
 interface KoBoardRow extends RowDataPacket {
   EntityID: number;

@@ -3,11 +3,12 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getAllInfluencersActive } from "@/modules/influencers/queries";
 import { InfluencersList } from "./InfluencersList";
-import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 
-export const metadata: Metadata = {
-  title: "Influencers",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "influencers", "Influencers");
+}
 
 type Props = { params: Promise<{ locale: string; version: string }> };
 

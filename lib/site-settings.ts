@@ -1,4 +1,7 @@
 import "server-only";
+import type { SeoPageEntry, SeoPageKey } from "@/lib/seo-types";
+export type { SeoPageEntry, SeoPageKey };
+export { SEO_PAGE_KEYS } from "@/lib/seo-types";
 
 export type PromoSlide = {
   image_url: string;
@@ -27,6 +30,14 @@ export type SiteSettings = {
   tickets_enabled: boolean;
   /** Whether the garments store is enabled. */
   garments_enabled: boolean;
+  /** Global SEO: site name used in title template. */
+  seo_site_name: string;
+  /** Global SEO: default meta description. */
+  seo_default_description: string;
+  /** Global SEO: default Open Graph image URL. */
+  seo_og_image: string;
+  /** Per-page SEO overrides keyed by SeoPageKey. */
+  seo_pages: Partial<Record<SeoPageKey, SeoPageEntry>>;
 };
 
 const DEFAULTS: SiteSettings = {
@@ -46,6 +57,10 @@ const DEFAULTS: SiteSettings = {
   script_footer:     "",
   tickets_enabled:   false,
   garments_enabled:  false,
+  seo_site_name:              "Conquer Classic Plus",
+  seo_default_description:    "Servidor privado de Conquer Online — Classic Plus 1.0 & Experience 2.0. Revive la leyenda.",
+  seo_og_image:               "",
+  seo_pages:                  {},
 };
 
 function safeJSON<T>(str: string | undefined | null, fallback: T): T {
@@ -101,6 +116,10 @@ async function _fetchSiteSettings(): Promise<SiteSettings> {
       script_footer:     map.script_footer || "",
       tickets_enabled:   map.tickets_enabled  === "true",
       garments_enabled:  map.garments_enabled === "true",
+      seo_site_name:           map.seo_site_name           || DEFAULTS.seo_site_name,
+      seo_default_description: map.seo_default_description || DEFAULTS.seo_default_description,
+      seo_og_image:            map.seo_og_image            || "",
+      seo_pages:               safeJSON<Partial<Record<SeoPageKey, SeoPageEntry>>>(map.seo_pages, {}),
     };
   } catch {
     return DEFAULTS;
@@ -116,5 +135,36 @@ export function getVersionAssets(settings: SiteSettings, version: string) {
     discordUrl:  version === "1.0" ? settings.discord_url_v1    : settings.discord_url_v2,
     videoUrl:    version === "1.0" ? settings.home_video_url_v1 : settings.home_video_url_v2,
     promoSlides: version === "1.0" ? settings.promo_slides_v1   : settings.promo_slides_v2,
+  };
+}
+
+/**
+ * Builds Next.js Metadata for a public page using SEO settings.
+ * Falls back to global defaults when page-specific values are not set.
+ */
+export function buildPageSeo(
+  settings: SiteSettings,
+  pageKey: SeoPageKey,
+  fallbackTitle: string,
+): import("next").Metadata {
+  const override = settings.seo_pages[pageKey] ?? {};
+  const title       = override.title       || fallbackTitle;
+  const description = override.description || settings.seo_default_description;
+  const image       = override.og_image    || settings.seo_og_image || undefined;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(image ? { images: [{ url: image }] } : {}),
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      ...(image ? { images: [image] } : {}),
+    },
   };
 }

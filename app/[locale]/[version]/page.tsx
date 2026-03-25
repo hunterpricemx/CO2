@@ -9,13 +9,13 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { EventsCountdownSidebar } from "@/components/shared/EventsCountdownSidebar";
 import { HeroNextEvent } from "@/components/shared/HeroNextEvent";
-import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { PromoSlider } from "@/components/shared/PromoSlider";
 
-export const metadata: Metadata = {
-  title: "Inicio",
-  description: "Conquer Online Classic Plus — el servidor privado más completo. Dos versiones: 1.0 y 2.0.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "home", "Inicio");
+}
 
 export default async function HomePage({
   params,

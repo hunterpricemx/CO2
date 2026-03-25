@@ -12,7 +12,17 @@ import {
   type WeekDay,
 } from "@/components/shared/WeeklyCalendar";
 
-export const metadata: Metadata = { title: "Eventos" };
+import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; version: string }>;
+}): Promise<Metadata> {
+  void params;
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "events", "Eventos");
+}
 
 // ── Build calendar data from events list ──────────────────────────────────────
 

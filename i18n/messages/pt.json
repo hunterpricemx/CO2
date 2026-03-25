@@ -18,7 +18,7 @@
     "logout": "Sair",
     "news": "Notícias",
     "info": "Informações",
-    "stats": "Estatísticas",
+    "stats": "Utilidades",
     "terms": "Termos de Serviço",
     "rules": "Regras",
     "lottery": "Registros de Loteria",
@@ -27,7 +27,8 @@
     "pkpoints": "PK Points",
     "ko": "KO Rankings",
     "tickets": "Suporte",
-    "garments": "Garments"
+    "garments": "Garments",
+    "compose": "Calculadora Compose"
   },
   "home": {
     "hero_title": "Conquer Classic Plus",

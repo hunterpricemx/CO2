@@ -1,13 +1,14 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import type { Metadata } from "next";
 import { getGameSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase/server";
 
-export const metadata: Metadata = {
-  title: "VIP System",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const settings = await getSiteSettings();
+  return buildPageSeo(settings, "vip", "VIP System");
+}
 
 type Props = { params: Promise<{ locale: string; version: string }> };
 
