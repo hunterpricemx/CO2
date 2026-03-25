@@ -36,6 +36,7 @@ export async function Header({
   const session = await getGameSession();
   const settings = await getSiteSettings();
   const ticketsEnabled = settings.tickets_enabled;
+  const garmentsEnabled = settings.garments_enabled;
 
   // Build locale-aware path: omit prefix for default locale (es) with as-needed routing
   const lp = (path: string) => locale === "es" ? path : `/${locale}${path}`;
@@ -59,6 +60,7 @@ export async function Header({
           { type: "link", href: lp("/1.0/news"), label: t("news") },
           { type: "link", href: lp("/1.0/download"), label: t("download") },
           { type: "link", href: lp("/1.0/donate"), label: t("donate") },
+          ...(garmentsEnabled ? [{ type: "link" as const, href: lp("/1.0/garments"), label: t("garments") }] : []),
           { type: "link", href: lp("/1.0/vip"), label: t("vip") },
           { type: "link", href: lp("/1.0/influencers"), label: t("influencers") },
           {
@@ -82,6 +84,7 @@ export async function Header({
           { type: "link", href: lp("/2.0/events"), label: t("events") },
           { type: "link", href: lp("/2.0/download"), label: t("download") },
           { type: "link", href: lp("/2.0/donate"), label: t("donate") },
+          ...(garmentsEnabled ? [{ type: "link" as const, href: lp("/2.0/garments"), label: t("garments") }] : []),
           { type: "link", href: lp("/2.0/vip"), label: t("vip") },
           { type: "link", href: lp("/2.0/influencers"), label: t("influencers") },
           statsDropdown,

@@ -26,7 +26,8 @@
     "drops": "Logs de Drops",
     "pkpoints": "PK Points",
     "ko": "KO Rankings",
-    "tickets": "Suporte"
+    "tickets": "Suporte",
+    "garments": "Garments"
   },
   "home": {
     "hero_title": "Conquer Classic Plus",
@@ -586,6 +587,33 @@
     "description": "Descrição",
     "image": "Imagem",
     "all": "Todos"
+  },
+  "garments": {
+    "title": "Garments",
+    "subtitle": "Personalize seu personagem com garments exclusivos",
+    "price_label": "$60 USD",
+    "btn_order": "Pedir",
+    "btn_custom": "Personalizar",
+    "custom_badge": "Custom",
+    "login_required": "Faça login para fazer um pedido",
+    "login_link": "Entrar",
+    "modal_title": "Pedir Garment",
+    "modal_custom_title": "Garment Personalizado",
+    "char_label": "Nome do personagem",
+    "char_placeholder": "Seu personagem no jogo",
+    "custom_desc_label": "Descrição do garment",
+    "custom_desc_placeholder": "Descreva o garment que você quer...",
+    "ref_image_label": "Imagem ou vídeo de referência (opcional, MP4 até 50 MB)",
+    "btn_checkout": "Ir para pagamento — $60 USD",
+    "orders_link": "Ver meus pedidos",
+    "empty_catalog": "Nenhum garment disponível.",
+    "not_configured": "Garments não disponível no momento.",
+    "tebex_checking": "Verificando sistema de pagamento...",
+    "tebex_error": "Não foi possível conectar ao servidor de pagamento.",
+    "tebex_retry": "Tentar novamente",
+    "custom_request_title": "Não encontrou o que procura?",
+    "custom_request_subtitle": "Solicite um garment totalmente personalizado, criado para você.",
+    "custom_request_btn": "Solicitar o meu"
   },
   "footer": {"donate": "Doar", "download": "Baixar",
     "rights": "Todos os direitos reservados",

@@ -52,6 +52,7 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
     tebex_payment_table: initial?.tebex_payment_table ?? "dbb_payments",
     tebex_category_id: initial?.tebex_category_id ?? "",
     tebex_product_id:  initial?.tebex_product_id  ?? "",
+    tebex_garment_package_id: initial?.tebex_garment_package_id ?? "",
   });
 
   const [showSkTest,    setShowSkTest]    = useState(false);
@@ -279,6 +280,11 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
                 <label className={labelCls}>Product ID</label>
                 <input className={inputCls} placeholder="6468425" value={form.tebex_product_id}
                   onChange={e => set("tebex_product_id", e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>Garment Package ID</label>
+                <input className={inputCls} placeholder="ID del paquete de Tebex para garments ($60)" value={form.tebex_garment_package_id}
+                  onChange={e => set("tebex_garment_package_id", e.target.value)} />
               </div>
             </div>
             <p className="text-xs text-gray-500 leading-relaxed">

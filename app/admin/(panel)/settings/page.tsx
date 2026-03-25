@@ -52,6 +52,7 @@ export default function AdminSiteSettingsPage() {
   // Soporte
   const [supportEmail, setSupportEmail] = useState("");
   const [ticketsEnabled, setTicketsEnabled] = useState(false);
+  const [garmentsEnabled, setGarmentsEnabled] = useState(false);
 
   // SMTP test
   const [smtpTestEmail, setSmtpTestEmail] = useState("mariano@hunterprice.mx");
@@ -96,6 +97,7 @@ export default function AdminSiteSettingsPage() {
         setScriptFooter(map.script_footer || "");
         setSupportEmail(map.support_notification_email || "");
         setTicketsEnabled(map.tickets_enabled === "true");
+        setGarmentsEnabled(map.garments_enabled === "true");
       } catch {
         toast.error("No se pudieron cargar los ajustes actuales.");
       } finally {
@@ -460,11 +462,12 @@ export default function AdminSiteSettingsPage() {
         onSave={() => save([
           { key: "support_notification_email", value: supportEmail },
           { key: "tickets_enabled",            value: ticketsEnabled ? "true" : "false" },
+          { key: "garments_enabled",           value: garmentsEnabled ? "true" : "false" },
         ])}
         saving={saving}
       >
         <div className="flex flex-col gap-5">
-          {/* Toggle */}
+          {/* Toggle tickets */}
           <div className="flex items-center justify-between gap-4 py-1">
             <div>
               <p className="text-sm text-white font-medium font-poppins">Sistema de tickets</p>
@@ -484,6 +487,31 @@ export default function AdminSiteSettingsPage() {
               <span
                 className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
                   ticketsEnabled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Toggle garments */}
+          <div className="flex items-center justify-between gap-4 py-1">
+            <div>
+              <p className="text-sm text-white font-medium font-poppins">Tienda de Garments</p>
+              <p className="text-[11px] text-gray-500 font-poppins mt-0.5">
+                Muestra u oculta la tienda de garments en el menú y bloquea el acceso a la página.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setGarmentsEnabled((v) => !v)}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none ${
+                garmentsEnabled ? "bg-[#f39c12]" : "bg-gray-700"
+              }`}
+              aria-checked={garmentsEnabled}
+              role="switch"
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                  garmentsEnabled ? "translate-x-6" : "translate-x-1"
                 }`}
               />
             </button>

@@ -170,6 +170,18 @@ export function RefineProvider({ children }: { children: React.ReactNode }) {
           edit: "/admin/influencers/edit/:id",
           meta: { label: "Influencers" },
         },
+        {
+          name: "garments",
+          list: "/admin/garments",
+          create: "/admin/garments/create",
+          edit: "/admin/garments/edit/:id",
+          meta: { label: "Garments" },
+        },
+        {
+          name: "garment_orders",
+          list: "/admin/garments/orders",
+          meta: { label: "Órdenes de Garments" },
+        },
       ]}
       options={{
         syncWithLocation: true,

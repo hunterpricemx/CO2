@@ -24,6 +24,7 @@ export type PaymentConfigData = {
   tebex_payment_table: string;
   tebex_category_id: string;
   tebex_product_id:  string;
+  tebex_garment_package_id: string;
 };
 
 export type ActionResult = {
@@ -417,7 +418,8 @@ export async function getPaymentConfig(): Promise<PaymentConfigData | null> {
     tebex_uri_v2:      d.tebex_uri_v2      ?? "",
     tebex_payment_table: d.tebex_payment_table ?? "dbb_payments",
     tebex_category_id: d?.tebex_category_id != null ? String(d.tebex_category_id) : "",
-    tebex_product_id:  d?.tebex_product_id  != null ? String(d.tebex_product_id) : "",
+    tebex_product_id:  d?.tebex_product_id  != null ? String(d.tebex_product_id)  : "",
+    tebex_garment_package_id: d?.tebex_garment_package_id != null ? String(d.tebex_garment_package_id) : "",
   };
 }
 
@@ -581,6 +583,9 @@ export async function savePaymentConfig(config: PaymentConfigData): Promise<Acti
   if (config.tebex_product_id.trim() !== "") {
     payload.tebex_product_id = config.tebex_product_id.trim();
   }
+  if (config.tebex_garment_package_id.trim() !== "") {
+    payload.tebex_garment_package_id = config.tebex_garment_package_id.trim();
+  }
 
   // Only update secret keys if the user typed a new value
   if (config.stripe_sk_test.trim() !== "") payload.stripe_sk_test = config.stripe_sk_test;
@@ -595,6 +600,7 @@ export async function savePaymentConfig(config: PaymentConfigData): Promise<Acti
     "tebex_payment_table",
     "tebex_category_id",
     "tebex_product_id",
+    "tebex_garment_package_id",
   ];
 
   for (const column of optionalServerConfigColumns) {

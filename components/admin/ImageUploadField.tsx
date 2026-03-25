@@ -8,11 +8,17 @@ import { createClient } from "@/lib/supabase/client";
 const FIELD_CLS =
   "bg-[#0f0503] border border-[rgba(255,215,0,0.15)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#f39c12] transition-colors w-full";
 
+function getVimeoId(url: string): string | null {
+  const m = url.match(/vimeo\.com\/(?:video\/|)(\d+)/);
+  return m?.[1] ?? null;
+}
+
 type ImageUploadFieldProps = {
   label: string;
   value?: string | null;
   onChange: (value: string | null) => void;
   folder: string;
+  allowVideo?: boolean;
 };
 
 export default function ImageUploadField({
@@ -20,6 +26,7 @@ export default function ImageUploadField({
   value,
   onChange,
   folder,
+  allowVideo = false,
 }: ImageUploadFieldProps) {
   const inputId = useId();
   const [isUploading, setIsUploading] = useState(false);
@@ -31,14 +38,18 @@ export default function ImageUploadField({
       return;
     }
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Solo se permiten imágenes.");
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type === "video/mp4" || file.type === "video/quicktime";
+
+    if (!isImage && !(allowVideo && isVideo)) {
+      toast.error(allowVideo ? "Solo se permiten imágenes o videos MP4." : "Solo se permiten imágenes.");
       event.target.value = "";
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("La imagen no puede superar 5 MB.");
+    const maxSize = (allowVideo && isVideo) ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      toast.error((allowVideo && isVideo) ? "El video no puede superar 50 MB." : "La imagen no puede superar 5 MB.");
       event.target.value = "";
       return;
     }
@@ -84,7 +95,7 @@ export default function ImageUploadField({
             className="inline-flex items-center gap-2 text-xs text-red-300 hover:text-red-200 transition-colors"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Quitar imagen
+            Quitar {value && (getVimeoId(value) ? "video Vimeo" : value.match(/\.(mp4|mov)$/i) ? "video" : "imagen")}
           </button>
         )}
       </div>
@@ -93,12 +104,36 @@ export default function ImageUploadField({
         <div className="flex flex-col gap-4 md:flex-row md:items-start">
           <div className="w-full md:max-w-xs">
             {value ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={value}
-                alt="Vista previa del thumbnail"
-                className="h-36 w-full rounded-lg border border-[rgba(255,215,0,0.18)] object-cover"
-              />
+              (() => {
+                const vimeoId = getVimeoId(value);
+                if (vimeoId) return (
+                  <div className="relative h-36 w-full rounded-lg border border-[rgba(255,215,0,0.18)] overflow-hidden bg-black">
+                    <iframe
+                      src={`https://player.vimeo.com/video/${vimeoId}?badge=0&loop=1&autoplay=1&muted=1&background=1&controls=0`}
+                      className="absolute inset-0 w-full h-full"
+                      allow="autoplay; fullscreen"
+                      title="Vista previa Vimeo"
+                    />
+                  </div>
+                );
+                if (value.match(/\.(mp4|mov)$/i)) return (
+                  <video
+                    src={value}
+                    className="h-36 w-full rounded-lg border border-[rgba(255,215,0,0.18)] object-cover"
+                    muted
+                    playsInline
+                    controls
+                  />
+                );
+                return (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={value}
+                    alt="Vista previa del thumbnail"
+                    className="h-36 w-full rounded-lg border border-[rgba(255,215,0,0.18)] object-cover"
+                  />
+                );
+              })()
             ) : (
               <div className="flex h-36 w-full items-center justify-center rounded-lg border border-dashed border-[rgba(255,215,0,0.18)] bg-black/20 text-sm text-gray-500">
                 Sin imagen
@@ -112,19 +147,21 @@ export default function ImageUploadField({
               className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-lg bg-[#f39c12] px-4 py-2 text-sm font-semibold text-black transition-colors hover:bg-[#e67e22]"
             >
               {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-              {isUploading ? "Subiendo..." : "Subir imagen"}
+              {isUploading ? "Subiendo..." : allowVideo ? "Subir imagen o video" : "Subir imagen"}
             </label>
             <input
               id={inputId}
               type="file"
-              accept="image/png,image/jpeg,image/webp,image/gif"
+              accept={allowVideo ? "image/png,image/jpeg,image/webp,image/gif,video/mp4,video/quicktime" : "image/png,image/jpeg,image/webp,image/gif"}
               onChange={handleFileChange}
               className="hidden"
               disabled={isUploading}
             />
 
             <p className="text-xs text-gray-500">
-              Formatos permitidos: JPG, PNG, WEBP o GIF. Tamaño máximo: 5 MB.
+              {allowVideo
+                ? "Formatos: JPG, PNG, WEBP, GIF o MP4. Máx: 5 MB imagen / 50 MB video."
+                : "Formatos permitidos: JPG, PNG, WEBP o GIF. Tamaño máximo: 5 MB."}
             </p>
 
             <div>
@@ -133,7 +170,7 @@ export default function ImageUploadField({
                 type="url"
                 value={value ?? ""}
                 onChange={(event) => onChange(event.target.value || null)}
-                placeholder="https://.../imagen.jpg"
+                placeholder="https://vimeo.com/123456789 o https://.../imagen.jpg"
                 className={FIELD_CLS}
               />
             </div>

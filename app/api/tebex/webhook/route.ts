@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { getTebexConfig, verifyTebexWebhookSignature } from "@/lib/tebex";
 import { logPayment } from "@/lib/payment-logger";
 import { upsertLegacyPayment } from "@/lib/payment-legacy";
+import { sendGenericMail } from "@/lib/mailer";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,11 +50,110 @@ export async function POST(req: NextRequest) {
 
   const subject = payload.subject;
   const custom = (subject.custom ?? {}) as Record<string, unknown>;
+  const transactionId = subject.transaction_id ?? null;
+
+  // ── Garment order branch ──────────────────────────────────────────────────
+  const garmentOrderId = typeof custom.garment_order_id === "string" ? custom.garment_order_id : "";
+  if (garmentOrderId) {
+    const supabase = await createAdminClient();
+
+    if (payload.type === "payment.declined") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from("garment_orders")
+        .update({ status: "cancelled", tebex_transaction: transactionId })
+        .eq("id", garmentOrderId);
+      await logPayment({ source: "tebex", level: "warn", event: "garment_payment_declined",
+        message: `Garment pago rechazado: ${subject.status?.description ?? "motivo desconocido"}`,
+        txn_id: transactionId });
+      return NextResponse.json({ received: true });
+    }
+
+    if (payload.type === "payment.refunded") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from("garment_orders")
+        .update({ status: "cancelled", tebex_transaction: transactionId })
+        .eq("id", garmentOrderId);
+      await logPayment({ source: "tebex", level: "warn", event: "garment_payment_refunded",
+        message: "Garment pago reembolsado",
+        txn_id: transactionId });
+      return NextResponse.json({ received: true });
+    }
+
+    if (payload.type === "payment.completed") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: garmentOrder } = await (supabase as any)
+        .from("garment_orders")
+        .select("id, garment_name, account_name, character_name, version, is_custom, amount_paid, currency, status, tebex_transaction")
+        .eq("id", garmentOrderId)
+        .single();
+
+      if (!garmentOrder) {
+        await logPayment({ source: "tebex", level: "error", event: "garment_order_not_found",
+          message: `Garment order ${garmentOrderId} no encontrada`,
+          txn_id: transactionId });
+        return NextResponse.json({ error: "Garment order not found" }, { status: 404 });
+      }
+
+      if (garmentOrder.status === "paid" && garmentOrder.tebex_transaction === transactionId) {
+        return NextResponse.json({ received: true, duplicate: true });
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (supabase as any)
+        .from("garment_orders")
+        .update({
+          status: "paid",
+          amount_paid: subject.price?.amount ?? garmentOrder.amount_paid,
+          currency: subject.price?.currency ?? garmentOrder.currency ?? "USD",
+          tebex_transaction: transactionId,
+        })
+        .eq("id", garmentOrderId);
+
+      await logPayment({ source: "tebex", level: "info", event: "garment_payment_completed",
+        message: `Garment pagado: '${garmentOrder.garment_name}' — ${garmentOrder.account_name}`,
+        username: garmentOrder.account_name ?? null, txn_id: transactionId });
+
+      // Notify admin by email
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: settings } = await (supabase as any)
+          .from("site_settings")
+          .select("value")
+          .eq("key", "support_notification_email")
+          .single();
+        const adminEmail = settings?.value as string | null;
+        if (adminEmail) {
+          const isCustom = Boolean(garmentOrder.is_custom);
+          await sendGenericMail(adminEmail, `🛒 Nuevo pedido de Garment — ${garmentOrder.garment_name}`,
+            `<h2>Nuevo pedido de Garment recibido</h2>
+<ul>
+  <li><strong>Garment:</strong> ${garmentOrder.garment_name}${isCustom ? " <em>(Personalizado)</em>" : ""}</li>
+  <li><strong>Jugador:</strong> ${garmentOrder.account_name}</li>
+  <li><strong>Personaje:</strong> ${garmentOrder.character_name}</li>
+  <li><strong>Versión:</strong> ${garmentOrder.version}.0</li>
+  <li><strong>Monto:</strong> $${garmentOrder.amount_paid} ${garmentOrder.currency ?? "USD"}</li>
+  <li><strong>ID de orden:</strong> ${garmentOrderId}</li>
+</ul>
+<p>Ve al panel de administración para gestionar este pedido.</p>`);
+        }
+      } catch {
+        // Email send failure should never block webhook acknowledgment
+      }
+
+      return NextResponse.json({ received: true });
+    }
+
+    // Unknown event type for garment order
+    return NextResponse.json({ received: true });
+  }
+  // ── End garment order branch ──────────────────────────────────────────────
+
   const donationId = typeof custom.donation_id === "string" ? custom.donation_id : "";
   const characterName = typeof custom.character_name === "string" ? custom.character_name : "";
   const accountName = typeof custom.account_name === "string" ? custom.account_name : null;
   const versionNum = Number.parseInt(String(custom.version ?? "2"), 10);
-  const transactionId = subject.transaction_id ?? null;
 
   if (!donationId) {
     await logPayment({ source: "tebex", level: "error", event: "missing_donation_id",
