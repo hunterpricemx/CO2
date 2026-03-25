@@ -22,6 +22,7 @@ const PANEL_LABELS: Record<AdminPanelPermission, string> = {
   guides: "Guías",
   fixes: "Fixes",
   donations: "Donaciones",
+  garments: "Atuendos",
   users: "Usuarios",
   gameServer: "Game Server",
   news: "Noticias",
