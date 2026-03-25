@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ChevronRight, CalendarDays } from "lucide-react";
-import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { getPublishedEvents } from "@/modules/events/queries";
@@ -11,8 +11,6 @@ import {
   type CalendarEvent,
   type WeekDay,
 } from "@/components/shared/WeeklyCalendar";
-
-import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
 
 export async function generateMetadata({
   params,

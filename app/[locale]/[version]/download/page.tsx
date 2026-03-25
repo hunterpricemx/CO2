@@ -1,12 +1,10 @@
 import Link from "next/link";
-import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { Download, HardDrive, Package } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { getDownloads } from "@/modules/downloads/queries";
 import type { DownloadRow } from "@/modules/downloads/types";
-
-import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
 
 export async function generateMetadata({
   params,

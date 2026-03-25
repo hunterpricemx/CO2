@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { getGameDb } from "@/lib/game-db";
 import { ChevronRight, Trophy } from "lucide-react";
 import { getTranslations } from "next-intl/server";
@@ -11,8 +11,6 @@ import {
   type GuildRow,
   type RankTab,
 } from "@/components/shared/RankingTable";
-
-import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
 
 export async function generateMetadata({
   params,

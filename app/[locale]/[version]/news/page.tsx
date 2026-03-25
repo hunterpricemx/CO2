@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { Newspaper, ChevronRight, Calendar } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { getAllNewsPublished, getNewsCategories } from "@/modules/news/queries";
 import type { NewsPostRow } from "@/modules/news/types";
 import NewsFilters from "@/components/shared/NewsFilters";
-
-import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
 
 export async function generateMetadata({
   params,

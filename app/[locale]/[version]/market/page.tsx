@@ -2,12 +2,10 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { Metadata } from "next";
 import type { RowDataPacket } from "mysql2";
-import { getSiteSettings, getVersionAssets } from "@/lib/site-settings";
+import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { getGameDb } from "@/lib/game-db";
 import { MarketGrid, type MarketLabels } from "@/components/shared/MarketGrid";
 import type { MarketItemRow } from "@/modules/market/types";
-
-import { getSiteSettings, buildPageSeo } from "@/lib/site-settings";
 
 export async function generateMetadata({
   params,
