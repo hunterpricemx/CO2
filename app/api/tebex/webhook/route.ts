@@ -126,8 +126,7 @@ export async function POST(req: NextRequest) {
         const adminEmail = settings?.value as string | null;
         if (adminEmail) {
           const isCustom = Boolean(garmentOrder.is_custom);
-          await sendGenericMail(adminEmail, `🛒 Nuevo pedido de Garment — ${garmentOrder.garment_name}`,
-            `<h2>Nuevo pedido de Garment recibido</h2>
+          const garmentHtml = `<h2>Nuevo pedido de Garment recibido</h2>
 <ul>
   <li><strong>Garment:</strong> ${garmentOrder.garment_name}${isCustom ? " <em>(Personalizado)</em>" : ""}</li>
   <li><strong>Jugador:</strong> ${garmentOrder.account_name}</li>
@@ -136,7 +135,13 @@ export async function POST(req: NextRequest) {
   <li><strong>Monto:</strong> $${garmentOrder.amount_paid} ${garmentOrder.currency ?? "USD"}</li>
   <li><strong>ID de orden:</strong> ${garmentOrderId}</li>
 </ul>
-<p>Ve al panel de administración para gestionar este pedido.</p>`);
+<p>Ve al panel de administración para gestionar este pedido.</p>`;
+          await sendGenericMail({
+            to: adminEmail,
+            subject: `🛒 Nuevo pedido de Garment — ${garmentOrder.garment_name}`,
+            html: garmentHtml,
+            text: `Nuevo pedido de Garment recibido.\nGarment: ${garmentOrder.garment_name}\nJugador: ${garmentOrder.account_name}\nPersonaje: ${garmentOrder.character_name}\nVersión: ${garmentOrder.version}.0\nMonto: $${garmentOrder.amount_paid} ${garmentOrder.currency ?? "USD"}\nID de orden: ${garmentOrderId}`,
+          });
         }
       } catch {
         // Email send failure should never block webhook acknowledgment
