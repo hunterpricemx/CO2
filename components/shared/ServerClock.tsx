@@ -2,15 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
+import { SERVER_TZ } from "@/lib/server-tz";
 
-interface ClockInfo {
-  label: string;
-  timezone: string;
-}
-
-const SERVER_CLOCK: ClockInfo = {
+const SERVER_CLOCK = {
   label: "SERVER",
-  timezone: "America/New_York",
+  timezone: SERVER_TZ,
 };
 
 function formatTime(date: Date, timezone: string): string {

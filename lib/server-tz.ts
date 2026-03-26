@@ -13,7 +13,7 @@
  */
 
 export const SERVER_TZ: string =
-  process.env.NEXT_PUBLIC_SERVER_TIMEZONE ?? "UTC";
+  process.env.NEXT_PUBLIC_SERVER_TIMEZONE ?? "America/New_York";
 
 /**
  * Devuelve un Date "fake-local" que representa la fecha real `date` pero con
