@@ -80,7 +80,16 @@ const DAY_TO_DOW: Record<ScheduleDay, number | "daily" | "first_of_month"> = {
 };
 
 /**
+/**
+ * Ventana en ms dentro de la cual un evento se considera EN CURSO (LIVE).
+ * Si arrancó hace menos de LIVE_WINDOW_MS, devolvemos ms negativos para
+ * que la UI lo muestre como activo en lugar de saltar a la próxima ocurrencia.
+ */
+const LIVE_WINDOW_MS = 30 * 60 * 1000; // 30 minutos
+
+/**
  * Returns milliseconds until the next occurrence of any entry in `schedule`.
+ * Negative value means the event started recently (within LIVE_WINDOW_MS) → LIVE.
  * Pass `now` to override the reference time (useful in tests).
  */
 export function getNextOccurrenceMs(
@@ -100,26 +109,29 @@ export function getNextOccurrenceMs(
   for (const entry of entries as ScheduleEntry[]) {
     const [h, m] = entry.time.split(":").map(Number);
     const dow = DAY_TO_DOW[entry.day];
-    const candidate = new Date(nowTz); // operar en el espacio de la timezone del servidor
+    const candidate = new Date(nowTz);
     candidate.setSeconds(0, 0);
     candidate.setHours(h, m, 0, 0);
 
     if (dow === "daily") {
-      if (candidate.getTime() <= nowTz.getTime()) candidate.setDate(candidate.getDate() + 1);
+      // Solo avanza al día siguiente si el evento pasó hace MÁS de LIVE_WINDOW_MS
+      if (candidate.getTime() < nowTz.getTime() - LIVE_WINDOW_MS)
+        candidate.setDate(candidate.getDate() + 1);
     } else if (dow === "first_of_month") {
       candidate.setDate(1);
-      if (candidate.getTime() <= nowTz.getTime()) {
+      if (candidate.getTime() < nowTz.getTime() - LIVE_WINDOW_MS) {
         candidate.setMonth(candidate.getMonth() + 1);
         candidate.setDate(1);
       }
     } else {
-      const currentDow = nowTz.getDay(); // día de semana en timezone del servidor
+      const currentDow = nowTz.getDay();
       let daysUntil = ((dow as number) - currentDow + 7) % 7;
-      if (daysUntil === 0 && candidate.getTime() <= nowTz.getTime()) daysUntil = 7;
+      // Solo salta a la siguiente semana si pasó hace MÁS de LIVE_WINDOW_MS
+      if (daysUntil === 0 && candidate.getTime() < nowTz.getTime() - LIVE_WINDOW_MS)
+        daysUntil = 7;
       candidate.setDate(candidate.getDate() + daysUntil);
     }
 
-    // La diferencia en el espacio fake-local == ms reales hasta el evento
     const ms = candidate.getTime() - nowTz.getTime();
     if (ms < min) min = ms;
   }

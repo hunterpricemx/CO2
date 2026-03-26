@@ -40,6 +40,9 @@ function formatCountdown(ms: number): string {
   return `${mm}m ${ss}s`;
 }
 
+/** Ventana LIVE: si el evento arrancó hace menos de esto, se considera en curso */
+const LIVE_WINDOW_MS = 30 * 60 * 1000;
+
 function getNextOccurrenceDate(
   schedule: ScheduleEntry[] | string | unknown,
   now: Date,
@@ -67,7 +70,6 @@ function getNextOccurrenceDate(
     first_of_month: "first_of_month",
   };
 
-  // Operar en el espacio fake-local de la timezone del servidor
   const nowTz = toServerTz(now);
   let next: Date | null = null;
 
@@ -81,17 +83,19 @@ function getNextOccurrenceDate(
     candidate.setHours(h, m, 0, 0);
 
     if (dow === "daily") {
-      if (candidate.getTime() <= nowTz.getTime()) candidate.setDate(candidate.getDate() + 1);
+      if (candidate.getTime() < nowTz.getTime() - LIVE_WINDOW_MS)
+        candidate.setDate(candidate.getDate() + 1);
     } else if (dow === "first_of_month") {
       candidate.setDate(1);
-      if (candidate.getTime() <= nowTz.getTime()) {
+      if (candidate.getTime() < nowTz.getTime() - LIVE_WINDOW_MS) {
         candidate.setMonth(candidate.getMonth() + 1);
         candidate.setDate(1);
       }
     } else {
-      const currentDow = nowTz.getDay(); // día en timezone del servidor
+      const currentDow = nowTz.getDay();
       let daysUntil = ((dow as number) - currentDow + 7) % 7;
-      if (daysUntil === 0 && candidate.getTime() <= nowTz.getTime()) daysUntil = 7;
+      if (daysUntil === 0 && candidate.getTime() < nowTz.getTime() - LIVE_WINDOW_MS)
+        daysUntil = 7;
       candidate.setDate(candidate.getDate() + daysUntil);
     }
 
@@ -141,7 +145,7 @@ export function EventsCountdownSidebar({ events, locale, eventsUrl, labels, moda
     const isSoon = ms > 0 && ms < 30 * 60 * 1000;
 
     return {
-      text: formatEventTime(nextAt),
+      text: isLive ? `${formatEventTime(nextAt)} ●` : formatEventTime(nextAt),
       color: isLive ? "#ff4444" : isSoon ? "#f39c12" : "#ffd700",
       bg: isLive
         ? "rgba(255,68,68,0.15)"
@@ -202,14 +206,18 @@ export function EventsCountdownSidebar({ events, locale, eventsUrl, labels, moda
                     <p className="font-poppins text-[11px] text-[#8888a8] truncate">
                       {scheduleText}
                     </p>
-                    {ms > 0 && now && (
+                    {now && ms <= 0 ? (
+                      <p className="font-mono text-[11px] font-bold shrink-0" style={{ color: "#ff4444" }}>
+                        EN VIVO
+                      </p>
+                    ) : ms > 0 && now ? (
                       <p className="font-mono text-[11px] text-[#b4b4c8] shrink-0">
                         {labels.startsIn}{" "}
                         <span style={{ color: badge.color }}>
                           {formatCountdown(ms)}
                         </span>
                       </p>
-                    )}
+                    ) : null}
                   </div>
                 )}
               </div>
