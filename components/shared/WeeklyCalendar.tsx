@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Clock, Trophy, X, Star, ImageOff } from "lucide-react";
+import { toServerTz } from "@/lib/server-tz";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -209,7 +210,7 @@ export function WeeklyCalendar({
 }) {
   const [selected, setSelected] = useState<CalendarEvent | null>(null);
 
-  const todayDow = new Date().getDay(); // 0=Sun,1=Mon,...
+  const todayDow = toServerTz(new Date()).getDay(); // día de semana en timezone del servidor
 
   const hasAny =
     data.daily.length > 0 ||

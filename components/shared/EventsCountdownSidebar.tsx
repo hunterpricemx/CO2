@@ -10,6 +10,7 @@ import {
 import type { EventRow } from "@/modules/events/types";
 import { EventDetailModal } from "./EventDetailModal";
 import type { ModalLabels } from "./EventDetailModal";
+import { toServerTz } from "@/lib/server-tz";
 
 interface Props {
   events: EventRow[];
@@ -66,6 +67,8 @@ function getNextOccurrenceDate(
     first_of_month: "first_of_month",
   };
 
+  // Operar en el espacio fake-local de la timezone del servidor
+  const nowTz = toServerTz(now);
   let next: Date | null = null;
 
   for (const entry of entries as ScheduleEntry[]) {
@@ -73,22 +76,22 @@ function getNextOccurrenceDate(
     const dow = dayToDow[entry.day];
     if (dow === undefined || Number.isNaN(h) || Number.isNaN(m)) continue;
 
-    const candidate = new Date(now);
+    const candidate = new Date(nowTz);
     candidate.setSeconds(0, 0);
     candidate.setHours(h, m, 0, 0);
 
     if (dow === "daily") {
-      if (candidate.getTime() <= now.getTime()) candidate.setDate(candidate.getDate() + 1);
+      if (candidate.getTime() <= nowTz.getTime()) candidate.setDate(candidate.getDate() + 1);
     } else if (dow === "first_of_month") {
       candidate.setDate(1);
-      if (candidate.getTime() <= now.getTime()) {
+      if (candidate.getTime() <= nowTz.getTime()) {
         candidate.setMonth(candidate.getMonth() + 1);
         candidate.setDate(1);
       }
     } else {
-      const currentDow = now.getDay();
+      const currentDow = nowTz.getDay(); // día en timezone del servidor
       let daysUntil = ((dow as number) - currentDow + 7) % 7;
-      if (daysUntil === 0 && candidate.getTime() <= now.getTime()) daysUntil = 7;
+      if (daysUntil === 0 && candidate.getTime() <= nowTz.getTime()) daysUntil = 7;
       candidate.setDate(candidate.getDate() + daysUntil);
     }
 
@@ -102,11 +105,10 @@ function getNextOccurrenceDate(
 
 function formatEventTime(date: Date | null): string {
   if (!date) return "--:--";
-  return date.toLocaleTimeString("es-ES", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
+  // date está en espacio fake-local del servidor, getHours/getMinutes dan hora servidor
+  const h = String(date.getHours()).padStart(2, "0");
+  const m = String(date.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
 }
 
 function evTitle(ev: EventRow, locale: string): string {

@@ -7,6 +7,7 @@
 import { z } from "zod";
 import type { ContentStatus, GameVersion } from "@/types";
 import type { Database } from "@/lib/supabase/database.types";
+import { toServerTz } from "@/lib/server-tz";
 
 /** A row from the `events` table. */
 export type EventRow = Database["public"]["Tables"]["events"]["Row"];
@@ -92,30 +93,34 @@ export function getNextOccurrenceMs(
   }
   if (!Array.isArray(entries) || entries.length === 0) return Infinity;
 
+  // Interpretar los horarios en la timezone del servidor de juego
+  const nowTz = toServerTz(now);
+
   let min = Infinity;
   for (const entry of entries as ScheduleEntry[]) {
     const [h, m] = entry.time.split(":").map(Number);
     const dow = DAY_TO_DOW[entry.day];
-    const candidate = new Date(now);
+    const candidate = new Date(nowTz); // operar en el espacio de la timezone del servidor
     candidate.setSeconds(0, 0);
     candidate.setHours(h, m, 0, 0);
 
     if (dow === "daily") {
-      if (candidate.getTime() <= now.getTime()) candidate.setDate(candidate.getDate() + 1);
+      if (candidate.getTime() <= nowTz.getTime()) candidate.setDate(candidate.getDate() + 1);
     } else if (dow === "first_of_month") {
       candidate.setDate(1);
-      if (candidate.getTime() <= now.getTime()) {
+      if (candidate.getTime() <= nowTz.getTime()) {
         candidate.setMonth(candidate.getMonth() + 1);
         candidate.setDate(1);
       }
     } else {
-      const currentDow = now.getDay();
+      const currentDow = nowTz.getDay(); // día de semana en timezone del servidor
       let daysUntil = ((dow as number) - currentDow + 7) % 7;
-      if (daysUntil === 0 && candidate.getTime() <= now.getTime()) daysUntil = 7;
+      if (daysUntil === 0 && candidate.getTime() <= nowTz.getTime()) daysUntil = 7;
       candidate.setDate(candidate.getDate() + daysUntil);
     }
 
-    const ms = candidate.getTime() - now.getTime();
+    // La diferencia en el espacio fake-local == ms reales hasta el evento
+    const ms = candidate.getTime() - nowTz.getTime();
     if (ms < min) min = ms;
   }
   return min;
