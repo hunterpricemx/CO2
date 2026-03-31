@@ -1058,7 +1058,14 @@ export function TradeLogTable({
                       {priceLabel(r)}
                     </td>
                     <td className="px-4 py-3 text-right text-xs text-muted-foreground/50 tabular-nums whitespace-nowrap">
-                      {timeAgo(r.traded_at)}
+                      {(() => {
+                        const d = new Date(r.traded_at);
+                        const dd = String(d.getDate()).padStart(2, "0");
+                        const mm = String(d.getMonth() + 1).padStart(2, "0");
+                        const hh = String(d.getHours()).padStart(2, "0");
+                        const min = String(d.getMinutes()).padStart(2, "0");
+                        return `${dd}/${mm} ${hh}:${min}`;
+                      })()}
                     </td>
                   </tr>
                 );
