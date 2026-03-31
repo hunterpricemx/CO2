@@ -17,6 +17,7 @@ export const metadata: Metadata = { title: "Registro de Trades" };
 
 interface TradeDbRow extends RowDataPacket {
   id: number;
+  trade_id: number;
   user1_name: string;
   user2_name: string;
   owner: string;
@@ -53,16 +54,26 @@ async function getCharTradeRows(
 
     // 2. Fetch trades where the character appears as owner, user1 or user2
     const [rows] = await conn.execute<TradeDbRow[]>(
-      `SELECT id, user1_name, user2_name, owner, item_id, item_name, plus, bless, socket1,
-              socket2, enchant, money, cps, trade_date
+      `SELECT id, trade_id, user1_name, user2_name, owner, item_id, item_name, plus, bless,
+              socket1, socket2, enchant, money, cps, trade_date
        FROM \`trade_logs_public\`
        WHERE owner = ? OR user1_name = ? OR user2_name = ?
        ORDER BY id DESC
-       LIMIT 500`,
+       LIMIT 1000`,
       [charName, charName, charName],
     );
 
-    const mapped: TradeLogRow[] = rows.map((r) => {
+    // Deduplicate: the table stores 2 rows per trade (one per side).
+    // Keep the first occurrence of each trade_id (highest id, i.e. the owner's row).
+    const seenTradeIds = new Set<number>();
+    const unique = rows.filter((r) => {
+      const tid = r.trade_id ?? r.id;
+      if (seenTradeIds.has(tid)) return false;
+      seenTradeIds.add(tid);
+      return true;
+    });
+
+    const mapped: TradeLogRow[] = unique.map((r) => {
       const hasCps   = (r.cps   ?? 0) > 0;
       const hasMoney = (r.money ?? 0) > 0;
       const owner  = r.owner ?? "-";
