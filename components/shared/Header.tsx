@@ -50,6 +50,7 @@ export async function Header({
       { href: lp(`/${version}/lottery`), label: t("lottery") },
       { href: lp(`/${version}/mining`), label: t("mining") },
       { href: lp(`/${version}/drops`), label: t("drops") },
+      { href: lp(`/${version}/trade`), label: t("trade") },
       { href: lp(`/${version}/rankings`), label: t("rankings") },
     ],
   };

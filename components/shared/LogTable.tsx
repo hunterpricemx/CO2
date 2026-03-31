@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, X, Gem, Gift, Sword, ShieldX } from "lucide-react";
+import { Search, X, Gem, Gift, Sword, ShieldX, ArrowLeftRight } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,6 +31,37 @@ export type MineLogRow = {
   version: string;
   mined_at: string;
   mined_time?: string;
+};
+
+export type TradeLogRow = {
+  id: string;
+  buyer: string;
+  seller: string;
+  item_id: number;
+  item_name: string;
+  plus: number;
+  bless: number;
+  socket1: number;
+  socket2: number;
+  enchant: number;
+  price: number;
+  price_type: "cps" | "gold" | "other";
+  version: string;
+  traded_at: string;
+};
+
+export type TradeLabels = {
+  col_time: string;
+  col_buyer: string;
+  col_seller: string;
+  col_item: string;
+  col_quality: string;
+  col_price: string;
+  search_placeholder: string;
+  filter_all_versions: string;
+  filter_all_qualities: string;
+  simulated_notice: string;
+  no_results: string;
 };
 
 export type LotteryLogRow = {
@@ -789,6 +820,272 @@ export function LotteryLogTable({
             <span className="tabular-nums">{currentPage}/{totalPages}</span>
             <button
               onClick={() => goToPage(currentPage + 1)}
+              disabled={currentPage >= totalPages}
+              className="px-3 py-1.5 rounded-md border border-surface/60 bg-surface/40 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gold/40"
+            >
+              Siguiente
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Trade Log Table ───────────────────────────────────────────────────────────
+
+export function TradeLogTable({
+  rows,
+  labels,
+}: {
+  rows: TradeLogRow[];
+  labels: TradeLabels;
+}) {
+  const [search, setSearch] = useState("");
+  const [versionFilter, setVersionFilter] = useState("");
+  const [qualityFilter, setQualityFilter] = useState("");
+  const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState<"time" | "buyer" | "seller" | "item" | "price" | "quality">("time");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const pageSize = 50;
+
+  const enchantToQuality = (n: number): string => {
+    if (n >= 9) return "Super";
+    if (n === 8) return "Elite";
+    if (n === 7) return "Único";
+    if (n === 6) return "Refinado";
+    return "Normal";
+  };
+
+  const qualityRank = (n: number): number => {
+    if (n >= 9) return 4;
+    if (n === 8) return 3;
+    if (n === 7) return 2;
+    if (n === 6) return 1;
+    return 0;
+  };
+
+  const qualityBadgeClass = (n: number): string => {
+    if (n >= 9) return "text-amber-100 bg-amber-500/80 border-amber-400/40";
+    if (n === 8) return "text-purple-100 bg-purple-600/80 border-purple-400/40";
+    if (n === 7) return "text-blue-100 bg-blue-600/80 border-blue-400/40";
+    if (n === 6) return "text-cyan-100 bg-cyan-500/80 border-cyan-400/40";
+    return "";
+  };
+
+  const qualityOptions = useMemo(
+    () => Array.from(new Set(rows.map((r) => enchantToQuality(r.enchant)))).sort(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows],
+  );
+
+  const displayName = (r: TradeLogRow) =>
+    (r.item_name ?? "").trim() !== "" ? r.item_name : `Item #${r.item_id}`;
+
+  const filtered = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const base = rows.filter((r) => {
+      if (versionFilter && r.version !== versionFilter) return false;
+      if (qualityFilter && enchantToQuality(r.enchant) !== qualityFilter) return false;
+      const name = displayName(r).toLowerCase();
+      if (
+        term &&
+        !r.buyer.toLowerCase().includes(term) &&
+        !r.seller.toLowerCase().includes(term) &&
+        !name.includes(term)
+      )
+        return false;
+      return true;
+    });
+
+    return [...base].sort((a, b) => {
+      if (sortBy === "time") {
+        const diff = new Date(a.traded_at).getTime() - new Date(b.traded_at).getTime();
+        return sortDir === "asc" ? diff : -diff;
+      }
+      if (sortBy === "price") {
+        const diff = a.price - b.price;
+        return sortDir === "asc" ? diff : -diff;
+      }
+      if (sortBy === "quality") {
+        const diff = qualityRank(a.enchant) - qualityRank(b.enchant);
+        return sortDir === "asc" ? diff : -diff;
+      }
+      const av = sortBy === "buyer" ? a.buyer : sortBy === "seller" ? a.seller : displayName(a);
+      const bv = sortBy === "buyer" ? b.buyer : sortBy === "seller" ? b.seller : displayName(b);
+      const diff = av.localeCompare(bv);
+      return sortDir === "asc" ? diff : -diff;
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, search, versionFilter, qualityFilter, sortBy, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = useMemo(
+    () => filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize),
+    [filtered, currentPage],
+  );
+
+  const toggleSort = (col: "time" | "buyer" | "seller" | "item" | "price" | "quality") => {
+    setPage(1);
+    if (sortBy === col) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortBy(col);
+    setSortDir(col === "time" || col === "price" || col === "quality" ? "desc" : "asc");
+  };
+
+  const sortMark = (col: "time" | "buyer" | "seller" | "item" | "price" | "quality") => {
+    if (sortBy !== col) return "";
+    return sortDir === "asc" ? " ↑" : " ↓";
+  };
+
+  const goToPageTrade = (next: number) => {
+    if (next < 1 || next > totalPages) return;
+    setPage(next);
+  };
+
+  const priceClass = (type: TradeLogRow["price_type"]) => {
+    if (type === "cps") return "text-yellow-400";
+    if (type === "gold") return "text-amber-300";
+    return "text-muted-foreground";
+  };
+
+  const priceLabel = (r: TradeLogRow) => {
+    if (r.price === 0) return "-";
+    const formatted = r.price.toLocaleString();
+    if (r.price_type === "cps") return `${formatted} CP`;
+    if (r.price_type === "gold") return `${formatted} G`;
+    return formatted;
+  };
+
+  return (
+    <div className="flex flex-col gap-6">
+      <SimNotice text={labels.simulated_notice} />
+
+      {/* ── Filters ── */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <SearchBar
+          value={search}
+          onChange={(v) => { setSearch(v); setPage(1); }}
+          placeholder={labels.search_placeholder}
+        />
+        <VersionFilter
+          value={versionFilter}
+          onChange={(v) => { setVersionFilter(v); setPage(1); }}
+          allLabel={labels.filter_all_versions}
+        />
+        <select
+          value={qualityFilter}
+          onChange={(e) => { setQualityFilter(e.target.value); setPage(1); }}
+          className="bg-surface/40 border border-surface/50 rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-gold/40 transition-colors cursor-pointer"
+        >
+          <option value="">{labels.filter_all_qualities}</option>
+          {qualityOptions.map((q) => (
+            <option key={q} value={q}>{q}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* ── Result count ── */}
+      {filtered.length > 0 && (
+        <p className="text-xs text-muted-foreground/60">
+          {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
+        </p>
+      )}
+
+      {filtered.length === 0 ? (
+        <EmptyState icon={ArrowLeftRight} text={labels.no_results} />
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-surface/50">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-surface/60 border-b border-surface/50 text-xs text-muted-foreground uppercase tracking-wider">
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("buyer")}>{labels.col_buyer}{sortMark("buyer")}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("seller")}>{labels.col_seller}{sortMark("seller")}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none" onClick={() => toggleSort("item")}>{labels.col_item}{sortMark("item")}</th>
+                <th className="px-4 py-3 text-left cursor-pointer select-none hidden md:table-cell" onClick={() => toggleSort("quality")}>{labels.col_quality}{sortMark("quality")}</th>
+                <th className="px-4 py-3 text-right cursor-pointer select-none" onClick={() => toggleSort("price")}>{labels.col_price}{sortMark("price")}</th>
+                <th className="px-4 py-3 text-right w-24 cursor-pointer select-none" onClick={() => toggleSort("time")}>{labels.col_time}{sortMark("time")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pagedRows.map((r) => {
+                const quality = enchantToQuality(r.enchant);
+                const badgeCls = qualityBadgeClass(r.enchant);
+                return (
+                  <tr
+                    key={r.id}
+                    className="border-b border-surface/30 hover:bg-surface/30 transition-colors"
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <ArrowLeftRight className="h-3.5 w-3.5 text-gold/50 shrink-0" />
+                        <span className="font-medium text-foreground/90">{r.buyer}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-foreground/70">{r.seller}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-semibold text-foreground/90">{displayName(r)}</span>
+                        {r.plus > 0 && <PlusGrade n={r.plus} />}
+                        {r.bless > 0 && (
+                          <span className="text-[10px] text-sky-400/80 tabular-nums">b{r.bless}</span>
+                        )}
+                        {(r.socket1 > 0 || r.socket2 > 0) && (
+                          <span className="text-[10px] text-emerald-400/80">
+                            {[r.socket1, r.socket2].filter(Boolean).length}s
+                          </span>
+                        )}
+                        {/* quality badge inline on mobile (hidden on md+) */}
+                        {badgeCls && (
+                          <span className={`md:hidden inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold ${badgeCls}`}>
+                            {quality}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {badgeCls ? (
+                        <span className={`inline-flex items-center rounded-md border px-2.5 py-1 text-xs font-semibold ${badgeCls}`}>
+                          {quality}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/40">{quality}</span>
+                      )}
+                    </td>
+                    <td className={`px-4 py-3 text-right tabular-nums font-semibold ${priceClass(r.price_type)}`}>
+                      {priceLabel(r)}
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs text-muted-foreground/50 tabular-nums whitespace-nowrap">
+                      {timeAgo(r.traded_at)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {filtered.length > pageSize && (
+        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>
+            Mostrando {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, filtered.length)} de {filtered.length}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => goToPageTrade(currentPage - 1)}
+              disabled={currentPage <= 1}
+              className="px-3 py-1.5 rounded-md border border-surface/60 bg-surface/40 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gold/40"
+            >
+              Anterior
+            </button>
+            <span className="tabular-nums">{currentPage}/{totalPages}</span>
+            <button
+              onClick={() => goToPageTrade(currentPage + 1)}
               disabled={currentPage >= totalPages}
               className="px-3 py-1.5 rounded-md border border-surface/60 bg-surface/40 disabled:opacity-40 disabled:cursor-not-allowed hover:border-gold/40"
             >

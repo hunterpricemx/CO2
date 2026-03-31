@@ -24,6 +24,7 @@
     "lottery": "Registros de Loteria",
     "mining": "Registros de Mineração",
     "drops": "Logs de Drops",
+    "trade": "Registro de Trades",
     "pkpoints": "PK Points",
     "ko": "KO Rankings",
     "tickets": "Suporte",
@@ -361,6 +362,24 @@
     "filter_all_versions": "Todas as versões",
     "simulated_notice": "Dados simulados — serão atualizados com o servidor ao vivo",
     "no_results": "Nenhum registro de mineração encontrado"
+  },
+  "trade": {
+    "hero_title": "Registro de Trades",
+    "hero_subtitle_char": "Exibindo trades de {name}",
+    "breadcrumb_home": "Início",
+    "breadcrumb_trade": "Registro de Trades",
+    "col_time": "Hora",
+    "col_buyer": "Target",
+    "col_seller": "Owner",
+    "col_item": "Item",
+    "col_quality": "Qualidade",
+    "col_price": "Preço",
+    "search_placeholder": "Buscar jogador ou item...",
+    "filter_all_versions": "Todas as versões",
+    "filter_all_qualities": "Todas as qualidades",
+    "simulated_notice": "Dados ao vivo de trade_logs_public.",
+    "no_results": "Nenhum registro de trade encontrado",
+    "no_character": "Seu personagem não foi encontrado nesta versão."
   },
   "lottery": {
     "hero_title": "Registros de Loteria",

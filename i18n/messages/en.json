@@ -24,6 +24,7 @@
     "lottery": "Lottery Records",
     "mining": "Mining Records",
     "drops": "Drop Logs",
+    "trade": "Trade Log",
     "pkpoints": "PK Points",
     "ko": "KO Rankings",
     "tickets": "Support",
@@ -361,6 +362,24 @@
     "filter_all_versions": "All versions",
     "simulated_notice": "Simulated data — will update with the live server",
     "no_results": "No mining records found"
+  },
+  "trade": {
+    "hero_title": "Trade Log",
+    "hero_subtitle_char": "Showing trades for {name}",
+    "breadcrumb_home": "Home",
+    "breadcrumb_trade": "Trade Log",
+    "col_time": "Time",
+    "col_buyer": "Target",
+    "col_seller": "Owner",
+    "col_item": "Item",
+    "col_quality": "Quality",
+    "col_price": "Price",
+    "search_placeholder": "Search player or item...",
+    "filter_all_versions": "All versions",
+    "filter_all_qualities": "All qualities",
+    "simulated_notice": "Live data from trade_logs_public.",
+    "no_results": "No trade records found",
+    "no_character": "Your character was not found in this version."
   },
   "lottery": {
     "hero_title": "Lottery Records",
