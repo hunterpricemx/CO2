@@ -963,8 +963,6 @@ export function TradeLogTable({
 
   return (
     <div className="flex flex-col gap-6">
-      <SimNotice text={labels.simulated_notice} />
-
       {/* ── Filters ── */}
       <div className="flex items-center gap-3 flex-wrap">
         <SearchBar
