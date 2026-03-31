@@ -50,7 +50,6 @@ export async function Header({
       { href: lp(`/${version}/lottery`), label: t("lottery") },
       { href: lp(`/${version}/mining`), label: t("mining") },
       { href: lp(`/${version}/drops`), label: t("drops") },
-      { href: lp(`/${version}/trade`), label: t("trade") },
       { href: lp(`/${version}/rankings`), label: t("rankings") },
     ],
   };
@@ -140,6 +139,7 @@ export async function Header({
                   { href: lp(`/${version}/myaccount`),        label: t("myaccount") },
                   { href: lp(`/${version}/donate/history`),   label: t("donate_history") },
                   ...(ticketsEnabled ? [{ href: lp(`/${version}/tickets`), label: t("tickets") }] : []),
+                  { href: lp(`/${version}/trade`),            label: t("trade") },
                   { action: gameLogoutAction,                 label: t("logout") },
                 ]}
               />

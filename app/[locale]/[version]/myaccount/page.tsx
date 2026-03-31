@@ -9,7 +9,7 @@ import { getGameDb } from "@/lib/game-db";
 import type { RowDataPacket } from "mysql2";
 import { ChangePasswordForm } from "./ChangePasswordForm";
 import { ChangeEmailForm } from "./ChangeEmailForm";
-import { Coins } from "lucide-react";
+import { Coins, ArrowLeftRight } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Mi Cuenta",
@@ -313,9 +313,16 @@ export default async function MyAccountPage({
               <Coins className="h-4 w-4" />
               {t("donate_cta")}
             </Link>
+            <Link
+              href={`${homeHref}/trade`}
+              className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold text-sm border border-gold/40 text-gold hover:bg-gold/10 transition-colors"
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              {t("trade_log")}
+            </Link>
             <div className="flex-1">
-            <LogoutButton label={t("logout")} className="w-full justify-center" />
-          </div>
+              <LogoutButton label={t("logout")} className="w-full justify-center" />
+            </div>
           </div>
 
         </div>
