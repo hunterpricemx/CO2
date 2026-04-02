@@ -26,6 +26,7 @@ const PAGE_LABELS: Record<SeoPageKey, string> = {
   vip:         "VIP",
   influencers: "Influencers",
   compose:     "Calculadora Compose",
+  terms:       "Términos",
 };
 
 export default function AdminSeoPage() {
