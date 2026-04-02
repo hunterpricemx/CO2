@@ -5,7 +5,7 @@ import { useList } from "@refinedev/core";
 import Link from "next/link";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, ShoppingBag, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
-import { toggleGarmentActive, deleteGarment } from "./actions";
+import { toggleGarmentActive, toggleGarmentReserved, deleteGarment } from "./actions";
 
 function getVimeoId(url: string): string | null {
   const m = url.match(/vimeo\.com\/(?:video\/|)(\d+)/);
@@ -19,6 +19,7 @@ type Garment = {
   image_url: string | null;
   active: boolean;
   allows_custom: boolean;
+  is_reserved: boolean;
   sort_order: number;
   created_at: string;
 };
@@ -27,6 +28,7 @@ export default function AdminGarmentsPage() {
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [reservingId, setReservingId] = useState<string | null>(null);
 
   const { query } = useList<Garment>({
     resource: "garments",
@@ -48,6 +50,20 @@ export default function AdminGarmentsPage() {
         toast.error(result.error ?? "Error al cambiar estado.");
       }
       setTogglingId(null);
+    });
+  }
+
+  function handleToggleReserved(id: string, currentReserved: boolean) {
+    setReservingId(id);
+    startTransition(async () => {
+      const result = await toggleGarmentReserved(id, !currentReserved);
+      if (result.success) {
+        toast.success(currentReserved ? "Garment marcado como disponible." : "Garment marcado como apartado.");
+        query.refetch();
+      } else {
+        toast.error(result.error ?? "Error al actualizar apartado.");
+      }
+      setReservingId(null);
     });
   }
 
@@ -159,6 +175,11 @@ export default function AdminGarmentsPage() {
                     Custom
                   </span>
                 )}
+                {g.is_reserved && (
+                  <span className="absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-900/70 text-red-300 border border-red-700/40">
+                    Apartado
+                  </span>
+                )}
               </div>
 
               {/* Body */}
@@ -184,6 +205,14 @@ export default function AdminGarmentsPage() {
                     ) : (
                       <ToggleLeft className="h-3.5 w-3.5" />
                     )}
+                  </button>
+                  <button
+                    onClick={() => handleToggleReserved(g.id, g.is_reserved)}
+                    disabled={isPending && reservingId === g.id}
+                    className="flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg border border-[rgba(255,255,255,0.08)] text-gray-400 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-50"
+                    title={g.is_reserved ? "Marcar disponible" : "Marcar apartado"}
+                  >
+                    {g.is_reserved ? "Disponible" : "Apartar"}
                   </button>
                   <Link
                     href={`/admin/garments/edit/${g.id}`}

@@ -9,6 +9,40 @@ import { logPayment } from "@/lib/payment-logger";
 
 type CheckoutResult = { url: string } | { error: string };
 
+const ALLOWED_REFERENCE_HOSTS = new Set([
+  "media.discordapp.net",
+  "cdn.discordapp.com",
+  "fjvadikuvcshwxikebhv.supabase.co",
+]);
+
+function sanitizeReferenceUrl(rawUrl?: string): { value: string | null; error?: string } {
+  if (!rawUrl) return { value: null };
+
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return { value: null };
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return { value: null, error: "invalid_reference_url" };
+  }
+
+  if (parsed.protocol !== "https:") {
+    return { value: null, error: "invalid_reference_url" };
+  }
+
+  if (!ALLOWED_REFERENCE_HOSTS.has(parsed.hostname)) {
+    return { value: null, error: "reference_url_not_allowed" };
+  }
+
+  if (!/\.(gif|png|jpe?g|webp|mp4|mov)$/i.test(parsed.pathname)) {
+    return { value: null, error: "invalid_reference_url" };
+  }
+
+  return { value: parsed.toString() };
+}
+
 async function getBaseUrl(): Promise<string> {
   const configured = process.env.NEXT_PUBLIC_SITE_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "";
   if (configured && (!process.env.VERCEL || !configured.includes("localhost"))) return configured;
@@ -37,6 +71,14 @@ export async function createGarmentCheckout(params: {
 
   const characterName = params.characterName.trim();
   if (!characterName) return { error: "char_name_required" };
+
+  const referenceValidation = params.isCustom
+    ? sanitizeReferenceUrl(params.referenceImageUrl)
+    : { value: null as string | null };
+
+  if (referenceValidation.error) {
+    return { error: referenceValidation.error };
+  }
 
   // Rate limit: 2 garment checkout attempts per minute per user
   const h = await headers();
@@ -92,7 +134,7 @@ export async function createGarmentCheckout(params: {
       version:             versionNum,
       is_custom:           params.isCustom,
       custom_description:  params.customDescription?.trim() || null,
-      reference_image_url: params.referenceImageUrl || null,
+      reference_image_url: referenceValidation.value,
       amount_paid:         60,
       currency:            "USD",
       status:              "pending_payment",

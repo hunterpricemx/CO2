@@ -13,6 +13,14 @@ function getVimeoId(url: string): string | null {
   return m?.[1] ?? null;
 }
 
+function isVideoLikeUrl(url: string): boolean {
+  try {
+    return /\.(mp4|mov)$/i.test(new URL(url).pathname);
+  } catch {
+    return /\.(mp4|mov)$/i.test(url);
+  }
+}
+
 type ImageUploadFieldProps = {
   label: string;
   value?: string | null;
@@ -95,7 +103,7 @@ export default function ImageUploadField({
             className="inline-flex items-center gap-2 text-xs text-red-300 hover:text-red-200 transition-colors"
           >
             <Trash2 className="h-3.5 w-3.5" />
-            Quitar {value && (getVimeoId(value) ? "video Vimeo" : value.match(/\.(mp4|mov)$/i) ? "video" : "imagen")}
+            Quitar {value && (getVimeoId(value) ? "video Vimeo" : isVideoLikeUrl(value) ? "video" : "imagen")}
           </button>
         )}
       </div>
@@ -116,7 +124,7 @@ export default function ImageUploadField({
                     />
                   </div>
                 );
-                if (value.match(/\.(mp4|mov)$/i)) return (
+                if (isVideoLikeUrl(value)) return (
                   <video
                     src={value}
                     className="h-36 w-full rounded-lg border border-[rgba(255,215,0,0.18)] object-cover"

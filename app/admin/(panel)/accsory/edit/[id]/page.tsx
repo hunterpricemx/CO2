@@ -1,18 +1,18 @@
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ImageUploadField from "@/components/admin/ImageUploadField";
-import { updateGarment } from "../../actions";
+import { updateAccsory } from "../../actions";
 import { createClient } from "@/lib/supabase/client";
 
 const FIELD_CLS =
   "bg-[#0f0503] border border-[rgba(255,215,0,0.15)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#f39c12] transition-colors w-full";
 const LABEL_CLS = "text-xs text-gray-400 uppercase tracking-wider mb-1 block";
 
-export default function EditGarmentPage() {
+export default function EditAccsoryPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
   const [isPending, startTransition] = useTransition();
@@ -30,17 +30,17 @@ export default function EditGarmentPage() {
     if (!id) return;
     const supabase = createClient();
     supabase
-      .from("garments")
+      .from("accsory")
       .select("*")
       .eq("id", id)
       .single()
       .then(({ data, error }) => {
         if (error || !data) {
-          toast.error("Garment no encontrado.");
-          router.push("/admin/garments");
+          toast.error("Accsory no encontrado.");
+          router.push("/admin/accsory");
           return;
         }
-        const g = data as {
+        const a = data as {
           name: string;
           description: string;
           image_url: string | null;
@@ -49,13 +49,13 @@ export default function EditGarmentPage() {
           is_reserved?: boolean | null;
           sort_order: number;
         };
-        setName(g.name);
-        setDescription(g.description ?? "");
-        setImageUrl(g.image_url);
-        setActive(Boolean(g.active));
-        setAllowsCustom(Boolean(g.allows_custom));
-        setIsReserved(Boolean(g.is_reserved));
-        setSortOrder(g.sort_order);
+        setName(a.name);
+        setDescription(a.description ?? "");
+        setImageUrl(a.image_url);
+        setActive(Boolean(a.active));
+        setAllowsCustom(Boolean(a.allows_custom));
+        setIsReserved(Boolean(a.is_reserved));
+        setSortOrder(a.sort_order);
         setIsLoading(false);
       });
   }, [id, router]);
@@ -63,11 +63,11 @@ export default function EditGarmentPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) {
-      toast.error("El nombre del garment es requerido.");
+      toast.error("El nombre del accsory es requerido.");
       return;
     }
     startTransition(async () => {
-      const result = await updateGarment(id, {
+      const result = await updateAccsory(id, {
         name,
         description,
         image_url: imageUrl,
@@ -77,8 +77,8 @@ export default function EditGarmentPage() {
         sort_order: sortOrder,
       });
       if (result.success) {
-        toast.success("Garment actualizado.");
-        router.push("/admin/garments");
+        toast.success("Accsory actualizado.");
+        router.push("/admin/accsory");
       } else {
         toast.error(result.error ?? "Error al actualizar.");
       }
@@ -102,88 +102,45 @@ export default function EditGarmentPage() {
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <h1 className="font-bebas text-4xl tracking-wider text-white">Editar Garment</h1>
+        <h1 className="font-bebas text-4xl tracking-wider text-white">Editar Accsory</h1>
       </div>
 
       <form
         onSubmit={handleSubmit}
         className="bg-[#1a1a1a] border border-[rgba(255,215,0,0.1)] rounded-xl p-6 flex flex-col gap-5"
       >
-        {/* Name */}
         <div>
           <label className={LABEL_CLS}>Nombre *</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={FIELD_CLS}
-            required
-          />
+          <input value={name} onChange={(e) => setName(e.target.value)} className={FIELD_CLS} required />
         </div>
 
-        {/* Description */}
         <div>
-          <label className={LABEL_CLS}>Descripción</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className={`${FIELD_CLS} resize-none`}
-          />
+          <label className={LABEL_CLS}>Descripcion</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className={`${FIELD_CLS} resize-none`} />
         </div>
 
-        {/* Image */}
-        <ImageUploadField
-          label="Imagen del garment"
-          value={imageUrl}
-          onChange={setImageUrl}
-          folder="garments"
-          allowVideo
-        />
+        <ImageUploadField label="Imagen del accsory" value={imageUrl} onChange={setImageUrl} folder="accsory" allowVideo />
 
-        {/* Sort order */}
         <div>
-          <label className={LABEL_CLS}>Orden de aparición</label>
-          <input
-            type="number"
-            value={sortOrder}
-            onChange={(e) => setSortOrder(Number(e.target.value))}
-            className={FIELD_CLS}
-            min={0}
-          />
+          <label className={LABEL_CLS}>Orden de aparicion</label>
+          <input type="number" value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value))} className={FIELD_CLS} min={0} />
         </div>
 
-        {/* Toggles */}
         <div className="flex flex-col gap-3">
           <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-              className="w-4 h-4 accent-[#f39c12]"
-            />
+            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="w-4 h-4 accent-[#f39c12]" />
             <span className="text-sm text-white">Activo (visible para jugadores)</span>
           </label>
           <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allowsCustom}
-              onChange={(e) => setAllowsCustom(e.target.checked)}
-              className="w-4 h-4 accent-[#f39c12]"
-            />
-            <span className="text-sm text-white">Permite versión personalizada</span>
+            <input type="checkbox" checked={allowsCustom} onChange={(e) => setAllowsCustom(e.target.checked)} className="w-4 h-4 accent-[#f39c12]" />
+            <span className="text-sm text-white">Permite version personalizada</span>
           </label>
           <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isReserved}
-              onChange={(e) => setIsReserved(e.target.checked)}
-              className="w-4 h-4 accent-[#f39c12]"
-            />
+            <input type="checkbox" checked={isReserved} onChange={(e) => setIsReserved(e.target.checked)} className="w-4 h-4 accent-[#f39c12]" />
             <span className="text-sm text-white">Marcar como apartado</span>
           </label>
         </div>
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={isPending}

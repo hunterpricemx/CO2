@@ -5,13 +5,13 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ImageUploadField from "@/components/admin/ImageUploadField";
-import { createGarment } from "../actions";
+import { createAccsory } from "../actions";
 
 const FIELD_CLS =
   "bg-[#0f0503] border border-[rgba(255,215,0,0.15)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#f39c12] transition-colors w-full";
 const LABEL_CLS = "text-xs text-gray-400 uppercase tracking-wider mb-1 block";
 
-export default function CreateGarmentPage() {
+export default function CreateAccsoryPage() {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
@@ -26,11 +26,11 @@ export default function CreateGarmentPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) {
-      toast.error("El nombre del garment es requerido.");
+      toast.error("El nombre del accsory es requerido.");
       return;
     }
     startTransition(async () => {
-      const result = await createGarment({
+      const result = await createAccsory({
         name,
         description,
         image_url: imageUrl,
@@ -40,10 +40,10 @@ export default function CreateGarmentPage() {
         sort_order: sortOrder,
       });
       if (result.success) {
-        toast.success("Garment creado correctamente.");
-        router.push("/admin/garments");
+        toast.success("Accsory creado correctamente.");
+        router.push("/admin/accsory");
       } else {
-        toast.error(result.error ?? "Error al crear el garment.");
+        toast.error(result.error ?? "Error al crear el accsory.");
       }
     });
   }
@@ -57,97 +57,52 @@ export default function CreateGarmentPage() {
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <h1 className="font-bebas text-4xl tracking-wider text-white">Nuevo Garment</h1>
+        <h1 className="font-bebas text-4xl tracking-wider text-white">Nuevo Accsory</h1>
       </div>
 
       <form
         onSubmit={handleSubmit}
         className="bg-[#1a1a1a] border border-[rgba(255,215,0,0.1)] rounded-xl p-6 flex flex-col gap-5"
       >
-        {/* Name */}
         <div>
           <label className={LABEL_CLS}>Nombre *</label>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className={FIELD_CLS}
-            placeholder="Ej: Traje de Caballero"
-            required
-          />
+          <input value={name} onChange={(e) => setName(e.target.value)} className={FIELD_CLS} required />
         </div>
 
-        {/* Description */}
         <div>
-          <label className={LABEL_CLS}>Descripción</label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={3}
-            className={`${FIELD_CLS} resize-none`}
-            placeholder="Descripción del traje..."
-          />
+          <label className={LABEL_CLS}>Descripcion</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className={`${FIELD_CLS} resize-none`} />
         </div>
 
-        {/* Image */}
-        <ImageUploadField
-          label="Imagen del garment"
-          value={imageUrl}
-          onChange={setImageUrl}
-          folder="garments"
-          allowVideo
-        />
+        <ImageUploadField label="Imagen del accsory" value={imageUrl} onChange={setImageUrl} folder="accsory" allowVideo />
 
-        {/* Sort order */}
         <div>
-          <label className={LABEL_CLS}>Orden de aparición</label>
-          <input
-            type="number"
-            value={sortOrder}
-            onChange={(e) => setSortOrder(Number(e.target.value))}
-            className={FIELD_CLS}
-            min={0}
-          />
+          <label className={LABEL_CLS}>Orden de aparicion</label>
+          <input type="number" value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value))} className={FIELD_CLS} min={0} />
         </div>
 
-        {/* Toggles */}
         <div className="flex flex-col gap-3">
           <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={active}
-              onChange={(e) => setActive(e.target.checked)}
-              className="w-4 h-4 accent-[#f39c12]"
-            />
+            <input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} className="w-4 h-4 accent-[#f39c12]" />
             <span className="text-sm text-white">Activo (visible para jugadores)</span>
           </label>
           <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allowsCustom}
-              onChange={(e) => setAllowsCustom(e.target.checked)}
-              className="w-4 h-4 accent-[#f39c12]"
-            />
-            <span className="text-sm text-white">Permite versión personalizada</span>
+            <input type="checkbox" checked={allowsCustom} onChange={(e) => setAllowsCustom(e.target.checked)} className="w-4 h-4 accent-[#f39c12]" />
+            <span className="text-sm text-white">Permite version personalizada</span>
           </label>
           <label className="flex items-center gap-3 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isReserved}
-              onChange={(e) => setIsReserved(e.target.checked)}
-              className="w-4 h-4 accent-[#f39c12]"
-            />
+            <input type="checkbox" checked={isReserved} onChange={(e) => setIsReserved(e.target.checked)} className="w-4 h-4 accent-[#f39c12]" />
             <span className="text-sm text-white">Marcar como apartado</span>
           </label>
         </div>
 
-        {/* Submit */}
         <button
           type="submit"
           disabled={isPending}
           className="flex items-center justify-center gap-2 bg-[#f39c12] hover:bg-[#e67e22] disabled:opacity-50 text-black font-semibold px-4 py-2.5 rounded-lg transition-colors"
         >
           {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-          {isPending ? "Creando..." : "Crear Garment"}
+          {isPending ? "Creando..." : "Crear Accsory"}
         </button>
       </form>
     </div>

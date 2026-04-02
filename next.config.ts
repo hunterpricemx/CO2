@@ -19,6 +19,14 @@ const nextConfig: NextConfig = {
         hostname: "fjvadikuvcshwxikebhv.supabase.co",
         pathname: "/storage/v1/object/public/**",
       },
+      {
+        protocol: "https",
+        hostname: "media.discordapp.net",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn.discordapp.com",
+      },
     ],
   },
 };

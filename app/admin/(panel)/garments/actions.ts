@@ -13,6 +13,7 @@ export type GarmentFormData = {
   image_url: string | null;
   active: boolean;
   allows_custom: boolean;
+  is_reserved: boolean;
   sort_order: number;
 };
 
@@ -36,6 +37,7 @@ export async function createGarment(data: GarmentFormData): Promise<ActionResult
     image_url:     data.image_url || null,
     active:        data.active,
     allows_custom: data.allows_custom,
+    is_reserved:   data.is_reserved,
     sort_order:    data.sort_order,
   });
 
@@ -58,6 +60,7 @@ export async function updateGarment(id: string, data: GarmentFormData): Promise<
       image_url:     data.image_url || null,
       active:        data.active,
       allows_custom: data.allows_custom,
+      is_reserved:   data.is_reserved,
       sort_order:    data.sort_order,
       updated_at:    new Date().toISOString(),
     })
@@ -89,6 +92,22 @@ export async function toggleGarmentActive(id: string, active: boolean): Promise<
   const { error } = await (supabase as any)
     .from("garments")
     .update({ active, updated_at: new Date().toISOString() })
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+  revalidatePath("/admin/garments");
+  return { success: true, data: undefined };
+}
+
+export async function toggleGarmentReserved(id: string, isReserved: boolean): Promise<ActionResult> {
+  const admin = await getCurrentAdminContext();
+  if (!admin) return { success: false, error: "No autorizado." };
+
+  const supabase = await createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await (supabase as any)
+    .from("garments")
+    .update({ is_reserved: isReserved, updated_at: new Date().toISOString() })
     .eq("id", id);
 
   if (error) return { success: false, error: error.message };

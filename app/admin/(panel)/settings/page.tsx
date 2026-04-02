@@ -53,6 +53,7 @@ export default function AdminSiteSettingsPage() {
   const [supportEmail, setSupportEmail] = useState("");
   const [ticketsEnabled, setTicketsEnabled] = useState(false);
   const [garmentsEnabled, setGarmentsEnabled] = useState(false);
+  const [garmentsWhatsappUrl, setGarmentsWhatsappUrl] = useState("");
 
   // SMTP test
   const [smtpTestEmail, setSmtpTestEmail] = useState("mariano@hunterprice.mx");
@@ -99,6 +100,7 @@ export default function AdminSiteSettingsPage() {
         setSupportEmail(map.support_notification_email || "");
         setTicketsEnabled(map.tickets_enabled === "true");
         setGarmentsEnabled(map.garments_enabled === "true");
+        setGarmentsWhatsappUrl(map.garments_whatsapp_url || "");
 
       } catch {
         toast.error("No se pudieron cargar los ajustes actuales.");
@@ -465,6 +467,7 @@ export default function AdminSiteSettingsPage() {
           { key: "support_notification_email", value: supportEmail },
           { key: "tickets_enabled",            value: ticketsEnabled ? "true" : "false" },
           { key: "garments_enabled",           value: garmentsEnabled ? "true" : "false" },
+          { key: "garments_whatsapp_url",      value: garmentsWhatsappUrl },
         ])}
         saving={saving}
       >
@@ -532,6 +535,22 @@ export default function AdminSiteSettingsPage() {
             />
             <p className="text-[11px] text-gray-600 font-poppins">
               Deja en blanco para desactivar las notificaciones por email de tickets.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-gray-400 uppercase tracking-wider font-poppins">
+              Link de WhatsApp para solicitudes de Garment
+            </label>
+            <input
+              type="url"
+              value={garmentsWhatsappUrl}
+              onChange={(e) => setGarmentsWhatsappUrl(e.target.value)}
+              placeholder="https://wa.me/521XXXXXXXXXX"
+              className={FIELD_CLS}
+            />
+            <p className="text-[11px] text-gray-600 font-poppins">
+              Ejemplo: https://wa.me/521XXXXXXXXXX o https://api.whatsapp.com/send?phone=...
             </p>
           </div>
         </div>

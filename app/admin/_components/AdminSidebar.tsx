@@ -40,6 +40,7 @@ const NAV_CONTENT = [
   { href: "/admin/tickets",           icon: TicketCheck,     label: "Tickets",            permission: "tickets"   as AdminPanelPermission },
   { href: "/admin/garments",          icon: ShoppingBag,     label: "Garments",           permission: "garments"  as AdminPanelPermission },
   { href: "/admin/garments/orders",   icon: ShoppingBag,     label: "→ Órdenes",          permission: "garments"  as AdminPanelPermission },
+  { href: "/admin/accesory",          icon: ShoppingBag,     label: "Accesory",           permission: "garments"  as AdminPanelPermission },
   { href: "/admin/settings",           icon: Settings,        label: "Ajustes del Sitio",  permission: "settings"    as AdminPanelPermission },
   { href: "/admin/seo",                icon: SearchCheck,     label: "SEO",                permission: "settings"    as AdminPanelPermission },
   { href: "/admin/donations",          icon: CreditCard,      label: "Donaciones",         permission: "donations" as AdminPanelPermission },

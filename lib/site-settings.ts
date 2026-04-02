@@ -30,6 +30,8 @@ export type SiteSettings = {
   tickets_enabled: boolean;
   /** Whether the garments store is enabled. */
   garments_enabled: boolean;
+  /** WhatsApp URL used for garment requests. */
+  garments_whatsapp_url: string;
   /** Global SEO: site name used in title template. */
   seo_site_name: string;
   /** Global SEO: default meta description. */
@@ -57,6 +59,7 @@ const DEFAULTS: SiteSettings = {
   script_footer:     "",
   tickets_enabled:   false,
   garments_enabled:  false,
+  garments_whatsapp_url: "",
   seo_site_name:              "Conquer Classic Plus",
   seo_default_description:    "Servidor privado de Conquer Online — Classic Plus 1.0 & Experience 2.0. Revive la leyenda.",
   seo_og_image:               "",
@@ -116,6 +119,7 @@ async function _fetchSiteSettings(): Promise<SiteSettings> {
       script_footer:     map.script_footer || "",
       tickets_enabled:   map.tickets_enabled  === "true",
       garments_enabled:  map.garments_enabled === "true",
+      garments_whatsapp_url: map.garments_whatsapp_url || "",
       seo_site_name:           map.seo_site_name           || DEFAULTS.seo_site_name,
       seo_default_description: map.seo_default_description || DEFAULTS.seo_default_description,
       seo_og_image:            map.seo_og_image            || "",
