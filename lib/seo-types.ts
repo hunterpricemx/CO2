@@ -19,6 +19,7 @@ export const SEO_PAGE_KEYS = [
   "vip",
   "influencers",
   "compose",
+  "terms",
 ] as const;
 
 export type SeoPageKey = (typeof SEO_PAGE_KEYS)[number];
