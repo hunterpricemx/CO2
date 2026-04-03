@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { ShoppingBag, Search, ChevronLeft, ChevronRight, ZoomIn, Wand2, MessageCircle, X } from "lucide-react";
@@ -62,7 +62,10 @@ function getVimeoId(url: string): string | null {
   return m?.[1] ?? null;
 }
 
-function GarmentMedia({ url, name }: { url: string | null; name: string }) {
+function GarmentMedia({ url, name, priority }: { url: string | null; name: string; priority?: boolean }) {
+  const [loaded, setLoaded] = useState(false);
+  const onLoad = useCallback(() => setLoaded(true), []);
+
   if (!url) return null;
 
   const vimeoId = getVimeoId(url);
@@ -81,28 +84,41 @@ function GarmentMedia({ url, name }: { url: string | null; name: string }) {
     return <video src={url} className="absolute inset-0 w-full h-full object-cover" muted playsInline loop autoPlay />;
   }
 
-  // GIFs and regular images — use native <img> to preserve animation and avoid
-  // Next.js image optimization converting GIFs to static WebP (breaks on iOS Safari)
+  const shimmer = (
+    <div className={`absolute inset-0 bg-linear-to-r from-[#1a0c06] via-[#2a1508] to-[#1a0c06] bg-size-[200%_100%] animate-shimmer transition-opacity duration-300 ${loaded ? "opacity-0 pointer-events-none" : "opacity-100"}`} />
+  );
+
   if (/\.gif$/i.test(getUrlPathname(url))) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={url}
-        alt={name}
-        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-        loading="lazy"
-      />
+      <>
+        {shimmer}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={url}
+          alt={name}
+          className={`absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-all duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
+          decoding={priority ? "sync" : "async"}
+          onLoad={onLoad}
+        />
+      </>
     );
   }
 
   return (
-    <Image
-      src={url}
-      alt={name}
-      fill
-      className="object-cover group-hover:scale-105 transition-transform duration-300"
-      sizes="350px"
-    />
+    <>
+      {shimmer}
+      <Image
+        src={url}
+        alt={name}
+        fill
+        className={`object-cover group-hover:scale-105 transition-all duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+        sizes="350px"
+        priority={priority}
+        onLoad={onLoad}
+      />
+    </>
   );
 }
 
@@ -120,6 +136,7 @@ function GarmentCard({
   reserved,
   buttonText,
   categoryName,
+  priority,
 }: {
   garment: GarmentItem;
   version: string;
@@ -128,6 +145,7 @@ function GarmentCard({
   reserved: boolean;
   buttonText: string;
   categoryName?: string | null;
+  priority?: boolean;
 }) {
   const message = [
     "Hola, quiero solicitar este Garment.",
@@ -148,7 +166,7 @@ function GarmentCard({
       <div className="relative h-52 bg-black overflow-hidden">
         {garment.image_url ? (
           <>
-            <GarmentMedia url={garment.image_url} name={garment.name} />
+            <GarmentMedia url={garment.image_url} name={garment.name} priority={priority} />
             <button
               onClick={() => onZoom(garment.image_url!, garment.name)}
               className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-black/60 text-gray-300 hover:text-white hover:bg-black/90 transition-colors opacity-0 group-hover:opacity-100"
@@ -401,7 +419,7 @@ export function GarmentsClient({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {paginatedAvailable.map((g) => (
+            {paginatedAvailable.map((g, i) => (
               <GarmentCard
                 key={g.id}
                 garment={g}
@@ -410,6 +428,7 @@ export function GarmentsClient({
                 reserved={false}
                 buttonText="Solicitar Garment"
                 categoryName={g.category_id ? (categoryMap.get(g.category_id) ?? null) : null}
+                priority={i < 3}
                 onZoom={(url, name) => {
                   setZoomUrl(url);
                   setZoomName(name);

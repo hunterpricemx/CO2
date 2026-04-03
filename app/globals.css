@@ -185,6 +185,15 @@
     100% { background-position: 200% center; }
   }
 
+  @keyframes shimmer-slide {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  .animate-shimmer {
+    animation: shimmer-slide 1.4s ease-in-out infinite;
+  }
+
   /* Scrollbar styling — dark gold theme */
   .custom-scrollbar::-webkit-scrollbar        { width: 6px; height: 6px; }
   .custom-scrollbar::-webkit-scrollbar-track  { background: oklch(0.196 0 0); }
