@@ -3,7 +3,7 @@
 import { useMemo, useState, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
-import { ShoppingBag, Search, ChevronLeft, ChevronRight, ZoomIn, Wand2, MessageCircle, X } from "lucide-react";
+import { ShoppingBag, Search, ChevronLeft, ChevronRight, ZoomIn, Wand2, MessageCircle, X, ImageIcon } from "lucide-react";
 
 const PAGE_SIZE = 9;
 
@@ -85,7 +85,20 @@ function GarmentMedia({ url, name, priority }: { url: string | null; name: strin
   }
 
   const shimmer = (
-    <div className={`absolute inset-0 bg-linear-to-r from-[#1a0c06] via-[#2a1508] to-[#1a0c06] bg-size-[200%_100%] animate-shimmer transition-opacity duration-300 ${loaded ? "opacity-0 pointer-events-none" : "opacity-100"}`} />
+    <div
+      className={`absolute inset-0 flex flex-col items-center justify-center gap-2 transition-opacity duration-500 ${loaded ? "opacity-0 pointer-events-none" : "opacity-100"}`}
+      style={{ background: "rgba(12,4,2,0.97)" }}
+    >
+      {/* sweep dorado sutil */}
+      <div className="absolute inset-0 bg-linear-to-r from-transparent via-[rgba(243,156,18,0.07)] to-transparent bg-size-[200%_100%] animate-shimmer" />
+      {/* ícono central */}
+      <div className="relative z-10 flex flex-col items-center gap-2">
+        <div className="rounded-full p-3 border border-[rgba(243,156,18,0.2)] bg-[rgba(243,156,18,0.06)] animate-pulse">
+          <ImageIcon className="h-6 w-6 text-[rgba(243,156,18,0.5)]" />
+        </div>
+        <span className="text-[10px] text-gray-600 tracking-widest uppercase">Cargando...</span>
+      </div>
+    </div>
   );
 
   if (/\.gif$/i.test(getUrlPathname(url))) {

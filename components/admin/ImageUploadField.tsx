@@ -55,6 +55,12 @@ export default function ImageUploadField({
       return;
     }
 
+    // Advertencia GIF pesado
+    if (file.type === "image/gif" && file.size > 2 * 1024 * 1024) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      toast.warning(`Este GIF pesa ${mb} MB. Los GIFs pesados tardan en cargar en móvil — considera subir un video MP4 para mejor rendimiento.`, { duration: 7000 });
+    }
+
     const maxSize = (allowVideo && isVideo) ? 50 * 1024 * 1024 : 5 * 1024 * 1024;
     if (file.size > maxSize) {
       toast.error((allowVideo && isVideo) ? "El video no puede superar 50 MB." : "La imagen no puede superar 5 MB.");
@@ -72,7 +78,7 @@ export default function ImageUploadField({
       const { error } = await supabase.storage
         .from("conquer-media")
         .upload(fileName, file, {
-          cacheControl: "3600",
+          cacheControl: "31536000",
           upsert: false,
         });
 

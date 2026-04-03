@@ -67,6 +67,10 @@ export default async function RootLayout({
       lang="es"
       className={`${chakraPetch.variable} ${bebasNeue.variable} ${poppins.variable} dark`}
     >
+      <head>
+        <link rel="preconnect" href="https://fjvadikuvcshwxikebhv.supabase.co" />
+        <link rel="dns-prefetch" href="https://fjvadikuvcshwxikebhv.supabase.co" />
+      </head>
       <body className="antialiased bg-background text-foreground font-chakra">
         {settings.script_head && (
           <div dangerouslySetInnerHTML={{ __html: settings.script_head }} />
