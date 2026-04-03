@@ -13,6 +13,8 @@ type TebexPaymentSubject = {
   price?: { amount?: number; currency?: string };
   status?: { id?: number; description?: string };
   custom?: Record<string, unknown> | null;
+  // Full product list sent by Tebex — structure captured via raw_products_debug log
+  products?: Array<Record<string, unknown>>;
 };
 
 type TebexWebhookPayload = {
@@ -352,6 +354,13 @@ export async function POST(req: NextRequest) {
       username: legacyUser || null, product: legacyProduct || null,
       amount: legacyPrice, donation_id: donationId, txn_id: transactionId,
       metadata: { cps_total: donation.cps_total, character_name: characterName || donation.character_name } });
+
+    // DEBUG — captura estructura exacta de products[] para implementar soporte multi-producto
+    await logPayment({ source: "tebex", level: "info", event: "raw_products_debug",
+      message: "Estructura products del webhook Tebex",
+      donation_id: donationId, txn_id: transactionId,
+      metadata: { products: subject.products ?? null, total_products: subject.products?.length ?? 0 } });
+
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     await logPayment({ source: "tebex", level: "error", event: "credit_error",
