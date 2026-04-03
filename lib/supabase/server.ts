@@ -12,6 +12,7 @@
  */
 
 import { createServerClient as _createServerClient } from "@supabase/ssr";
+import { createClient as _createAdminServiceClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 import type { Database } from "./database.types";
 
@@ -84,28 +85,11 @@ export async function createClient() {
  * ```
  */
 export async function createAdminClient() {
-  const cookieStore = await cookies();
-
-  return _createServerClient<Database>(
+  return _createAdminServiceClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      cookies: {
-        getAll() {
-          return cookieStore.getAll();
-        },
-        setAll(cookiesToSet) {
-          try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            );
-          } catch {
-            // Silently ignore — see note in createClient above.
-          }
-        },
-      },
       auth: {
-        // Service role should not persist sessions.
         autoRefreshToken: false,
         persistSession: false,
       },

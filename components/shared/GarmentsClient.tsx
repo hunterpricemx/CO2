@@ -119,6 +119,7 @@ function GarmentCard({
   onZoom,
   reserved,
   buttonText,
+  categoryName,
 }: {
   garment: GarmentItem;
   version: string;
@@ -126,6 +127,7 @@ function GarmentCard({
   onZoom: (url: string, name: string) => void;
   reserved: boolean;
   buttonText: string;
+  categoryName?: string | null;
 }) {
   const message = [
     "Hola, quiero solicitar este Garment.",
@@ -159,10 +161,19 @@ function GarmentCard({
             <ShoppingBag className="h-16 w-16 text-gray-700" />
           </div>
         )}
-        {garment.allows_custom && (
-          <span className="absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-900/80 text-purple-200 border border-purple-500/30">
-            Custom
-          </span>
+        {(garment.allows_custom || categoryName) && (
+          <div className="absolute top-2 left-2 flex flex-col gap-1">
+            {garment.allows_custom && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-900/80 text-purple-200 border border-purple-500/30">
+                Custom
+              </span>
+            )}
+            {categoryName && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-300 border border-yellow-400/40">
+                ⭐ {categoryName}
+              </span>
+            )}
+          </div>
         )}
         <span
           className={`absolute top-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
@@ -229,6 +240,11 @@ export function GarmentsClient({
   const [filterType, setFilterType] = useState<"all" | "regular" | "custom">("all");
   const [pageAvailable, setPageAvailable] = useState(1);
   const [pageReserved, setPageReserved] = useState(1);
+
+  const categoryMap = useMemo(
+    () => new Map(categories.map((c) => [c.id, c.name])),
+    [categories]
+  );
 
   const filtered = useMemo(() => {
     let items = garments;
@@ -393,6 +409,7 @@ export function GarmentsClient({
                 phone={whatsappPhone}
                 reserved={false}
                 buttonText="Solicitar Garment"
+                categoryName={g.category_id ? (categoryMap.get(g.category_id) ?? null) : null}
                 onZoom={(url, name) => {
                   setZoomUrl(url);
                   setZoomName(name);
@@ -440,6 +457,7 @@ export function GarmentsClient({
                 phone={whatsappPhone}
                 reserved
                 buttonText="Consultar Garment"
+                categoryName={g.category_id ? (categoryMap.get(g.category_id) ?? null) : null}
                 onZoom={(url, name) => {
                   setZoomUrl(url);
                   setZoomName(name);
