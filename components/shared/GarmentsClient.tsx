@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Image from "next/image";
 import { ShoppingBag, Search, ChevronLeft, ChevronRight, ZoomIn, Wand2, MessageCircle, X } from "lucide-react";
 
@@ -203,7 +204,8 @@ function GarmentCard({
 export function GarmentsClient({
   garments,
   categories,
-  initialCategoryId,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  initialCategoryId: _,
   version,
   whatsappPhone,
   labels,
@@ -215,12 +217,16 @@ export function GarmentsClient({
   whatsappPhone: string;
   labels: GarmentsLabels;
 }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const selectedCategory = searchParams.get("cat");
+
   const [zoomUrl, setZoomUrl] = useState<string | null>(null);
   const [zoomName, setZoomName] = useState("");
 
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "regular" | "custom">("all");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategoryId);
   const [pageAvailable, setPageAvailable] = useState(1);
   const [pageReserved, setPageReserved] = useState(1);
 
@@ -345,7 +351,7 @@ export function GarmentsClient({
       {categories.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-6">
           <button
-            onClick={() => { setSelectedCategory(null); setPageAvailable(1); setPageReserved(1); }}
+            onClick={() => { router.push(pathname); setPageAvailable(1); setPageReserved(1); }}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
               selectedCategory === null
                 ? "bg-[#f39c12] text-black border-[#f39c12]"
@@ -357,7 +363,7 @@ export function GarmentsClient({
           {categories.map((cat) => (
             <button
               key={cat.id}
-              onClick={() => { setSelectedCategory(cat.id); setPageAvailable(1); setPageReserved(1); }}
+              onClick={() => { router.push(`${pathname}?cat=${cat.id}`); setPageAvailable(1); setPageReserved(1); }}
               className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
                 selectedCategory === cat.id
                   ? "bg-[#f39c12] text-black border-[#f39c12]"
