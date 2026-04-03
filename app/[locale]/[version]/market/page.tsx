@@ -104,6 +104,7 @@ export default async function MarketPage({ params }: Props) {
   const labels: MarketLabels = {
     search_placeholder:    t("search_placeholder"),
     filter_all:            t("filter_all"),
+    filter_item_type:      t("filter_item_type"),
     filter_all_versions:   t("filter_all_versions"),
     filter_all_currencies: t("filter_all_currencies"),
     sort_newest:           t("sort_newest"),

@@ -402,6 +402,7 @@
     "breadcrumb_market": "Market",
     "search_placeholder": "Search item or seller...",
     "filter_all": "All",
+    "filter_item_type": "Item type",
     "filter_all_versions": "All versions",
     "filter_all_currencies": "All currencies",
     "sort_newest": "Newest first",

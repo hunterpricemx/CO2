@@ -402,6 +402,7 @@
     "breadcrumb_market": "Mercado",
     "search_placeholder": "Buscar ítem o vendedor...",
     "filter_all": "Todos",
+    "filter_item_type": "Tipo de ítem",
     "filter_all_versions": "Todas las versiones",
     "filter_all_currencies": "Todas las monedas",
     "sort_newest": "Más reciente",

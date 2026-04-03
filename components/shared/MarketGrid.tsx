@@ -50,6 +50,7 @@ function rotatePosition(n: number, t: number): [number, number] {
 export type MarketLabels = {
   search_placeholder: string;
   filter_all: string;
+  filter_item_type: string;
   filter_all_versions: string;
   filter_all_currencies: string;
   sort_newest: string;
@@ -326,13 +327,14 @@ function PaginationBar({
 
 type Filters = {
   search: string; seller: string; quality: string;
+  itemType: string;
   sockets: string; plusMin: string; version: string;
   currency: string; priceMin: string; priceMax: string;
   sort: "newest" | "price_asc" | "price_desc";
 };
 
 const DEFAULT_FILTERS = (v: string): Filters => ({
-  search: "", seller: "", quality: "", sockets: "",
+  search: "", seller: "", quality: "", itemType: "", sockets: "",
   plusMin: "", version: v, currency: "",
   priceMin: "", priceMax: "", sort: "newest",
 });
@@ -405,6 +407,20 @@ function FilterSidebar({
           <option value="Elite">{labels.quality_elite}</option>
           <option value="Super">{labels.quality_super}</option>
           <option value="Refined">{labels.quality_refined}</option>
+        </select>
+      </div>
+
+      <div>
+        <label className={lbl}>{labels.filter_item_type}</label>
+        <select value={filters.itemType} onChange={(e) => onChange({ itemType: e.target.value })} className={inp + " cursor-pointer"}>
+          <option value="">{labels.filter_all}</option>
+          <option value="weapon">{labels.type_weapon}</option>
+          <option value="armor">{labels.type_armor}</option>
+          <option value="accessory">{labels.type_accessory}</option>
+          <option value="gem">{labels.type_gem}</option>
+          <option value="scroll">{labels.type_scroll}</option>
+          <option value="mount">{labels.type_mount}</option>
+          <option value="other">{labels.type_other}</option>
         </select>
       </div>
 
@@ -566,10 +582,19 @@ export function MarketGrid({
     const plusMinVal = filters.plusMin !== "" ? Number(filters.plusMin) : null;
     const sockVal = filters.sockets !== "" ? Number(filters.sockets) : null;
 
+    const normalizeItemType = (value: string | null | undefined): string => {
+      const v = (value ?? "").trim().toLowerCase();
+      if (v === "weapon" || v === "armor" || v === "accessory" || v === "gem" || v === "scroll" || v === "mount") {
+        return v;
+      }
+      return "other";
+    };
+
     const r = items.filter((item) => {
       if (filters.version && item.version !== filters.version) return false;
       if (filters.currency && item.currency !== filters.currency) return false;
       if (filters.quality && (item.quality ?? "") !== filters.quality) return false;
+      if (filters.itemType && normalizeItemType(item.item_type) !== filters.itemType) return false;
       if (sockVal !== null && item.sockets !== sockVal) return false;
       if (plusMinVal !== null && item.plus_enchant < plusMinVal) return false;
       if (priceMin !== null && item.price < priceMin) return false;
