@@ -61,6 +61,20 @@ export function Footer({
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} Conquer Classic Plus. {t("rights")}
         </p>
+
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          Desarrollado con{" "}
+          <span className="text-red-500" aria-hidden="true">♥</span>
+          {" "}por{" "}
+          <a
+            href="https://hunterprice.mx"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-medium text-foreground hover:text-gold transition-colors"
+          >
+            Alrit
+          </a>
+        </p>
       </div>
     </footer>
   );
