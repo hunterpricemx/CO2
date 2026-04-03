@@ -79,6 +79,20 @@ function GarmentMedia({ url, name }: { url: string | null; name: string }) {
     return <video src={url} className="absolute inset-0 w-full h-full object-cover" muted playsInline loop autoPlay />;
   }
 
+  // GIFs and regular images — use native <img> to preserve animation and avoid
+  // Next.js image optimization converting GIFs to static WebP (breaks on iOS Safari)
+  if (/\.gif$/i.test(getUrlPathname(url))) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={name}
+        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+        loading="lazy"
+      />
+    );
+  }
+
   return (
     <Image
       src={url}

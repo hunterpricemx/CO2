@@ -25,10 +25,20 @@ export default function EditGarmentPage() {
   const [allowsCustom, setAllowsCustom] = useState(false);
   const [isReserved, setIsReserved] = useState(false);
   const [sortOrder, setSortOrder] = useState(0);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [versions, setVersions] = useState("both");
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     if (!id) return;
     const supabase = createClient();
+
+    supabase
+      .from("garment_categories")
+      .select("id, name")
+      .order("sort_order")
+      .then(({ data }) => setCategories((data ?? []) as { id: string; name: string }[]));
+
     supabase
       .from("garments")
       .select("*")
@@ -48,6 +58,8 @@ export default function EditGarmentPage() {
           allows_custom?: boolean | null;
           is_reserved?: boolean | null;
           sort_order: number;
+          category_id?: string | null;
+          versions?: string | null;
         };
         setName(g.name);
         setDescription(g.description ?? "");
@@ -56,6 +68,8 @@ export default function EditGarmentPage() {
         setAllowsCustom(Boolean(g.allows_custom));
         setIsReserved(Boolean(g.is_reserved));
         setSortOrder(g.sort_order);
+        setCategoryId(g.category_id ?? null);
+        setVersions(g.versions ?? "both");
         setIsLoading(false);
       });
   }, [id, router]);
@@ -75,6 +89,8 @@ export default function EditGarmentPage() {
         allows_custom: allowsCustom,
         is_reserved: isReserved,
         sort_order: sortOrder,
+        category_id: categoryId,
+        versions,
       });
       if (result.success) {
         toast.success("Garment actualizado.");
@@ -150,6 +166,35 @@ export default function EditGarmentPage() {
             className={FIELD_CLS}
             min={0}
           />
+        </div>
+
+        {/* Categoría */}
+        <div>
+          <label className={LABEL_CLS}>Categoría</label>
+          <select
+            value={categoryId ?? ""}
+            onChange={(e) => setCategoryId(e.target.value || null)}
+            className={FIELD_CLS}
+          >
+            <option value="">Sin categoría</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Versiones disponibles */}
+        <div>
+          <label className={LABEL_CLS}>Disponible en</label>
+          <select
+            value={versions}
+            onChange={(e) => setVersions(e.target.value)}
+            className={FIELD_CLS}
+          >
+            <option value="both">Ambas versiones (1.0 y 2.0)</option>
+            <option value="1">Solo versión 1.0</option>
+            <option value="2">Solo versión 2.0</option>
+          </select>
         </div>
 
         {/* Toggles */}

@@ -15,6 +15,8 @@ export type GarmentFormData = {
   allows_custom: boolean;
   is_reserved: boolean;
   sort_order: number;
+  category_id: string | null;
+  versions: string;
 };
 
 export type OrderStatusUpdate = {
@@ -39,6 +41,8 @@ export async function createGarment(data: GarmentFormData): Promise<ActionResult
     allows_custom: data.allows_custom,
     is_reserved:   data.is_reserved,
     sort_order:    data.sort_order,
+    category_id:   data.category_id || null,
+    versions:      data.versions || 'both',
   });
 
   if (error) return { success: false, error: error.message };
@@ -62,6 +66,8 @@ export async function updateGarment(id: string, data: GarmentFormData): Promise<
       allows_custom: data.allows_custom,
       is_reserved:   data.is_reserved,
       sort_order:    data.sort_order,
+      category_id:   data.category_id || null,
+      versions:      data.versions || 'both',
       updated_at:    new Date().toISOString(),
     })
     .eq("id", id);

@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import ImageUploadField from "@/components/admin/ImageUploadField";
+import { createClient } from "@/lib/supabase/client";
 import { createGarment } from "../actions";
 
 const FIELD_CLS =
@@ -22,6 +23,17 @@ export default function CreateGarmentPage() {
   const [allowsCustom, setAllowsCustom] = useState(false);
   const [isReserved, setIsReserved] = useState(false);
   const [sortOrder, setSortOrder] = useState(0);
+  const [categoryId, setCategoryId] = useState<string | null>(null);
+  const [versions, setVersions] = useState("both");
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    createClient()
+      .from("garment_categories")
+      .select("id, name")
+      .order("sort_order")
+      .then(({ data }) => setCategories((data ?? []) as { id: string; name: string }[]));
+  }, []);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -38,6 +50,8 @@ export default function CreateGarmentPage() {
         allows_custom: allowsCustom,
         is_reserved: isReserved,
         sort_order: sortOrder,
+        category_id: categoryId,
+        versions,
       });
       if (result.success) {
         toast.success("Garment creado correctamente.");
@@ -107,6 +121,35 @@ export default function CreateGarmentPage() {
             className={FIELD_CLS}
             min={0}
           />
+        </div>
+
+        {/* Categoría */}
+        <div>
+          <label className={LABEL_CLS}>Categoría</label>
+          <select
+            value={categoryId ?? ""}
+            onChange={(e) => setCategoryId(e.target.value || null)}
+            className={FIELD_CLS}
+          >
+            <option value="">Sin categoría</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Versiones disponibles */}
+        <div>
+          <label className={LABEL_CLS}>Disponible en</label>
+          <select
+            value={versions}
+            onChange={(e) => setVersions(e.target.value)}
+            className={FIELD_CLS}
+          >
+            <option value="both">Ambas versiones (1.0 y 2.0)</option>
+            <option value="1">Solo versión 1.0</option>
+            <option value="2">Solo versión 2.0</option>
+          </select>
         </div>
 
         {/* Toggles */}

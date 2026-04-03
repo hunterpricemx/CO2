@@ -217,7 +217,13 @@ export async function POST(req: NextRequest) {
 
   const legacyProduct = String(gameProductId ?? "");
   const legacyUser = String(accountName || donation.account_name || "");
-  const legacyPrice = Number(subject.price?.amount ?? donation.amount_paid ?? 0);
+  const allProducts = (subject.products ?? []) as Array<Record<string, unknown>>;
+  const mainProductEntry = gameProductId !== null
+    ? allProducts.find((p) => String(p.custom) === String(gameProductId))
+    : undefined;
+  const legacyPrice = mainProductEntry
+    ? Number((mainProductEntry.paid_price as Record<string, unknown>)?.amount ?? 0)
+    : Number(subject.price?.amount ?? donation.amount_paid ?? 0);
 
   if (payload.type === "payment.declined") {
     await logPayment({ source: "tebex", level: "warn", event: "payment_declined",
@@ -299,7 +305,7 @@ export async function POST(req: NextRequest) {
     .from("donations")
     .update({
       status: "paid",
-      amount_paid: subject.price?.amount ?? donation.amount_paid,
+      amount_paid: legacyPrice,
       currency: subject.price?.currency ?? "USD",
       tebex_transaction: transactionId,
     })
@@ -356,7 +362,7 @@ export async function POST(req: NextRequest) {
       metadata: { cps_total: donation.cps_total, character_name: characterName || donation.character_name } });
 
     // ── Productos adicionales del mismo basket (multi-producto Tebex) ──
-    const extraProducts = (subject.products ?? []).filter(
+    const extraProducts = allProducts.filter(
       (p) => String(p.custom) !== String(gameProductId)
     );
     for (const ep of extraProducts) {

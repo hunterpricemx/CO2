@@ -21,6 +21,7 @@ type Garment = {
   allows_custom: boolean;
   is_reserved: boolean;
   sort_order: number;
+  versions: string;
   created_at: string;
 };
 
@@ -178,6 +179,11 @@ export default function AdminGarmentsPage() {
                 {g.is_reserved && (
                   <span className="absolute bottom-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-red-900/70 text-red-300 border border-red-700/40">
                     Apartado
+                  </span>
+                )}
+                {g.versions !== "both" && (
+                  <span className="absolute bottom-2 right-2 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-900/70 text-blue-300 border border-blue-700/40">
+                    v{g.versions}.0
                   </span>
                 )}
               </div>

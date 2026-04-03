@@ -183,6 +183,13 @@ export function RefineProvider({ children }: { children: React.ReactNode }) {
           meta: { label: "Órdenes de Garments" },
         },
         {
+          name: "garment_categories",
+          list: "/admin/garment-categories",
+          create: "/admin/garment-categories/create",
+          edit: "/admin/garment-categories/edit/:id",
+          meta: { label: "Categorías de Garments" },
+        },
+        {
           name: "accesory",
           list: "/admin/accesory",
           create: "/admin/accesory/create",
