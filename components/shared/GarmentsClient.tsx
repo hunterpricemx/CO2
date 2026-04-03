@@ -13,6 +13,7 @@ export type GarmentItem = {
   image_url: string | null;
   allows_custom: boolean;
   is_reserved: boolean;
+  category_id: string | null;
 };
 
 export type GarmentsLabels = {
@@ -201,11 +202,15 @@ function GarmentCard({
 
 export function GarmentsClient({
   garments,
+  categories,
+  initialCategoryId,
   version,
   whatsappPhone,
   labels,
 }: {
   garments: GarmentItem[];
+  categories: { id: string; name: string }[];
+  initialCategoryId: string | null;
   version: string;
   whatsappPhone: string;
   labels: GarmentsLabels;
@@ -215,6 +220,7 @@ export function GarmentsClient({
 
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "regular" | "custom">("all");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(initialCategoryId);
   const [pageAvailable, setPageAvailable] = useState(1);
   const [pageReserved, setPageReserved] = useState(1);
 
@@ -224,8 +230,9 @@ export function GarmentsClient({
     if (term) items = items.filter((g) => g.name.toLowerCase().includes(term) || g.description.toLowerCase().includes(term));
     if (filterType === "regular") items = items.filter((g) => !g.allows_custom);
     if (filterType === "custom") items = items.filter((g) => g.allows_custom);
+    if (selectedCategory) items = items.filter((g) => g.category_id === selectedCategory);
     return items;
-  }, [garments, search, filterType]);
+  }, [garments, search, filterType, selectedCategory]);
 
   const available = filtered.filter((g) => !g.is_reserved);
   const reserved = filtered.filter((g) => g.is_reserved);
@@ -334,6 +341,34 @@ export function GarmentsClient({
           ))}
         </div>
       </div>
+
+      {categories.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          <button
+            onClick={() => { setSelectedCategory(null); setPageAvailable(1); setPageReserved(1); }}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+              selectedCategory === null
+                ? "bg-[#f39c12] text-black border-[#f39c12]"
+                : "bg-transparent text-gray-400 border-[rgba(255,215,0,0.2)] hover:text-white hover:border-[rgba(255,215,0,0.5)]"
+            }`}
+          >
+            Todas las categorías
+          </button>
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => { setSelectedCategory(cat.id); setPageAvailable(1); setPageReserved(1); }}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                selectedCategory === cat.id
+                  ? "bg-[#f39c12] text-black border-[#f39c12]"
+                  : "bg-transparent text-gray-400 border-[rgba(255,215,0,0.2)] hover:text-white hover:border-[rgba(255,215,0,0.5)]"
+              }`}
+            >
+              {cat.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <section className="mb-10">
         <h2 className="font-bebas text-3xl tracking-wider text-white mb-4">Disponibles</h2>

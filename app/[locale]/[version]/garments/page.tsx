@@ -7,10 +7,14 @@ import { GarmentsClient, type GarmentItem, type GarmentsLabels } from "../../../
 
 export const metadata: Metadata = { title: "Garments" };
 
-type Props = { params: Promise<{ locale: string; version: string }> };
+type Props = {
+  params: Promise<{ locale: string; version: string }>;
+  searchParams: Promise<{ cat?: string }>;
+};
 
-export default async function GarmentsPage({ params }: Props) {
+export default async function GarmentsPage({ params, searchParams }: Props) {
   const { locale, version } = await params;
+  const { cat } = await searchParams;
   const t = await getTranslations("garments");
 
   const settings = await getSiteSettings();
@@ -24,12 +28,21 @@ export default async function GarmentsPage({ params }: Props) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: rawGarments } = await (supabase as any)
     .from("garments")
-    .select("id, name, description, image_url, allows_custom, is_reserved")
+    .select("id, name, description, image_url, allows_custom, is_reserved, category_id")
     .eq("active", true)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
 
   const garments: GarmentItem[] = (rawGarments ?? []) as GarmentItem[];
+
+  // Fetch categories for filter UI
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: rawCategories } = await (supabase as any)
+    .from("garment_categories")
+    .select("id, name")
+    .order("sort_order");
+
+  const categories = (rawCategories ?? []) as { id: string; name: string }[];
 
   const whatsappPhone = "+1 (809) 998-0093";
 
@@ -70,6 +83,8 @@ export default async function GarmentsPage({ params }: Props) {
 
       <GarmentsClient
         garments={garments}
+        categories={categories}
+        initialCategoryId={cat ?? null}
         version={version}
         whatsappPhone={whatsappPhone}
         labels={labels}

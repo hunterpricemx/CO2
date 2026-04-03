@@ -7,6 +7,7 @@ import { MobileMenu } from "./MobileMenu";
 import { NavLinks } from "./NavLinks";
 import { getGameSession } from "@/lib/session";
 import { getSiteSettings } from "@/lib/site-settings";
+import { createAdminClient } from "@/lib/supabase/server";
 import { gameLogoutAction } from "@/modules/auth/actions";
 import { Button } from "@/components/ui/button";
 import { NavDropdown } from "./NavDropdown";
@@ -38,6 +39,23 @@ export async function Header({
   const ticketsEnabled = settings.tickets_enabled;
   const garmentsEnabled = settings.garments_enabled;
   const accesoryLabel = locale === "es" ? "Accesorios" : locale === "pt" ? "Acessorios" : "Accessories";
+  const cosmeticsLabel = locale === "es" ? "Cosméticos" : locale === "pt" ? "Cosméticos" : "Cosmetics";
+
+  // Fetch garment categories for the Cosméticos dropdown
+  let garmentCategories: { id: string; name: string }[] = [];
+  if (garmentsEnabled) {
+    try {
+      const supabase = await createAdminClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase as any)
+        .from("garment_categories")
+        .select("id, name")
+        .order("sort_order");
+      garmentCategories = (data ?? []) as { id: string; name: string }[];
+    } catch {
+      // si la tabla aún no existe no rompe el header
+    }
+  }
 
   // Build locale-aware path: omit prefix for default locale (es) with as-needed routing
   const lp = (path: string) => locale === "es" ? path : `/${locale}${path}`;
@@ -62,8 +80,15 @@ export async function Header({
           { type: "link", href: lp("/1.0/news"), label: t("news") },
           { type: "link", href: lp("/1.0/download"), label: t("download") },
           { type: "link", href: lp("/1.0/donate"), label: t("donate") },
-          ...(garmentsEnabled ? [{ type: "link" as const, href: lp("/1.0/garments"), label: t("garments") }] : []),
-          ...(garmentsEnabled ? [{ type: "link" as const, href: lp("/1.0/accesory"), label: accesoryLabel }] : []),
+          ...(garmentsEnabled ? [{
+            type: "dropdown" as const,
+            label: cosmeticsLabel,
+            items: [
+              { href: lp("/1.0/garments"), label: t("garments") },
+              ...garmentCategories.map((cat) => ({ href: lp(`/1.0/garments?cat=${cat.id}`), label: cat.name })),
+              { href: lp("/1.0/accesory"), label: accesoryLabel },
+            ],
+          }] : []),
           { type: "link", href: lp("/1.0/vip"), label: t("vip") },
           { type: "link", href: lp("/1.0/influencers"), label: t("influencers") },
           {
@@ -87,8 +112,15 @@ export async function Header({
           { type: "link", href: lp("/2.0/events"), label: t("events") },
           { type: "link", href: lp("/2.0/download"), label: t("download") },
           { type: "link", href: lp("/2.0/donate"), label: t("donate") },
-          ...(garmentsEnabled ? [{ type: "link" as const, href: lp("/2.0/garments"), label: t("garments") }] : []),
-          ...(garmentsEnabled ? [{ type: "link" as const, href: lp("/2.0/accesory"), label: accesoryLabel }] : []),
+          ...(garmentsEnabled ? [{
+            type: "dropdown" as const,
+            label: cosmeticsLabel,
+            items: [
+              { href: lp("/2.0/garments"), label: t("garments") },
+              ...garmentCategories.map((cat) => ({ href: lp(`/2.0/garments?cat=${cat.id}`), label: cat.name })),
+              { href: lp("/2.0/accesory"), label: accesoryLabel },
+            ],
+          }] : []),
           { type: "link", href: lp("/2.0/vip"), label: t("vip") },
           { type: "link", href: lp("/2.0/influencers"), label: t("influencers") },
           statsDropdown,
