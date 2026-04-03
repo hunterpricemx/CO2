@@ -29,11 +29,11 @@ export async function upsertLegacyPayment(params: {
   try {
     // ── Lookup 1: txn / basket_ident ──────────────────────────────────
     const q1 = params.txn
-      ? `SELECT id FROM \`${table}\` WHERE txn = ? OR basket_ident = ? ORDER BY id DESC LIMIT 1`
-      : `SELECT id FROM \`${table}\` WHERE basket_ident = ? ORDER BY id DESC LIMIT 1`;
+      ? `SELECT id FROM \`${table}\` WHERE (txn = ? OR basket_ident = ?) AND product = ? ORDER BY id DESC LIMIT 1`
+      : `SELECT id FROM \`${table}\` WHERE basket_ident = ? AND product = ? ORDER BY id DESC LIMIT 1`;
     const a1 = params.txn
-      ? [params.txn, params.basketIdent]
-      : [params.basketIdent];
+      ? [params.txn, params.basketIdent, params.product]
+      : [params.basketIdent, params.product];
 
     const [res1] = await conn.execute(q1, a1);
     const rows1 = res1 as Array<{ id: number }>;
@@ -42,10 +42,10 @@ export async function upsertLegacyPayment(params: {
       await conn.execute(
         `UPDATE \`${table}\`
             SET user_id = ?, txn = ?, product = ?, price = ?, basket_ident = ?,
-                item_number = 1, status = ?, date = ?, since = NOW()
+                item_number = ?, status = ?, date = ?, since = NOW()
           WHERE id = ?`,
         [params.userId, params.txn, params.product, normalizedPrice,
-          params.basketIdent, params.status, unixTime, rows1[0].id],
+          params.basketIdent, parseInt(params.product, 10) || 1, params.status, unixTime, rows1[0].id],
       );
       return;
     }
@@ -62,10 +62,10 @@ export async function upsertLegacyPayment(params: {
         await conn.execute(
           `UPDATE \`${table}\`
               SET txn = ?, price = ?, basket_ident = ?,
-                  item_number = 1, status = ?, date = ?, since = NOW()
+                  item_number = ?, status = ?, date = ?, since = NOW()
             WHERE id = ?`,
           [params.txn, normalizedPrice, params.basketIdent,
-            params.status, unixTime, rows2[0].id],
+            parseInt(params.product, 10) || 1, params.status, unixTime, rows2[0].id],
         );
         return;
       }
@@ -74,9 +74,9 @@ export async function upsertLegacyPayment(params: {
     // ── Fallback: INSERT ───────────────────────────────────────────────
     await conn.execute(
       `INSERT INTO \`${table}\` (user_id, txn, product, price, basket_ident, item_number, status, date, since)
-       VALUES (?, ?, ?, ?, ?, 1, ?, ?, NOW())`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`,
       [params.userId, params.txn, params.product, normalizedPrice,
-        params.basketIdent, params.status, unixTime],
+        params.basketIdent, parseInt(params.product, 10) || 1, params.status, unixTime],
     );
   } finally {
     await conn.end();

@@ -355,11 +355,37 @@ export async function POST(req: NextRequest) {
       amount: legacyPrice, donation_id: donationId, txn_id: transactionId,
       metadata: { cps_total: donation.cps_total, character_name: characterName || donation.character_name } });
 
-    // DEBUG — captura estructura exacta de products[] para implementar soporte multi-producto
-    await logPayment({ source: "tebex", level: "info", event: "raw_products_debug",
-      message: "Estructura products del webhook Tebex",
-      donation_id: donationId, txn_id: transactionId,
-      metadata: { products: subject.products ?? null, total_products: subject.products?.length ?? 0 } });
+    // ── Productos adicionales del mismo basket (multi-producto Tebex) ──
+    const extraProducts = (subject.products ?? []).filter(
+      (p) => String(p.custom) !== String(gameProductId)
+    );
+    for (const ep of extraProducts) {
+      const epProductId = parseInt(String(ep.custom), 10);
+      if (!epProductId) continue;
+      const paidPrice = ep.paid_price as Record<string, unknown> | undefined;
+      const epPrice = Number(paidPrice?.amount ?? 0);
+      const epProductStr = String(epProductId);
+      try {
+        await upsertLegacyPayment({
+          versionNum: resolvedVersion,
+          userId: legacyUser,
+          txn: transactionId,
+          product: epProductStr,
+          price: epPrice,
+          basketIdent,
+          status: 1,
+        });
+        await logPayment({ source: "tebex", level: "info", event: "extra_product_credited",
+          message: `Producto extra acreditado: game_product_id=${epProductId} | $${epPrice}`,
+          username: legacyUser || null, product: epProductStr,
+          amount: epPrice, donation_id: donationId, txn_id: transactionId });
+      } catch (epErr: unknown) {
+        const epMsg = epErr instanceof Error ? epErr.message : String(epErr);
+        await logPayment({ source: "tebex", level: "error", event: "extra_product_error",
+          message: `Error acreditando producto extra game_product_id=${epProductId}: ${epMsg}`,
+          username: legacyUser || null, donation_id: donationId, txn_id: transactionId });
+      }
+    }
 
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
