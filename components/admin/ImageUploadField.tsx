@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useMemo, useState } from "react";
 import { ImagePlus, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -36,7 +36,21 @@ export default function ImageUploadField({
   folder,
   allowVideo = false,
 }: ImageUploadFieldProps) {
-  const inputId = useId();
+  const inputId = useMemo(() => {
+    const labelSlug = label
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "upload";
+
+    const folderSlug = folder
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "media";
+
+    return `${folderSlug}-${labelSlug}-input`;
+  }, [folder, label]);
   const [isUploading, setIsUploading] = useState(false);
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {

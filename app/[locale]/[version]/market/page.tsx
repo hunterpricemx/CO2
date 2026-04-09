@@ -3,7 +3,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import type { RowDataPacket } from "mysql2";
 import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
-import { getGameDb } from "@/lib/game-db";
+import { getGameDb, getCharacterForAccount, getCpMarketRate } from "@/lib/game-db";
+import { getGameSession } from "@/lib/session";
 import { MarketGrid, type MarketLabels } from "@/components/shared/MarketGrid";
 import type { MarketItemRow } from "@/modules/market/types";
 
@@ -154,9 +155,51 @@ export default async function MarketPage({ params }: Props) {
     location_coords:       t("location_coords"),
     location_close:        t("location_close"),
     location_invalid:      t("location_invalid"),
+    col_buy:               t("col_buy"),
+    buy_btn:               t("buy_btn"),
+    buy_modal_title:       t("buy_modal_title"),
+    buy_price_silvers:     t("buy_price_silvers"),
+    buy_cp_cost:           t("buy_cp_cost"),
+    buy_cp_balance:        t("buy_cp_balance"),
+    buy_cp_rate:           t("buy_cp_rate"),
+    buy_confirm:           t("buy_confirm"),
+    buy_cancel:            t("buy_cancel"),
+    buy_success_title:     t("buy_success_title"),
+    buy_success_body:      t("buy_success_body"),
+    buy_login_required:    t("buy_login_required"),
+    buy_no_char:           t("buy_no_char"),
+    history_btn:           t("history_btn"),
+    cart_title:            t("cart_title"),
+    cart_add:              t("cart_add"),
+    cart_empty:            t("cart_empty"),
+    cart_total:            t("cart_total"),
+    cart_checkout:         t("cart_checkout"),
+    cart_clear:            t("cart_clear"),
+    cart_insufficient:     t("cart_insufficient"),
+    cart_success:          t("cart_success"),
+    cart_processing:       t("cart_processing"),
+    cart_col_item:         t("cart_col_item"),
+    cart_col_cost:         t("cart_col_cost"),
   };
 
-  const items = await getMarketRows(versionNum);
+  const [items, session, cpRate] = await Promise.all([
+    getMarketRows(versionNum),
+    getGameSession(),
+    getCpMarketRate(),
+  ]);
+
+  let cpBalance: number | undefined;
+  let goldBalance: number | undefined;
+  let charName: string | undefined;
+  if (session) {
+    const charData = await getCharacterForAccount(session.uid, versionNum);
+    cpBalance = charData?.cps;
+    goldBalance = charData?.gold;
+    charName = charData?.name;
+  }
+
+  const loginHref = locale === "es" ? `/${version}/login` : `/${locale}/${version}/login`;
+  const historyHref = locale === "es" ? `/${version}/market/history` : `/${locale}/${version}/market/history`;
 
   return (
     <div className="flex flex-col">
@@ -208,7 +251,17 @@ export default async function MarketPage({ params }: Props) {
 
       <section className="py-10" style={{ background: "#080808" }}>
         <div className="w-full mx-auto px-4 sm:px-6 lg:px-8">
-          <MarketGrid items={items} labels={labels} defaultVersion={version} />
+          <MarketGrid
+            items={items}
+            labels={labels}
+            defaultVersion={version}
+            sessionUid={session?.uid ?? null}
+            cpBalance={cpBalance}
+            goldBalance={goldBalance}
+            charName={charName}
+            cpRate={cpRate}
+            loginHref={session ? historyHref : loginHref}
+          />
         </div>
       </section>
     </div>

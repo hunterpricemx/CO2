@@ -164,6 +164,9 @@ export interface Database {
           title_es: string;
           title_en: string;
           title_pt: string;
+          summary_es: string | null;
+          summary_en: string | null;
+          summary_pt: string | null;
           content_es: string | null;
           content_en: string | null;
           content_pt: string | null;
@@ -182,6 +185,9 @@ export interface Database {
           title_es: string;
           title_en: string;
           title_pt: string;
+          summary_es?: string | null;
+          summary_en?: string | null;
+          summary_pt?: string | null;
           content_es?: string | null;
           content_en?: string | null;
           content_pt?: string | null;
@@ -200,6 +206,9 @@ export interface Database {
           title_es?: string;
           title_en?: string;
           title_pt?: string;
+          summary_es?: string | null;
+          summary_en?: string | null;
+          summary_pt?: string | null;
           content_es?: string | null;
           content_en?: string | null;
           content_pt?: string | null;

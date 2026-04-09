@@ -24,6 +24,14 @@ function stripHtml(html: string | null | undefined): string {
   return html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+function getGuideSummaryText(summary: string | null | undefined, content: string | null | undefined): string | null {
+  const cleanSummary = summary?.trim();
+  if (cleanSummary) return cleanSummary;
+
+  const text = stripHtml(content);
+  return text.length > 120 ? `${text.slice(0, 120)}\u2026` : text || null;
+}
+
 export default async function GuidesPage({
   params,
   searchParams,
@@ -70,9 +78,9 @@ export default async function GuidesPage({
   }
 
   function getSnippet(g: GuideRow) {
+    const summary = locale === "en" ? g.summary_en : locale === "pt" ? g.summary_pt : g.summary_es;
     const content = locale === "en" ? g.content_en : locale === "pt" ? g.content_pt : g.content_es;
-    const text = stripHtml(content);
-    return text.length > 120 ? text.slice(0, 120) + "\u2026" : text || null;
+    return getGuideSummaryText(summary, content);
   }
 
   function getCatName(catId: string | null) {

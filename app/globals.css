@@ -199,4 +199,127 @@
   .custom-scrollbar::-webkit-scrollbar-track  { background: oklch(0.196 0 0); }
   .custom-scrollbar::-webkit-scrollbar-thumb  { background: oklch(0.718 0.162 66.5 / 0.6); border-radius: 3px; }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: oklch(0.718 0.162 66.5); }
+
+  .guide-content {
+    font-size: 1rem;
+    line-height: 1.8;
+  }
+
+  .guide-content > :first-child {
+    margin-top: 0;
+  }
+
+  .guide-content .text {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .guide-content p,
+  .guide-content li,
+  .guide-content td,
+  .guide-content th,
+  .guide-content span,
+  .guide-content div {
+    color: rgb(232 232 232) !important;
+    font-family: var(--font-poppins), sans-serif !important;
+  }
+
+  .guide-content h1,
+  .guide-content h2,
+  .guide-content h3,
+  .guide-content h4,
+  .guide-content h5,
+  .guide-content h6 {
+    color: rgb(243 156 18) !important;
+    font-family: var(--font-bebas), sans-serif !important;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .guide-content h4 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.75rem;
+  }
+
+  .guide-content table {
+    width: 100% !important;
+    display: block;
+    overflow-x: auto;
+    border-collapse: separate !important;
+    border-spacing: 0;
+    border: 1px solid rgb(243 156 18 / 0.18);
+    border-radius: 1rem;
+    background: linear-gradient(180deg, rgb(17 17 17 / 0.95), rgb(10 10 10 / 0.98)) !important;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+  }
+
+  .guide-content tbody {
+    display: table;
+    width: 100%;
+  }
+
+  .guide-content tr:not(:last-child) td {
+    border-bottom: 1px solid rgb(255 255 255 / 0.07);
+  }
+
+  .guide-content td,
+  .guide-content th {
+    padding: 0.9rem 1rem !important;
+    background: transparent !important;
+    vertical-align: top;
+  }
+
+  .guide-content td:first-child,
+  .guide-content th:first-child {
+    width: 34%;
+    color: rgb(243 196 15) !important;
+    font-weight: 700;
+    background: rgb(243 156 18 / 0.08) !important;
+  }
+
+  .guide-content img {
+    display: block;
+    max-width: 100% !important;
+    height: auto !important;
+    margin: 1rem auto;
+    border-radius: 1rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+  }
+
+  .guide-content p[align="center"] {
+    text-align: center;
+  }
+
+  .guide-content strong {
+    color: white !important;
+    font-weight: 700;
+  }
+
+  .guide-content ul,
+  .guide-content ol {
+    padding-left: 1.25rem;
+  }
+
+  .guide-content a {
+    color: rgb(243 196 15) !important;
+  }
+
+  @media (max-width: 640px) {
+    .guide-content {
+      font-size: 0.95rem;
+    }
+
+    .guide-content td:first-child,
+    .guide-content th:first-child {
+      width: 42%;
+    }
+
+    .guide-content h4 {
+      font-size: 1.45rem;
+    }
+  }
 }

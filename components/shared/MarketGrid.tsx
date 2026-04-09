@@ -6,6 +6,7 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useTransition,
 } from "react";
 import {
   Search,
@@ -16,8 +17,16 @@ import {
   ChevronLeft,
   ChevronRight,
   ShoppingBag,
+  ShoppingCart,
+  History,
+  CheckCircle2,
+  AlertCircle,
+  Coins,
+  Plus,
 } from "lucide-react";
+import Link from "next/link";
 import type { MarketItemRow } from "@/modules/market/types";
+import { buyWithCPsAction } from "@/modules/market/purchaseActions";
 
 // ── Quality theme ──────────────────────────────────────────────────────────────
 
@@ -72,6 +81,31 @@ export type MarketLabels = {
   page_showing: string; page_of: string; items_per_page: string;
   location_title: string; location_coords: string;
   location_close: string; location_invalid: string;
+  col_buy: string;
+  buy_btn: string;
+  buy_modal_title: string;
+  buy_price_silvers: string;
+  buy_cp_cost: string;
+  buy_cp_balance: string;
+  buy_cp_rate: string;
+  buy_confirm: string;
+  buy_cancel: string;
+  buy_success_title: string;
+  buy_success_body: string;
+  buy_login_required: string;
+  buy_no_char: string;
+  history_btn: string;
+  cart_title: string;
+  cart_add: string;
+  cart_empty: string;
+  cart_total: string;
+  cart_checkout: string;
+  cart_clear: string;
+  cart_insufficient: string;
+  cart_success: string;
+  cart_processing: string;
+  cart_col_item: string;
+  cart_col_cost: string;
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -165,7 +199,7 @@ function LocationPanel({
   }, [recalcDot]);
 
   return (
-    <aside className="w-full lg:w-80 xl:w-96 shrink-0 rounded-xl border border-surface/50 overflow-hidden bg-[#0a0a0a] lg:sticky lg:top-24 h-fit">
+    <aside className="w-full lg:w-80 xl:w-96 shrink-0 rounded-xl border border-surface/50 overflow-hidden bg-[#0a0a0a] h-fit">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-gold/20 text-gold font-bold text-sm">
         <MapPin className="h-4 w-4" />
         {labels.location_title}
@@ -445,15 +479,6 @@ function FilterSidebar({
       </div>
 
       <div>
-        <label className={lbl}>{labels.filter_all_versions}</label>
-        <select value={filters.version} onChange={(e) => onChange({ version: e.target.value })} className={inp + " cursor-pointer"}>
-          <option value="">{labels.filter_all}</option>
-          <option value="1.0">v1.0 Classic Plus</option>
-          <option value="2.0">v2.0 Experience</option>
-        </select>
-      </div>
-
-      <div>
         <label className={lbl}>{labels.filter_all_currencies}</label>
         <div className="flex gap-2">
           {(["", "CP", "Gold"] as const).map((c) => (
@@ -518,13 +543,232 @@ function FilterSidebar({
   );
 }
 
+// ── CartItem + CartPanel ───────────────────────────────────────────────────────
+
+type CartItem = {
+  id: string;
+  item_name: string;
+  item_plus: number;
+  item_bless: number;
+  item_soc1: string | null;
+  item_soc2: string | null;
+  seller_name: string;
+  seller_x: number | null;
+  seller_y: number | null;
+  silver_price: number;
+  currency: string;
+  version: string;
+  cpCost: number;
+};
+
+type CartPanelProps = {
+  cartItems: CartItem[];
+  cpBalance: number;
+  goldBalance: number;
+  cpRate: number;
+  charName: string;
+  labels: MarketLabels;
+  onRemove: (id: string) => void;
+  onClear: () => void;
+  onCheckoutSuccess: (newBalance: number) => void;
+};
+
+function CartPanel({
+  cartItems, cpBalance, goldBalance, cpRate, charName, labels, onRemove, onClear, onCheckoutSuccess,
+}: CartPanelProps) {
+  const [isPending, startTransition] = useTransition();
+  const [errors, setErrors] = useState<string[]>([]);
+  const [done, setDone] = useState(false);
+  const [finalBalance, setFinalBalance] = useState(cpBalance);
+
+  const totalCp = cartItems.reduce((s, i) => s + i.cpCost, 0);
+  const totalGoldCp = cartItems.filter((i) => i.currency !== "CP").reduce((s, i) => s + i.cpCost, 0);
+  const totalDirectCp = cartItems.filter((i) => i.currency === "CP").reduce((s, i) => s + i.cpCost, 0);
+  const canAfford = cpBalance >= totalCp;
+
+  // Reset done state when cart changes
+  useEffect(() => { setDone(false); setErrors([]); }, [cartItems.length]);
+
+  const handleCheckout = () => {
+    setErrors([]);
+    setDone(false);
+    startTransition(async () => {
+      let balance = cpBalance;
+      const errs: string[] = [];
+      for (const item of cartItems) {
+        const res = await buyWithCPsAction({
+          item_id: item.id,
+          item_name: item.item_name,
+          item_plus: item.item_plus,
+          item_bless: item.item_bless,
+          item_soc1: item.item_soc1,
+          item_soc2: item.item_soc2,
+          seller_name: item.seller_name,
+          seller_x: item.seller_x,
+          seller_y: item.seller_y,
+          silver_price: item.silver_price,
+          version: item.version,
+        });
+        if (res.success) {
+          balance = res.data.newBalance;
+        } else {
+          errs.push(`${item.item_name}: ${res.error}`);
+        }
+      }
+      setFinalBalance(balance);
+      onCheckoutSuccess(balance);
+      if (errs.length === 0) {
+        setDone(true);
+      } else {
+        setErrors(errs);
+      }
+    });
+  };
+
+  return (
+    <aside className="w-full lg:w-80 xl:w-96 shrink-0 rounded-xl border border-emerald-500/20 overflow-hidden bg-[#0a0a0a]">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-emerald-500/15">
+        <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm">
+          <ShoppingCart className="h-4 w-4" />
+          {labels.cart_title}
+          {cartItems.length > 0 && (
+            <span className="ml-1 bg-emerald-500 text-background text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+              {cartItems.length}
+            </span>
+          )}
+        </div>
+        {cartItems.length > 0 && (
+          <button
+            onClick={onClear}
+            disabled={isPending}
+            className="text-xs text-muted-foreground/50 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-40"
+          >
+            {labels.cart_clear}
+          </button>
+        )}
+      </div>
+
+      <div className="p-4 flex flex-col gap-3">
+        {done ? (
+          <div className="flex flex-col items-center gap-2 py-4 text-center">
+            <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+            <p className="font-bold text-emerald-400">{labels.cart_success}</p>
+            <p className="text-xs text-muted-foreground">
+              {labels.buy_cp_balance}: {finalBalance.toLocaleString("es-ES")} CP
+            </p>
+          </div>
+        ) : cartItems.length === 0 ? (
+          <p className="text-xs text-muted-foreground/50 text-center py-4">{labels.cart_empty}</p>
+        ) : (
+          <>
+            {/* Item list */}
+            <ul className="flex flex-col gap-1.5 max-h-52 overflow-y-auto pr-1">
+              {cartItems.map((item) => (
+                <li key={item.id} className="flex items-center gap-2 bg-white/4 border border-white/6 rounded-lg px-2.5 py-1.5">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">
+                      {item.item_name}
+                      {item.item_plus > 0 && <span className="text-gold ml-1">+{item.item_plus}</span>}
+                    </p>
+                    <p className="text-[10px] font-mono">
+                      {item.currency === "CP" ? (
+                        <span className="text-emerald-400">{item.cpCost.toLocaleString("es-ES")} CP</span>
+                      ) : (
+                        <span className="text-yellow-300">{item.silver_price.toLocaleString("es-ES")} Gold</span>
+                      )}
+                      {item.currency !== "CP" && (
+                        <span className="text-muted-foreground/50 ml-1">≈ {item.cpCost.toLocaleString("es-ES")} CP</span>
+                      )}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => onRemove(item.id)}
+                    disabled={isPending}
+                    className="text-muted-foreground/40 hover:text-red-400 transition-colors cursor-pointer shrink-0 disabled:opacity-40"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            {/* Total */}
+            <div className="border-t border-white/8 pt-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">{labels.buy_cp_balance}</span>
+                <span className={`text-xs font-mono font-semibold ${cpBalance >= totalDirectCp ? "text-foreground/70" : "text-red-400"}`}>
+                  {cpBalance.toLocaleString("es-ES")} CP
+                </span>
+              </div>
+              {cartItems.some((i) => i.currency !== "CP") && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Oro disponible</span>
+                  <span className="text-xs font-mono font-semibold text-yellow-300">
+                    {goldBalance.toLocaleString("es-ES")} Gold
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-bold flex items-center gap-1">
+                  <Coins className="h-3.5 w-3.5 text-emerald-400" />
+                  {labels.cart_total}
+                </span>
+                <span className={`text-sm font-bold font-mono ${canAfford ? "text-emerald-400" : "text-red-400"}`}>
+                  {totalCp.toLocaleString("es-ES")} CP
+                </span>
+              </div>
+
+              {!canAfford && (
+                <div className="flex items-center gap-2 text-[10px] text-red-400 bg-red-400/8 border border-red-400/15 rounded-lg px-2.5 py-1.5">
+                  <AlertCircle className="h-3 w-3 shrink-0" />
+                  {labels.cart_insufficient}
+                </div>
+              )}
+
+              {errors.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  {errors.map((e, i) => (
+                    <p key={i} className="text-[10px] text-red-400 bg-red-400/8 border border-red-400/15 rounded px-2 py-1">{e}</p>
+                  ))}
+                </div>
+              )}
+
+              <p className="text-[10px] text-muted-foreground/40 text-center">{charName}</p>
+
+              <button
+                onClick={handleCheckout}
+                disabled
+                className="w-full py-2.5 rounded-xl bg-white/8 border border-white/10 text-muted-foreground/60 font-bold text-sm cursor-not-allowed flex items-center justify-center gap-2"
+                title="Próximamente"
+              >
+                <Coins className="h-4 w-4" />
+                Próximamente
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </aside>
+  );
+}
+
 // ── Main MarketGrid ────────────────────────────────────────────────────────────
 
 export function MarketGrid({
-  items, labels, defaultVersion,
+  items, labels, defaultVersion, sessionUid, cpBalance: initialCpBalance, goldBalance: initialGoldBalance, charName, cpRate, loginHref,
 }: {
-  items: MarketItemRow[]; labels: MarketLabels; defaultVersion: string;
+  items: MarketItemRow[];
+  labels: MarketLabels;
+  defaultVersion: string;
+  sessionUid?: number | null;
+  cpBalance?: number;
+  goldBalance?: number;
+  charName?: string;
+  cpRate?: number;
+  loginHref?: string;
 }) {
+  const effectiveCpRate = cpRate ?? 100000;
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS(defaultVersion));
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<number>(25);
@@ -537,6 +781,36 @@ export function MarketGrid({
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const dragStartXRef = useRef(0);
   const dragStartScrollRef = useRef(0);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [currentCpBalance, setCurrentCpBalance] = useState<number>(initialCpBalance ?? 0);
+  const currentGoldBalance = initialGoldBalance ?? 0;
+
+  const addToCart = useCallback((item: MarketItemRow) => {
+    const id = String(item.id);
+    setCartItems((prev) => {
+      if (prev.some((c) => c.id === id)) return prev; // no duplicates
+      return [
+        ...prev,
+        {
+          id,
+          item_name: item.item_name,
+          item_plus: item.plus_enchant,
+          item_bless: item.minus_enchant,
+          item_soc1: null,
+          item_soc2: null,
+          seller_name: item.seller,
+          seller_x: item.seller_x ?? null,
+          seller_y: item.seller_y ?? null,
+          silver_price: item.price,
+          currency: item.currency,
+          version: item.version,
+          cpCost: item.currency === "CP"
+            ? item.price
+            : Math.ceil(item.price / effectiveCpRate),
+        },
+      ];
+    });
+  }, [effectiveCpRate]);
 
   const updateFilters = useCallback((partial: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...partial }));
@@ -689,9 +963,39 @@ export function MarketGrid({
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-2 bg-gold/5 border border-gold/15 rounded-lg px-4 py-2.5 text-xs text-gold/80 w-fit">
-        <span className="h-1.5 w-1.5 rounded-full bg-gold/60 animate-pulse" />
-        {labels.simulated_notice}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center gap-2 bg-gold/5 border border-gold/15 rounded-lg px-4 py-2.5 text-xs text-gold/80 w-fit">
+          <span className="h-1.5 w-1.5 rounded-full bg-gold/60 animate-pulse" />
+          {labels.simulated_notice}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {sessionUid ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground/60 hidden sm:inline">
+                <Coins className="inline h-3.5 w-3.5 text-gold mr-1" />
+                {currentCpBalance.toLocaleString("es-ES")} CP
+              </span>
+              {loginHref && (
+                <Link
+                  href={loginHref}
+                  className="flex items-center gap-1.5 bg-surface/40 border border-surface/50 rounded-lg px-3 py-1.5 text-sm font-medium cursor-pointer hover:border-gold/30 hover:text-gold transition-colors text-muted-foreground"
+                >
+                  <History className="h-3.5 w-3.5" />
+                  {labels.history_btn}
+                </Link>
+              )}
+            </div>
+          ) : loginHref ? (
+            <Link
+              href={loginHref}
+              className="flex items-center gap-1.5 bg-gold/10 border border-gold/30 rounded-lg px-3 py-1.5 text-sm font-medium text-gold hover:bg-gold/20 transition-colors"
+            >
+              <ShoppingCart className="h-3.5 w-3.5" />
+              {labels.buy_login_required}
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -720,7 +1024,23 @@ export function MarketGrid({
           <FilterSidebar filters={filters} labels={labels} onChange={changeFilters} onClear={clearFilters} />
         </div>
 
-        <div className="order-2 lg:order-3">
+        <div className="order-2 lg:order-3 flex flex-col gap-4 lg:sticky lg:top-24 h-fit">
+          {sessionUid && charName && (
+            <CartPanel
+              cartItems={cartItems}
+              cpBalance={currentCpBalance}
+              goldBalance={currentGoldBalance}
+              cpRate={effectiveCpRate}
+              charName={charName}
+              labels={labels}
+              onRemove={(id) => setCartItems((prev) => prev.filter((i) => i.id !== id))}
+              onClear={() => setCartItems([])}
+              onCheckoutSuccess={(nb) => {
+                setCurrentCpBalance(nb);
+                setCartItems([]);
+              }}
+            />
+          )}
           <LocationPanel data={displayedLocation} labels={labels} />
         </div>
 
@@ -746,12 +1066,13 @@ export function MarketGrid({
                   <th className="px-3 py-3 text-center w-10 lg:hidden">{labels.col_location}</th>
                   <th className="px-3 py-3 text-right cursor-pointer select-none" onClick={() => toggleSort("price")}>{labels.col_price}{sortMark("price")}</th>
                   <th className="px-3 py-3 text-left w-14 cursor-pointer select-none" onClick={() => toggleSort("currency")}>{labels.col_type}{sortMark("currency")}</th>
+                  {sessionUid && <th className="px-3 py-3 text-center w-24">{labels.cart_add}</th>}
                 </tr>
               </thead>
               <tbody>
                 {pageItems.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-20 text-center">
+                    <td colSpan={sessionUid ? 11 : 10} className="py-20 text-center">
                       <div className="flex flex-col items-center gap-3 text-muted-foreground">
                         <ShoppingBag className="h-12 w-12 text-white/10" />
                         <span className="text-sm">{labels.no_results}</span>
@@ -819,6 +1140,29 @@ export function MarketGrid({
                         <td className={`px-3 py-2 text-xs font-semibold ${isCP ? "text-gold/60" : "text-yellow-300/60"}`}>
                           {item.currency}
                         </td>
+                        {sessionUid && (() => {
+                          const isInCart = cartItems.some((c) => c.id === String(item.id));
+                          return (
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); addToCart(item); }}
+                                disabled={isInCart}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                                  isInCart
+                                    ? "bg-emerald-500/8 border border-emerald-500/15 text-emerald-500/40 cursor-default"
+                                    : "bg-emerald-500/15 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-400 cursor-pointer"
+                                }`}
+                              >
+                                {isInCart ? (
+                                  <CheckCircle2 className="h-3 w-3" />
+                                ) : (
+                                  <Plus className="h-3 w-3" />
+                                )}
+                                {isInCart ? "En carrito" : labels.cart_add}
+                              </button>
+                            </td>
+                          );
+                        })()}
                       </tr>
                     );
                   })

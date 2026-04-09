@@ -190,6 +190,11 @@ export function RefineProvider({ children }: { children: React.ReactNode }) {
           meta: { label: "Categorías de Garments" },
         },
         {
+          name: "market_purchases",
+          list: "/admin/market-purchases",
+          meta: { label: "Compras Market" },
+        },
+        {
           name: "accesory",
           list: "/admin/accesory",
           create: "/admin/accesory/create",

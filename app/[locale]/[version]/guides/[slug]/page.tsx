@@ -36,7 +36,9 @@ export async function generateMetadata({
   if (!guide) return { title: "Guía no encontrada" };
   const title =
     locale === "es" ? guide.title_es : locale === "en" ? guide.title_en : guide.title_pt;
-  return { title };
+  const description =
+    locale === "es" ? guide.summary_es : locale === "en" ? guide.summary_en : guide.summary_pt;
+  return { title, description: description?.trim() || undefined };
 }
 
 export default async function GuideDetailPage({
@@ -70,6 +72,8 @@ export default async function GuideDetailPage({
 
   const title =
     locale === "es" ? guide.title_es : locale === "en" ? guide.title_en : guide.title_pt;
+  const summary =
+    locale === "es" ? guide.summary_es : locale === "en" ? guide.summary_en : guide.summary_pt;
   const content =
     locale === "es" ? guide.content_es : locale === "en" ? guide.content_en : guide.content_pt;
 
@@ -144,6 +148,12 @@ export default async function GuideDetailPage({
               v{versionLabel}
             </Badge>
           </div>
+
+          {summary?.trim() && (
+            <p className="max-w-2xl text-sm text-white/75 leading-relaxed">
+              {summary}
+            </p>
+          )}
         </div>
       </section>
 
@@ -200,11 +210,11 @@ export default async function GuideDetailPage({
           {/* Article body */}
           {content ? (
             <article
-              className="prose prose-invert prose-sm max-w-none
+              className="guide-content prose prose-invert max-w-none
                 prose-headings:font-bebas prose-headings:tracking-wider prose-headings:text-gold
                 prose-a:text-gold prose-a:no-underline hover:prose-a:underline
                 prose-strong:text-white
-                prose-li:marker:text-gold/60"
+                prose-p:text-white/85 prose-li:marker:text-gold/60"
               dangerouslySetInnerHTML={{ __html: content }}
             />
           ) : (

@@ -3,6 +3,7 @@
 import { useList, useDelete } from "@refinedev/core";
 import Link from "next/link";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import type { GuideRow } from "@/modules/guides/types";
 
 const STATUS_COLORS: Record<string, string> = {
   published: "bg-green-900/30 text-green-400 border-green-800/30",
@@ -17,7 +18,7 @@ export default function AdminGuidesPage() {
     pagination: { pageSize: 50 },
   });
   const { mutate: del } = useDelete();
-  const guides = query.data?.data ?? [];
+  const guides = (query.data?.data ?? []) as GuideRow[];
   const isLoading = query.isLoading;
 
   return (
@@ -48,8 +49,8 @@ export default function AdminGuidesPage() {
               </tr>
             </thead>
             <tbody>
-              {guides.map((g: any) => (
-                <tr key={g.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/[0.02]">
+              {guides.map((g) => (
+                <tr key={g.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/2">
                   <td className="px-4 py-3 text-gray-400 font-mono text-xs">{g.slug}</td>
                   <td className="px-4 py-3 text-white">{g.title_es}</td>
                   <td className="px-4 py-3 text-gray-400">{g.version}</td>

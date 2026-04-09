@@ -67,6 +67,9 @@ export default async function HomePage({
   function guideTitle(g: { title_es: string; title_en: string; title_pt: string }) {
     return locale === "es" ? g.title_es : locale === "en" ? g.title_en : g.title_pt;
   }
+  function guideSummary(g: { summary_es: string | null; summary_en: string | null; summary_pt: string | null }) {
+    return locale === "es" ? g.summary_es : locale === "en" ? g.summary_en : g.summary_pt;
+  }
 
   /* ─── inline style objects ─── */
   const sidebarCard: React.CSSProperties = {
@@ -345,6 +348,11 @@ export default async function HomePage({
                             <h4 className="font-poppins text-sm font-semibold text-[#e0e0e0] hover:text-gold transition-colors line-clamp-3 leading-relaxed">
                               {guideTitle(g)}
                             </h4>
+                            {guideSummary(g)?.trim() && (
+                              <p className="text-xs text-white/60 line-clamp-3 leading-relaxed">
+                                {guideSummary(g)}
+                              </p>
+                            )}
                             <span className="mt-auto font-poppins text-xs text-gold flex items-center gap-1">
                               {t("read_guide")} <ArrowRight className="h-3 w-3" />
                             </span>
@@ -531,7 +539,7 @@ export default async function HomePage({
         <Link
           href={versionPath("/vip")}
           title="VIP"
-          className="block w-[64px] h-[64px] hover:scale-110 transition-transform duration-200"
+          className="block w-16 h-16 hover:scale-110 transition-transform duration-200"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/icons/icon__vip.png" alt="VIP" className="w-full h-full object-contain drop-shadow-lg" />
@@ -541,7 +549,7 @@ export default async function HomePage({
         <Link
           href={`/${locale === "es" ? "" : locale + "/"}${version === "1.0" ? "2.0" : "1.0"}`}
           title={version === "1.0" ? "Ir a versión 2.0" : "Ir a versión 1.0"}
-          className="block w-[64px] h-[64px] hover:scale-110 transition-transform duration-200"
+          className="block w-16 h-16 hover:scale-110 transition-transform duration-200"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -555,7 +563,7 @@ export default async function HomePage({
         <Link
           href={versionPath("/donate")}
           title={t("sidebar_donate")}
-          className="block w-[64px] h-[64px] hover:scale-110 transition-transform duration-200"
+          className="block w-16 h-16 hover:scale-110 transition-transform duration-200"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/icons/icon__donation.png" alt="Donate" className="w-full h-full object-contain drop-shadow-lg" />

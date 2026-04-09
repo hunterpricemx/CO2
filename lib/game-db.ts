@@ -186,3 +186,110 @@ export async function getDonationPackages(versionNum: number): Promise<DonationP
     .order("sort_order");
   return (data ?? []) as DonationPackage[];
 }
+
+/**
+ * Returns the character row for an account on a given server version.
+ * Returns null if no character is found or DB is unreachable.
+ */
+export async function getCharacterForAccount(
+  entityId: number,
+  versionNum: number,
+): Promise<{ name: string; cps: number; gold: number } | null> {
+  let conn: mysql.Connection | undefined;
+  try {
+    const { conn: c, config } = await getGameDb(versionNum as 1 | 2);
+    conn = c;
+    const [rows] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT Name, CPs, Money FROM \`${config.table_characters}\` WHERE EntityID = ? LIMIT 1`,
+      [entityId],
+    );
+    if (!rows[0]) return null;
+    return { name: rows[0].Name as string, cps: Number(rows[0].CPs ?? 0), gold: Number(rows[0].Money ?? 0) };
+  } catch {
+    return null;
+  } finally {
+    await conn?.end();
+  }
+}
+
+/**
+ * Atomically deducts CPs from a character in the game DB.
+ * Returns { success, newBalance } or throws on DB error.
+ * Uses an optimistic UPDATE with a WHERE CPs >= amount guard to prevent going negative.
+ */
+export async function deductCPs(
+  entityId: number,
+  versionNum: number,
+  amount: number,
+): Promise<{ success: boolean; newBalance: number }> {
+  let conn: mysql.Connection | undefined;
+  try {
+    const { conn: c, config } = await getGameDb(versionNum as 1 | 2);
+    conn = c;
+
+    // Atomic deduction — only runs if balance is sufficient
+    const [result] = await conn.execute<mysql.ResultSetHeader>(
+      `UPDATE \`${config.table_characters}\` SET CPs = CPs - ? WHERE EntityID = ? AND CPs >= ?`,
+      [amount, entityId, amount],
+    );
+
+    if (result.affectedRows === 0) {
+      // Insufficient balance
+      return { success: false, newBalance: 0 };
+    }
+
+    // Read new balance
+    const [rows] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT CPs FROM \`${config.table_characters}\` WHERE EntityID = ? LIMIT 1`,
+      [entityId],
+    );
+    return { success: true, newBalance: Number(rows[0]?.CPs ?? 0) };
+  } finally {
+    await conn?.end();
+  }
+}
+
+/**
+ * Credits CPs to a character in the game DB (used for refunds).
+ */
+export async function creditCPs(
+  entityId: number,
+  versionNum: number,
+  amount: number,
+): Promise<{ success: boolean; newBalance: number }> {
+  let conn: mysql.Connection | undefined;
+  try {
+    const { conn: c, config } = await getGameDb(versionNum as 1 | 2);
+    conn = c;
+    await conn.execute(
+      `UPDATE \`${config.table_characters}\` SET CPs = CPs + ? WHERE EntityID = ?`,
+      [amount, entityId],
+    );
+    const [rows] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT CPs FROM \`${config.table_characters}\` WHERE EntityID = ? LIMIT 1`,
+      [entityId],
+    );
+    return { success: true, newBalance: Number(rows[0]?.CPs ?? 0) };
+  } finally {
+    await conn?.end();
+  }
+}
+
+/**
+ * Returns the cp_market_rate from server_config (1 CP = N silvers).
+ * Returns 100000 as default if not configured.
+ */
+export async function getCpMarketRate(): Promise<number> {
+  try {
+    const supabase = await createAdminClient();
+    const { data } = await supabase
+      .from("server_config")
+      .select("cp_market_rate")
+      .eq("id", 1)
+      .single();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return Number((data as any)?.cp_market_rate ?? 100000);
+  } catch {
+    return 100000;
+  }
+}

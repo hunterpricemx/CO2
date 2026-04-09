@@ -11,6 +11,7 @@ import type { GuideCategoryRow, GuideFormData } from "@/modules/guides/types";
 const FIELD_CLS =
   "bg-[#0f0503] border border-[rgba(255,215,0,0.15)] rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[#f39c12] transition-colors w-full";
 const LABEL_CLS = "text-xs text-gray-400 uppercase tracking-wider mb-1 block";
+const GUIDE_LANGS = ["es", "en", "pt"] as const;
 
 export default function GuideEditPage() {
   const back = useBack();
@@ -50,10 +51,27 @@ export default function GuideEditPage() {
           <input {...register("slug")} className={FIELD_CLS} />
         </div>
         <div className="grid grid-cols-3 gap-4">
-          {(["es", "en", "pt"] as const).map((lang) => (
+          {GUIDE_LANGS.map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Título {lang.toUpperCase()} *</label>
-              <input {...register(`title_${lang}` as any, { required: true })} className={FIELD_CLS} />
+              <input
+                {...register(`title_${lang}` as keyof GuideFormData, { required: true })}
+                className={FIELD_CLS}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-3 gap-4">
+          {GUIDE_LANGS.map((lang) => (
+            <div key={lang}>
+              <label className={LABEL_CLS}>Extracto {lang.toUpperCase()}</label>
+              <textarea
+                {...register(`summary_${lang}` as keyof GuideFormData)}
+                rows={2}
+                className={FIELD_CLS}
+                placeholder="Breve descripción para listados y portada"
+              />
             </div>
           ))}
         </div>
@@ -87,12 +105,12 @@ export default function GuideEditPage() {
         </div>
 
         <div className="grid grid-cols-3 gap-4">
-          {(["es", "en", "pt"] as const).map((lang) => (
+          {GUIDE_LANGS.map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Contenido {lang.toUpperCase()}</label>
               <Controller
                 control={control}
-                name={`content_${lang}` as any}
+                name={`content_${lang}` as "content_es" | "content_en" | "content_pt"}
                 render={({ field }) => (
                   <RichTextEditor
                     value={field.value}
