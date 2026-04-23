@@ -4,6 +4,9 @@ import { BookOpen, ChevronRight } from "lucide-react";
 import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
+import { isTikTokUrl } from "@/lib/video";
+import { getAllInfluencersActive } from "@/modules/influencers/queries";
+import type { InfluencerRow } from "@/modules/influencers/types";
 import { getGuideCategories, getPublishedGuides } from "@/modules/guides/queries";
 import type { GuideRow } from "@/modules/guides/types";
 import NewsFilters from "@/components/shared/NewsFilters";
@@ -43,15 +46,17 @@ export default async function GuidesPage({
   const { q = "", cat = "", sort = "newest" } = await searchParams;
   const t = await getTranslations("guides");
 
-  const [categories, allGuides] = await Promise.all([
+  const [categories, allGuides, influencers] = await Promise.all([
     getGuideCategories(),
     getPublishedGuides({ version: version as "1.0" | "2.0" }),
+    getAllInfluencersActive(),
   ]);
 
+  const nonTutorialGuides = allGuides.filter((guide) => !isTikTokUrl(guide.video_url));
   const catObj = cat ? categories.find((c) => c.slug === cat) : null;
   let filtered: GuideRow[] = catObj
-    ? allGuides.filter((g) => g.category_id === catObj.id)
-    : allGuides;
+    ? nonTutorialGuides.filter((g) => g.category_id === catObj.id)
+    : nonTutorialGuides;
 
   if (q.trim()) {
     const query = q.trim().toLowerCase();
@@ -88,6 +93,11 @@ export default async function GuidesPage({
     const c = categories.find((x) => x.id === catId);
     if (!c) return null;
     return locale === "en" ? c.name_en : locale === "pt" ? c.name_pt : c.name_es;
+  }
+
+  function getAuthorName(authorId: string | null) {
+    if (!authorId) return null;
+    return (influencers as InfluencerRow[]).find((influencer) => influencer.id === authorId)?.name ?? null;
   }
 
   return (
@@ -171,6 +181,7 @@ export default async function GuidesPage({
                 const title = getTitle(guide);
                 const snippet = getSnippet(guide);
                 const catName = getCatName(guide.category_id);
+                const authorName = getAuthorName(guide.author_influencer_id);
                 const versionLabel = guide.version === "both" ? "1.0 + 2.0" : guide.version;
 
                 return (
@@ -213,6 +224,12 @@ export default async function GuidesPage({
                           {title}
                         </Link>
                       </h2>
+
+                      {authorName && (
+                        <p className="text-[11px] uppercase tracking-wider text-white/45">
+                          {t("author_label")}: <span className="text-white/75">{authorName}</span>
+                        </p>
+                      )}
 
                       {snippet && (
                         <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">

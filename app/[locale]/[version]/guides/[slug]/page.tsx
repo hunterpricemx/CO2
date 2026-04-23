@@ -4,25 +4,9 @@ import { ChevronRight, ArrowLeft, Tag, ExternalLink } from "lucide-react";
 import { getTranslations } from "next-intl/server";
 import type { Metadata } from "next";
 import { getGuideBySlug, getGuideCategories } from "@/modules/guides/queries";
+import { getAllInfluencersActive } from "@/modules/influencers/queries";
 import { Badge } from "@/components/ui/badge";
-
-function toYouTubeEmbed(url?: string | null): string | null {
-  if (!url) return null;
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname.includes("youtu.be")) {
-      const id = parsed.pathname.replace("/", "");
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-    if (parsed.hostname.includes("youtube.com")) {
-      const id = parsed.searchParams.get("v");
-      return id ? `https://www.youtube.com/embed/${id}` : null;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-}
+import { getTikTokEmbedUrl, getYouTubeEmbedUrl } from "@/lib/video";
 
 export const dynamic = "force-dynamic";
 
@@ -49,9 +33,10 @@ export default async function GuideDetailPage({
   const { locale, version, slug } = await params;
   const t = await getTranslations("guides");
 
-  const [guide, categories] = await Promise.all([
+  const [guide, categories, influencers] = await Promise.all([
     getGuideBySlug(slug),
     getGuideCategories(),
+    getAllInfluencersActive(),
   ]);
 
   if (!guide) notFound();
@@ -80,12 +65,18 @@ export default async function GuideDetailPage({
   const category = guide.category_id
     ? categories.find((c) => c.id === guide.category_id)
     : null;
+  const author = guide.author_influencer_id
+    ? influencers.find((influencer) => influencer.id === guide.author_influencer_id)
+    : null;
   const catName = category
     ? locale === "es" ? category.name_es : locale === "en" ? category.name_en : category.name_pt
     : null;
 
   const versionLabel = guide.version === "both" ? "1.0 + 2.0" : guide.version;
-  const videoEmbed = toYouTubeEmbed(guide.video_url);
+  const youtubeEmbed = getYouTubeEmbedUrl(guide.video_url);
+  const tiktokEmbed = getTikTokEmbedUrl(guide.video_url);
+  const videoEmbed = youtubeEmbed ?? tiktokEmbed;
+  const videoTitle = youtubeEmbed ? "YouTube video" : "TikTok video";
 
   return (
     <div className="flex flex-col">
@@ -144,6 +135,11 @@ export default async function GuideDetailPage({
                 {catName}
               </span>
             )}
+            {author && (
+              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-white/75">
+                {t("author_label")}: {author.name}
+              </span>
+            )}
             <Badge variant="outline" className="border-gold/30 text-gold/80 text-xs">
               v{versionLabel}
             </Badge>
@@ -183,18 +179,20 @@ export default async function GuideDetailPage({
           {/* YouTube embed */}
           {videoEmbed && (
             <div className="rounded-xl overflow-hidden border border-white/10 bg-black">
-              <iframe
-                src={videoEmbed}
-                title="YouTube video"
-                className="w-full aspect-video"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                referrerPolicy="strict-origin-when-cross-origin"
-                allowFullScreen
-              />
+              <div className={tiktokEmbed ? "mx-auto w-full max-w-95" : "w-full"}>
+                <iframe
+                  src={videoEmbed}
+                  title={videoTitle}
+                  className={tiktokEmbed ? "w-full aspect-9/16" : "w-full aspect-video"}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              </div>
             </div>
           )}
 
-          {/* External video link (non-YouTube) */}
+          {/* External video link when the URL is not embeddable */}
           {guide.video_url && !videoEmbed && (
             <a
               href={guide.video_url}
