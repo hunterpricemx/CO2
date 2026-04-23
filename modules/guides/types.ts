@@ -21,6 +21,7 @@ export const guideSchema = z.object({
   content_en: z.string().optional().nullable(),
   content_pt: z.string().optional().nullable(),
   video_url: z.string().url().optional().nullable(),
+  author_influencer_id: z.string().uuid().optional().nullable(),
   category_id: z.string().uuid().optional().nullable(),
   featured_image: z.string().url().optional().nullable(),
   status: z.enum(["draft", "published", "archived"]),
