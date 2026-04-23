@@ -25,12 +25,14 @@ import {
   ShoppingBag,
   ShoppingCart,
   SearchCheck,
+  Clapperboard,
 } from "lucide-react";
 
 const NAV_CONTENT = [
   { href: "/admin/dashboard",        icon: LayoutDashboard, label: "Dashboard" },
   { href: "/admin/events",           icon: CalendarDays,    label: "Eventos",            permission: "events"    as AdminPanelPermission },
   { href: "/admin/guides",           icon: BookOpen,        label: "Guías",              permission: "guides"    as AdminPanelPermission },
+  { href: "/admin/tutorials",        icon: Clapperboard,    label: "Video Tutoriales",   permission: "guides"    as AdminPanelPermission },
   { href: "/admin/guide-categories", icon: FolderTree,      label: "Categorías Guías",   permission: "guides"    as AdminPanelPermission },
   { href: "/admin/fixes",            icon: Wrench,          label: "Fixes",              permission: "fixes"     as AdminPanelPermission },
   { href: "/admin/fix-categories",   icon: FolderTree,      label: "Categorías Fixes",   permission: "fixes"     as AdminPanelPermission },

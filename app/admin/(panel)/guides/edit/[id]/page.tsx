@@ -6,6 +6,7 @@ import { Controller } from "react-hook-form";
 import { ChevronLeft, Loader2 } from "lucide-react";
 import ImageUploadField from "@/components/admin/ImageUploadField";
 import RichTextEditor from "@/components/admin/RichTextEditor";
+import type { InfluencerRow } from "@/modules/influencers/types";
 import type { GuideCategoryRow, GuideFormData } from "@/modules/guides/types";
 
 const FIELD_CLS =
@@ -34,7 +35,13 @@ export default function GuideEditPage() {
     sorters: [{ field: "sort_order", order: "asc" }],
     pagination: { pageSize: 100 },
   });
+  const { query: influencersQuery } = useList<InfluencerRow>({
+    resource: "influencers",
+    sorters: [{ field: "sort_order", order: "asc" }],
+    pagination: { pageSize: 200 },
+  });
   const categories: GuideCategoryRow[] = categoriesQuery.data?.data ?? [];
+  const influencers: InfluencerRow[] = influencersQuery.data?.data ?? [];
 
   return (
     <div className="flex flex-col gap-6 max-w-3xl">
@@ -77,25 +84,41 @@ export default function GuideEditPage() {
         </div>
 
         <ImageUploadField
-          label="Thumbnail"
+          label="Thumbnail personalizado"
           value={thumbnail}
           onChange={(value) => setValue("featured_image", value, { shouldDirty: true, shouldValidate: true })}
           folder="guides"
         />
 
+        <p className="-mt-2 text-xs leading-relaxed text-gray-500">
+          Para video tutoriales de TikTok, esta imagen es la portada que se mostrará en la web.
+        </p>
+
         <div>
-          <label className={LABEL_CLS}>Video YouTube (URL)</label>
+          <label className={LABEL_CLS}>Video (YouTube o TikTok)</label>
           <input
             {...register("video_url")}
             className={FIELD_CLS}
-            placeholder="https://www.youtube.com/watch?v=..."
+            placeholder="https://www.tiktok.com/@usuario/video/..."
           />
         </div>
 
         <div>
-          <label className={LABEL_CLS}>Categoria</label>
+          <label className={LABEL_CLS}>Autor</label>
+          <select {...register("author_influencer_id")} className={FIELD_CLS}>
+            <option value="">Sin autor</option>
+            {influencers.map((influencer) => (
+              <option key={influencer.id} value={influencer.id}>
+                {influencer.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className={LABEL_CLS}>Categoría</label>
           <select {...register("category_id")} className={FIELD_CLS}>
-            <option value="">Sin categoria</option>
+            <option value="">Sin categoría</option>
             {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>
                 {cat.name_es}

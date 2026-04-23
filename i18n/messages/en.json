@@ -2,6 +2,7 @@
 
   "nav": {
     "home": "Home",
+    "tutorials": "Video Tutorials",
     "guides": "Guides",
     "fixes": "Patches",
     "events": "Events",
@@ -136,6 +137,7 @@
   "guides": {
     "title": "Guides",
     "subtitle": "Learn everything about the game",
+    "author_label": "Author",
     "search_placeholder": "Search guides...",
     "all_categories": "All categories",
     "read_more": "Read more",
@@ -154,6 +156,25 @@
       "systems": "Systems",
       "general": "General Guides"
     }
+  },
+  "tutorials": {
+    "title": "TikTok Tutorials",
+    "subtitle": "Learn with short-form videos made for the server community.",
+    "author_label": "Author",
+    "search_placeholder": "Search tutorials...",
+    "all_categories": "All categories",
+    "sort_newest": "Newest",
+    "sort_oldest": "Oldest",
+    "breadcrumb_home": "Home",
+    "breadcrumb_tutorials": "Tutorials",
+    "no_results": "No TikTok tutorials found",
+    "empty_hint": "Publish a guide with a TikTok link in the video field and it will appear here automatically.",
+    "watch_on_tiktok": "Watch on TikTok",
+    "open_guide": "Open guide",
+    "play_here": "Watch here",
+    "platform_badge": "TikTok",
+    "meta_title": "TikTok Tutorials",
+    "meta_description": "Watch short TikTok tutorials about systems, leveling, and core server content."
   },
   "download": {
     "hero_title": "Download Client",
@@ -278,7 +299,15 @@
     "no_results": "No influencers found",
     "streamer_code_label": "Streamer Code",
     "streamer_code_copied": "Copied!",
-    "view_more": "View more"
+    "view_more": "View more",
+    "back_to_influencers": "Back to Influencers",
+    "socials_label": "Socials",
+    "single_tutorials_title": "Video Tutorials",
+    "single_tutorials_count": "{count} published tutorials",
+    "single_no_tutorials": "This influencer does not have published video tutorials yet.",
+    "single_author_label": "Author",
+    "single_open_guide": "Open guide",
+    "single_play_here": "Watch here"
   },
   "news": {
     "hero_title": "News",
@@ -674,7 +703,7 @@
     "custom_request_subtitle": "Request a fully custom garment designed just for you.",
     "custom_request_btn": "Request mine"
   },
-  "footer": {"donate": "Donate", "download": "Download",
+  "footer": {"donate": "Donate", "download": "Download", "tutorials": "Video Tutorials",
     "rights": "All rights reserved",
     "terms": "Terms of Service",
     "rules": "Server Rules",

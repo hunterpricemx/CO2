@@ -25,6 +25,7 @@ export function Footer({
     { href: lp(`/${version}/terms`), label: t("terms") },
     { href: lp(`/${version}/donate`), label: t("donate") },
     { href: lp(`/${version}/download`), label: t("download") },
+    { href: lp(`/${version}/tutorials`), label: t("tutorials") },
     { href: lp(`/${version}/settings-logs`), label: "Log de ajustes" },
   ];
 

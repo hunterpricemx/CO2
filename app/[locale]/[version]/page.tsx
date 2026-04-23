@@ -7,6 +7,7 @@ import { ArrowRight, Crown, Gem } from "lucide-react";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import { isTikTokUrl } from "@/lib/video";
 import { EventsCountdownSidebar } from "@/components/shared/EventsCountdownSidebar";
 import { HeroNextEvent } from "@/components/shared/HeroNextEvent";
 import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
@@ -34,6 +35,7 @@ export default async function HomePage({
 
   const versionLabel = version === "1.0" ? "Evolution 2.0" : "Experience 2.0";
   const { heroBg, logoSrc: heroLogo, discordUrl, videoUrl, promoSlides } = getVersionAssets(siteSettings, version);
+  const publicGuides = guides.filter((guide) => !isTikTokUrl(guide.video_url));
   const heroTitle = version === "1.0" ? t("hero_title_10") : t("hero_title_20");
   const downloadBg =
     version === "1.0"
@@ -323,7 +325,7 @@ export default async function HomePage({
                 </div>
 
                 {/* Latest Guides (bonus) */}
-                {guides.length > 0 && (
+                {publicGuides.length > 0 && (
                   <div className="mt-10">
                     <div className="flex items-center justify-between mb-5">
                       <h3 className="font-poppins text-2xl text-gold font-semibold flex items-center gap-3">
@@ -338,7 +340,7 @@ export default async function HomePage({
                       </Link>
                     </div>
                     <div className="grid sm:grid-cols-3 gap-4">
-                      {guides.map((g) => (
+                      {publicGuides.map((g) => (
                         <Link key={g.id} href={versionPath(`/guides/${g.slug}`)}>
                           <article
                             className="rounded-xl p-5 flex flex-col gap-3 h-full border border-white/5 hover:border-gold/30 hover:-translate-y-1 transition-all duration-300"

@@ -2,6 +2,7 @@
 
   "nav": {
     "home": "Inicio",
+    "tutorials": "Video Tutoriales",
     "guides": "Guías",
     "fixes": "Parches",
     "events": "Eventos",
@@ -49,7 +50,7 @@
     "nav_guides": "Guías",
     "nav_fixes": "Parches",
     "hero_title_10": "VIVE LA EXPERIENCIA CONQUER EVOLUTION",
-    "hero_title_20": "REVIVE LA EXPERIENCIA CLÁSICA 2.0",
+    "hero_title_20": "CONQUER XD BETA<br>YA DISPONIBLE",
     "card_server_time": "Server Time",
     "card_next_events": "Próximos eventos",
     "welcome_title": "Bienvenido al servidor",
@@ -136,6 +137,7 @@
   "guides": {
     "title": "Guías",
     "subtitle": "Aprende todo sobre el juego",
+    "author_label": "Autor",
     "search_placeholder": "Buscar guías...",
     "all_categories": "Todas las categorías",
     "read_more": "Leer más",
@@ -154,6 +156,25 @@
       "systems": "Sistemas",
       "general": "Guías Generales"
     }
+  },
+  "tutorials": {
+    "title": "Tutoriales de TikTok",
+    "subtitle": "Aprende con videos cortos hechos para la comunidad del servidor.",
+    "author_label": "Autor",
+    "search_placeholder": "Buscar tutoriales...",
+    "all_categories": "Todas las categorías",
+    "sort_newest": "Más recientes",
+    "sort_oldest": "Más antiguos",
+    "breadcrumb_home": "Inicio",
+    "breadcrumb_tutorials": "Tutoriales",
+    "no_results": "No se encontraron tutoriales de TikTok",
+    "empty_hint": "Publica una guía con un enlace de TikTok en el campo de video para que aparezca aquí automáticamente.",
+    "watch_on_tiktok": "Ver en TikTok",
+    "open_guide": "Abrir guía",
+    "play_here": "Ver aquí",
+    "platform_badge": "TikTok",
+    "meta_title": "Tutoriales de TikTok",
+    "meta_description": "Mira tutoriales rápidos de TikTok sobre sistemas, leveo y contenido clave del servidor."
   },
   "download": {
     "hero_title": "Descargar Cliente",
@@ -278,7 +299,15 @@
     "no_results": "No se encontraron influencers",
     "streamer_code_label": "Código de Streamer",
     "streamer_code_copied": "¡Copiado!",
-    "view_more": "Ver más"
+    "view_more": "Ver más",
+    "back_to_influencers": "Volver a Influencers",
+    "socials_label": "Redes",
+    "single_tutorials_title": "Video Tutoriales",
+    "single_tutorials_count": "{count} tutoriales publicados",
+    "single_no_tutorials": "Este influencer todavía no tiene video tutoriales publicados.",
+    "single_author_label": "Autor",
+    "single_open_guide": "Abrir guía",
+    "single_play_here": "Ver aquí"
   },
   "news": {
     "hero_title": "Noticias",
@@ -680,6 +709,7 @@
     "rules": "Reglas del Servidor",
     "donate": "Donar",
     "download": "Descargar",
+    "tutorials": "Video Tutoriales",
     "disclaimer": "Conquer Classic Plus no está afiliado con TQ Digital Entertainment."
   }
 }

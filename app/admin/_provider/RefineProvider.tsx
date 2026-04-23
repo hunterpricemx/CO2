@@ -111,6 +111,11 @@ export function RefineProvider({ children }: { children: React.ReactNode }) {
           meta: { label: "Guías" },
         },
         {
+          name: "tutorials",
+          list: "/admin/tutorials",
+          meta: { label: "Video Tutoriales" },
+        },
+        {
           name: "guide_categories",
           list: "/admin/guide-categories",
           create: "/admin/guide-categories/create",

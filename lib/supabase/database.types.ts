@@ -157,6 +157,68 @@ export interface Database {
         };
         Relationships: [];
       };
+      influencers: {
+        Row: {
+          id: string;
+          name: string;
+          slug: string;
+          photo_url: string | null;
+          character_photo_url: string | null;
+          description_es: string | null;
+          description_en: string | null;
+          description_pt: string | null;
+          streamer_code: string | null;
+          facebook_url: string | null;
+          instagram_url: string | null;
+          tiktok_url: string | null;
+          youtube_url: string | null;
+          twitch_url: string | null;
+          is_active: boolean;
+          sort_order: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          slug: string;
+          photo_url?: string | null;
+          character_photo_url?: string | null;
+          description_es?: string | null;
+          description_en?: string | null;
+          description_pt?: string | null;
+          streamer_code?: string | null;
+          facebook_url?: string | null;
+          instagram_url?: string | null;
+          tiktok_url?: string | null;
+          youtube_url?: string | null;
+          twitch_url?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          slug?: string;
+          photo_url?: string | null;
+          character_photo_url?: string | null;
+          description_es?: string | null;
+          description_en?: string | null;
+          description_pt?: string | null;
+          streamer_code?: string | null;
+          facebook_url?: string | null;
+          instagram_url?: string | null;
+          tiktok_url?: string | null;
+          youtube_url?: string | null;
+          twitch_url?: string | null;
+          is_active?: boolean;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       guides: {
         Row: {
           id: string;
@@ -171,6 +233,7 @@ export interface Database {
           content_en: string | null;
           content_pt: string | null;
           video_url: string | null;
+          author_influencer_id: string | null;
           category_id: string | null;
           featured_image: string | null;
           status: ContentStatus;
@@ -192,6 +255,7 @@ export interface Database {
           content_en?: string | null;
           content_pt?: string | null;
           video_url?: string | null;
+          author_influencer_id?: string | null;
           category_id?: string | null;
           featured_image?: string | null;
           status?: ContentStatus;
@@ -213,6 +277,7 @@ export interface Database {
           content_en?: string | null;
           content_pt?: string | null;
           video_url?: string | null;
+          author_influencer_id?: string | null;
           category_id?: string | null;
           featured_image?: string | null;
           status?: ContentStatus;
@@ -221,6 +286,13 @@ export interface Database {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "guides_author_influencer_id_fkey";
+            columns: ["author_influencer_id"];
+            isOneToOne: false;
+            referencedRelation: "influencers";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "guides_category_id_fkey";
             columns: ["category_id"];

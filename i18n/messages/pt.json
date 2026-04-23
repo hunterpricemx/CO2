@@ -2,6 +2,7 @@
 
   "nav": {
     "home": "Início",
+    "tutorials": "Vídeo Tutoriais",
     "guides": "Guias",
     "fixes": "Patches",
     "events": "Eventos",
@@ -136,6 +137,7 @@
   "guides": {
     "title": "Guias",
     "subtitle": "Aprenda tudo sobre o jogo",
+    "author_label": "Autor",
     "search_placeholder": "Pesquisar guias...",
     "all_categories": "Todas as categorias",
     "read_more": "Ler mais",
@@ -154,6 +156,25 @@
       "systems": "Sistemas",
       "general": "Guias Gerais"
     }
+  },
+  "tutorials": {
+    "title": "Tutoriais do TikTok",
+    "subtitle": "Aprenda com vídeos curtos feitos para a comunidade do servidor.",
+    "author_label": "Autor",
+    "search_placeholder": "Pesquisar tutoriais...",
+    "all_categories": "Todas as categorias",
+    "sort_newest": "Mais recentes",
+    "sort_oldest": "Mais antigos",
+    "breadcrumb_home": "Início",
+    "breadcrumb_tutorials": "Tutoriais",
+    "no_results": "Nenhum tutorial do TikTok encontrado",
+    "empty_hint": "Publique um guia com um link do TikTok no campo de vídeo e ele aparecerá aqui automaticamente.",
+    "watch_on_tiktok": "Ver no TikTok",
+    "open_guide": "Abrir guia",
+    "play_here": "Ver aqui",
+    "platform_badge": "TikTok",
+    "meta_title": "Tutoriais do TikTok",
+    "meta_description": "Assista a tutoriais curtos do TikTok sobre sistemas, up e conteúdo essencial do servidor."
   },
   "download": {
     "hero_title": "Baixar Cliente",
@@ -278,7 +299,15 @@
     "no_results": "Nenhum influencer encontrado",
     "streamer_code_label": "Código de Streamer",
     "streamer_code_copied": "Copiado!",
-    "view_more": "Ver mais"
+    "view_more": "Ver mais",
+    "back_to_influencers": "Voltar para Influencers",
+    "socials_label": "Redes",
+    "single_tutorials_title": "Vídeo Tutoriais",
+    "single_tutorials_count": "{count} tutoriais publicados",
+    "single_no_tutorials": "Este influencer ainda não tem vídeo tutoriais publicados.",
+    "single_author_label": "Autor",
+    "single_open_guide": "Abrir guia",
+    "single_play_here": "Ver aqui"
   },
   "news": {
     "hero_title": "Notícias",
@@ -674,7 +703,7 @@
     "custom_request_subtitle": "Solicite um garment totalmente personalizado, criado para você.",
     "custom_request_btn": "Solicitar o meu"
   },
-  "footer": {"donate": "Doar", "download": "Baixar",
+  "footer": {"donate": "Doar", "download": "Baixar", "tutorials": "Vídeo Tutoriais",
     "rights": "Todos os direitos reservados",
     "terms": "Termos de Serviço",
     "rules": "Regras do Servidor",

@@ -78,6 +78,14 @@ export async function Header({
       ? [
           { type: "link", href: lp("/1.0"), label: t("home") },
           { type: "link", href: lp("/1.0/news"), label: t("news") },
+          {
+            type: "dropdown",
+            label: t("guides"),
+            items: [
+              { href: lp("/1.0/guides"), label: t("guides") },
+              { href: lp("/1.0/tutorials"), label: t("tutorials") },
+            ],
+          },
           { type: "link", href: lp("/1.0/download"), label: t("download") },
           { type: "link", href: lp("/1.0/donate"), label: t("donate") },
           ...(garmentsEnabled ? [{
@@ -95,7 +103,6 @@ export async function Header({
             type: "dropdown",
             label: t("info"),
             items: [
-              { href: lp("/1.0/guides"), label: t("guides") },
               { href: lp("/1.0/fixes"), label: t("fixes") },
               { href: lp("/1.0/events"), label: t("events") },
               { href: lp("/1.0/terms"), label: t("terms") },
@@ -107,7 +114,14 @@ export async function Header({
       : [
           { type: "link", href: lp("/2.0"), label: t("home") },
           { type: "link", href: lp("/2.0/news"), label: t("news") },
-          { type: "link", href: lp("/2.0/guides"), label: t("guides") },
+          {
+            type: "dropdown",
+            label: t("guides"),
+            items: [
+              { href: lp("/2.0/guides"), label: t("guides") },
+              { href: lp("/2.0/tutorials"), label: t("tutorials") },
+            ],
+          },
           { type: "link", href: lp("/2.0/fixes"), label: t("fixes") },
           { type: "link", href: lp("/2.0/events"), label: t("events") },
           { type: "link", href: lp("/2.0/download"), label: t("download") },

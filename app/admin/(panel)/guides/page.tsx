@@ -3,6 +3,7 @@
 import { useList, useDelete } from "@refinedev/core";
 import Link from "next/link";
 import { Plus, Pencil, Trash2 } from "lucide-react";
+import type { InfluencerRow } from "@/modules/influencers/types";
 import type { GuideRow } from "@/modules/guides/types";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -17,9 +18,20 @@ export default function AdminGuidesPage() {
     sorters: [{ field: "created_at", order: "desc" }],
     pagination: { pageSize: 50 },
   });
+  const { query: influencersQuery } = useList<InfluencerRow>({
+    resource: "influencers",
+    sorters: [{ field: "sort_order", order: "asc" }],
+    pagination: { pageSize: 200 },
+  });
   const { mutate: del } = useDelete();
   const guides = (query.data?.data ?? []) as GuideRow[];
+  const influencers = (influencersQuery.data?.data ?? []) as InfluencerRow[];
   const isLoading = query.isLoading;
+
+  function getAuthorName(id: string | null) {
+    if (!id) return "Sin autor";
+    return influencers.find((influencer) => influencer.id === id)?.name ?? "Influencer no encontrado";
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -43,7 +55,7 @@ export default function AdminGuidesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-[rgba(255,215,0,0.08)]">
-                {["Slug", "Título", "Versión", "Estado", ""].map((h) => (
+                {["Slug", "Título", "Autor", "Versión", "Estado", ""].map((h) => (
                   <th key={h} className="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wider">{h}</th>
                 ))}
               </tr>
@@ -53,6 +65,7 @@ export default function AdminGuidesPage() {
                 <tr key={g.id} className="border-b border-[rgba(255,255,255,0.04)] hover:bg-white/2">
                   <td className="px-4 py-3 text-gray-400 font-mono text-xs">{g.slug}</td>
                   <td className="px-4 py-3 text-white">{g.title_es}</td>
+                  <td className="px-4 py-3 text-gray-300">{getAuthorName(g.author_influencer_id)}</td>
                   <td className="px-4 py-3 text-gray-400">{g.version}</td>
                   <td className="px-4 py-3">
                     <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_COLORS[g.status] ?? ""}`}>{g.status}</span>
@@ -70,7 +83,7 @@ export default function AdminGuidesPage() {
                 </tr>
               ))}
               {guides.length === 0 && (
-                <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600">No hay guías</td></tr>
+                <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-600">No hay guías</td></tr>
               )}
             </tbody>
           </table>
