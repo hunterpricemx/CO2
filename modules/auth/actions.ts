@@ -92,6 +92,14 @@ async function getBaseUrl(): Promise<string> {
   return "http://localhost:3000";
 }
 
+/**
+ * Normalize auth version: /1.0 routes should use v2.0 backend.
+ * Currently all auth operations use v2.0 backend regardless of route version.
+ */
+function normalizeAuthVersion(_version: 1 | 2): 2 {
+  return 2;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // GAME AUTH — MariaDB accounts table
 // ─────────────────────────────────────────────────────────────────────────────
@@ -112,7 +120,7 @@ export async function gameLoginAction(input: GameLoginInput): Promise<ActionResu
     return { success: false, error: "captcha_error" };
   }
 
-  const { conn, config } = await getGameDb(version);
+  const { conn, config } = await getGameDb(normalizeAuthVersion(version));
   try {
     const [rows] = await conn.execute<(AccountRow & RowDataPacket)[]>(
       `SELECT EntityID, Username, Password, Salt, Email, BannedID, State FROM \`${config.table_accounts}\` WHERE Username = ? LIMIT 1`,
@@ -171,7 +179,7 @@ export async function gameRegisterAction(input: GameRegisterInput): Promise<Acti
     headersList.get("x-real-ip") ??
     null;
 
-  const { conn, config } = await getGameDb(version);
+  const { conn, config } = await getGameDb(normalizeAuthVersion(version));
   try {
     // Check username uniqueness
     const [uRows] = await conn.execute<RowDataPacket[]>(
@@ -340,7 +348,7 @@ export async function requestRecoverGamePasswordAction(input: GameRecoverPasswor
     ipAddress,
   });
 
-  const { conn, config } = await getGameDb(version);
+  const { conn, config } = await getGameDb(normalizeAuthVersion(version));
   try {
     const [rows] = await conn.execute<(AccountRow & RowDataPacket)[]>(
       `SELECT EntityID, Email FROM \`${config.table_accounts}\` WHERE Username = ? LIMIT 1`,
@@ -465,7 +473,7 @@ export async function confirmRecoverGamePasswordAction(input: GameRecoverPasswor
     return { success: false, error: "token_expired" };
   }
 
-  const { conn, config } = await getGameDb(version);
+  const { conn, config } = await getGameDb(normalizeAuthVersion(version));
   try {
     const [rows] = await conn.execute<(AccountRow & RowDataPacket)[]>(
       `SELECT EntityID, Email FROM \`${config.table_accounts}\` WHERE Username = ? LIMIT 1`,
