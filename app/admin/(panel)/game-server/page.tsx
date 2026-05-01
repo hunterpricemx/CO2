@@ -20,7 +20,7 @@ export default async function GameServerPage() {
         </div>
       </div>
 
-      <GameServerForm initial={config as any} />
+      <GameServerForm initial={config} />
     </div>
   );
 }

@@ -61,11 +61,24 @@ export interface GameDbHandle {
   config: ServerConfig;
 }
 
+/** Game DB environment selector. Backwards-compatible with numeric `1` / `2` for v1.0 / v2.0. */
+export type GameEnv = 1 | 2 | "test";
+
+function envSuffix(env: GameEnv): "v1" | "v2" | "test" {
+  if (env === "test") return "test";
+  return env === 1 ? "v1" : "v2";
+}
+
+function envLabel(env: GameEnv): string {
+  if (env === "test") return "Pruebas";
+  return `v${env}.0`;
+}
+
 /**
  * Opens a new MySQL2 connection using credentials stored in Supabase.
  * Caller MUST call `await conn.end()` when done.
  */
-export async function getGameDb(version: 1 | 2 = 2): Promise<GameDbHandle> {
+export async function getGameDb(env: GameEnv = 2): Promise<GameDbHandle> {
   const supabase = await createAdminClient();
 
   const { data, error } = await supabase
@@ -82,7 +95,8 @@ export async function getGameDb(version: 1 | 2 = 2): Promise<GameDbHandle> {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const d = data as any;
-  const v = version === 1 ? "v1" : "v2";
+  const v = envSuffix(env);
+  const defaultCharsTable = env === 1 ? "topservers" : "topserver_turbo";
 
   const config: ServerConfig = {
     db_host:          d[`db_host_${v}`]          ?? "",
@@ -91,13 +105,13 @@ export async function getGameDb(version: 1 | 2 = 2): Promise<GameDbHandle> {
     db_user:          d[`db_user_${v}`]          ?? "",
     db_pass:          d[`db_pass_${v}`]          ?? "",
     table_accounts:   d[`table_accounts_${v}`]   ?? "accounts",
-    table_characters: d[`table_characters_${v}`] ?? (version === 1 ? "topservers" : "topserver_turbo"),
+    table_characters: d[`table_characters_${v}`] ?? defaultCharsTable,
     table_payments:   d[`table_payments_${v}`]   ?? "dbb_payments",
   };
 
   if (!config.db_host) {
     throw new Error(
-      `Servidor v${version}.0 no configurado. Ve a Admin → Game Server.`,
+      `Servidor ${envLabel(env)} no configurado. Ve a Admin → Game Server.`,
     );
   }
 
@@ -112,6 +126,14 @@ export async function getGameDb(version: 1 | 2 = 2): Promise<GameDbHandle> {
   });
 
   return { conn, config };
+}
+
+/** Coerces a numeric or string version into a `GameEnv`. Falls back to v2 for unknown values. */
+export function toGameEnv(value: unknown): GameEnv {
+  if (value === "test" || value === 1 || value === 2) return value;
+  if (value === "1" || value === "1.0") return 1;
+  if (value === "2" || value === "2.0") return 2;
+  return 2;
 }
 
 /** Row shape returned from the `accounts` table. */
@@ -155,10 +177,10 @@ export interface DonationPackage {
  * Returns the in-game character name for an account on a given server version.
  * Returns null if no character is found or the DB is unreachable.
  */
-export async function getCharacterName(entityId: number, versionNum: number): Promise<string | null> {
+export async function getCharacterName(entityId: number, env: GameEnv | number): Promise<string | null> {
   let conn: mysql.Connection | undefined;
   try {
-    const { conn: c, config } = await getGameDb(versionNum as 1 | 2);
+    const { conn: c, config } = await getGameDb(toGameEnv(env));
     conn = c;
     const [rows] = await conn.execute<mysql.RowDataPacket[]>(
       `SELECT Name FROM \`${config.table_characters}\` WHERE EntityID = ? LIMIT 1`,
@@ -193,11 +215,11 @@ export async function getDonationPackages(versionNum: number): Promise<DonationP
  */
 export async function getCharacterForAccount(
   entityId: number,
-  versionNum: number,
+  env: GameEnv | number,
 ): Promise<{ name: string; cps: number; gold: number } | null> {
   let conn: mysql.Connection | undefined;
   try {
-    const { conn: c, config } = await getGameDb(versionNum as 1 | 2);
+    const { conn: c, config } = await getGameDb(toGameEnv(env));
     conn = c;
     const [rows] = await conn.execute<mysql.RowDataPacket[]>(
       `SELECT Name, CPs, Money FROM \`${config.table_characters}\` WHERE EntityID = ? LIMIT 1`,
@@ -219,12 +241,12 @@ export async function getCharacterForAccount(
  */
 export async function deductCPs(
   entityId: number,
-  versionNum: number,
+  env: GameEnv | number,
   amount: number,
 ): Promise<{ success: boolean; newBalance: number }> {
   let conn: mysql.Connection | undefined;
   try {
-    const { conn: c, config } = await getGameDb(versionNum as 1 | 2);
+    const { conn: c, config } = await getGameDb(toGameEnv(env));
     conn = c;
 
     // Atomic deduction — only runs if balance is sufficient
@@ -254,12 +276,12 @@ export async function deductCPs(
  */
 export async function creditCPs(
   entityId: number,
-  versionNum: number,
+  env: GameEnv | number,
   amount: number,
 ): Promise<{ success: boolean; newBalance: number }> {
   let conn: mysql.Connection | undefined;
   try {
-    const { conn: c, config } = await getGameDb(versionNum as 1 | 2);
+    const { conn: c, config } = await getGameDb(toGameEnv(env));
     conn = c;
     await conn.execute(
       `UPDATE \`${config.table_characters}\` SET CPs = CPs + ? WHERE EntityID = ?`,

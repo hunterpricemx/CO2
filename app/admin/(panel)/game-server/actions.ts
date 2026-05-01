@@ -3,6 +3,8 @@
 import type { RowDataPacket } from "mysql2";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { requireAdminPanelAccess } from "@/lib/admin/auth";
+import { pingShopEndpoint, type ShopEnv } from "@/lib/shop-delivery";
 
 export type ServerConfigData = {
   // V2.0
@@ -23,7 +25,33 @@ export type ServerConfigData = {
   table_accounts_v1: string;
   table_characters_v1: string;
   table_payments_v1: string;
+  // Servidor Pruebas (independiente)
+  db_host_test: string;
+  db_port_test: number;
+  db_name_test: string;
+  db_user_test: string;
+  db_pass_test: string;
+  table_accounts_test: string;
+  table_characters_test: string;
+  table_payments_test: string;
+  // Shop endpoint (HTTP listener del game server) — solo "test" por ahora
+  shop_endpoint_test: string;
+  shop_hmac_secret_test: string;
+  shop_enabled_test: boolean;
+  shop_timeout_ms_test: number;
 };
+
+export type ServerEnv = 1 | 2 | "test";
+
+function envSuffix(env: ServerEnv): "v1" | "v2" | "test" {
+  if (env === "test") return "test";
+  return env === 1 ? "v1" : "v2";
+}
+
+function envLabel(env: ServerEnv): string {
+  if (env === "test") return "Pruebas";
+  return `V${env}.0`;
+}
 
 export type ActionResult = {
   success: boolean;
@@ -57,6 +85,7 @@ function getErrorMessage(error: unknown, fallback: string): string {
 
 // ── Guardar configuración ────────────────────────────────────────
 export async function saveServerConfig(config: ServerConfigData): Promise<ActionResult> {
+  await requireAdminPanelAccess("gameServer");
   const supabase = await createClient();
 
   const payload: Record<string, unknown> = {
@@ -75,11 +104,25 @@ export async function saveServerConfig(config: ServerConfigData): Promise<Action
     table_accounts_v1:   config.table_accounts_v1,
     table_characters_v1: config.table_characters_v1,
     table_payments_v1:   config.table_payments_v1,
-    updated_at:          new Date().toISOString(),
+    // Servidor Pruebas
+    db_host_test:          config.db_host_test,
+    db_port_test:          config.db_port_test,
+    db_name_test:          config.db_name_test,
+    db_user_test:          config.db_user_test,
+    table_accounts_test:   config.table_accounts_test,
+    table_characters_test: config.table_characters_test,
+    table_payments_test:   config.table_payments_test,
+    // Shop endpoint
+    shop_endpoint_test:    config.shop_endpoint_test,
+    shop_enabled_test:     config.shop_enabled_test,
+    shop_timeout_ms_test:  config.shop_timeout_ms_test,
+    updated_at:            new Date().toISOString(),
   };
 
-  if (config.db_pass_v2.trim() !== "") payload.db_pass_v2 = config.db_pass_v2;
-  if (config.db_pass_v1.trim() !== "") payload.db_pass_v1 = config.db_pass_v1;
+  if (config.db_pass_v2.trim()             !== "") payload.db_pass_v2          = config.db_pass_v2;
+  if (config.db_pass_v1.trim()             !== "") payload.db_pass_v1          = config.db_pass_v1;
+  if (config.db_pass_test.trim()           !== "") payload.db_pass_test        = config.db_pass_test;
+  if (config.shop_hmac_secret_test.trim()  !== "") payload.shop_hmac_secret_test = config.shop_hmac_secret_test;
 
   const { error } = await supabase.from("server_config").upsert(payload);
   if (error) return { success: false, message: error.message };
@@ -89,9 +132,10 @@ export async function saveServerConfig(config: ServerConfigData): Promise<Action
 }
 
 // ── Probar conexión ──────────────────────────────────────────────
-export async function testGameServerConnection(config: ServerConfigData, version: 1 | 2): Promise<ActionResult> {
+export async function testGameServerConnection(config: ServerConfigData, env: ServerEnv): Promise<ActionResult> {
+  await requireAdminPanelAccess("gameServer");
   try {
-    const v = version === 1 ? "v1" : "v2";
+    const v = envSuffix(env);
     const host   = (config[`db_host_${v}` as keyof ServerConfigData] as string).trim();
     const user   = (config[`db_user_${v}` as keyof ServerConfigData] as string).trim();
     const dbName = (config[`db_name_${v}` as keyof ServerConfigData] as string).trim();
@@ -100,7 +144,7 @@ export async function testGameServerConnection(config: ServerConfigData, version
     const tableChars    = (config[`table_characters_${v}` as keyof ServerConfigData] as string).trim();
 
     if (!host || !user || !dbName) {
-      return { success: false, message: `Completa host, base de datos y usuario para V${version}.0.` };
+      return { success: false, message: `Completa host, base de datos y usuario para ${envLabel(env)}.` };
     }
 
     let password = config[`db_pass_${v}` as keyof ServerConfigData] as string;
@@ -134,7 +178,7 @@ export async function testGameServerConnection(config: ServerConfigData, version
 
     return {
       success: true,
-      message: `Conexión V${version}.0 exitosa.`,
+      message: `Conexión ${envLabel(env)} exitosa.`,
       data: {
         from_host: "EC2 (3.213.176.132)",
         to_host: host,
@@ -149,11 +193,44 @@ export async function testGameServerConnection(config: ServerConfigData, version
       },
     };
   } catch (e: unknown) {
-    const v = version === 1 ? "v1" : "v2";
+    const v = envSuffix(env);
     const host = (config[`db_host_${v}` as keyof ServerConfigData] as string) || "(sin host)";
     const port = config[`db_port_${v}` as keyof ServerConfigData] as number || 3306;
     return { success: false, message: `Error de conexión`, data: { from_host: "EC2 (3.213.176.132)", to_host: host, to_port: port, error: getErrorMessage(e, "Error desconocido") } };
   }
+}
+
+// ── Probar shop endpoint (HTTP listener del game server) ─────────
+export async function testShopEndpoint(env: ShopEnv = "test"): Promise<ActionResult> {
+  await requireAdminPanelAccess("gameServer");
+
+  const result = await pingShopEndpoint(env);
+
+  // Aceptamos cualquier 2xx con body parseable como "endpoint vivo".
+  // Si el listener responde 200 con `ok:true` (delivered o already_delivered) → conexión + firma OK.
+  // Si responde 200 pero `ok:false` → endpoint vivo, pero el game server rechazó (probablemente uid_not_found para el ping).
+  // Si responde 400 invalid_signature → conexión OK pero el secret no coincide.
+  const data: Record<string, unknown> = {
+    endpoint:   result.signedRequest.url || "(no configurado)",
+    http_status: result.status,
+    response:   result.body ?? null,
+  };
+
+  if (result.status === 0) {
+    return { success: false, message: `Endpoint inaccesible: ${result.error ?? "network"}`, data };
+  }
+  if (result.status === 400) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const err = typeof result.body === "object" && result.body ? (result.body as any).error : null;
+    if (err === "invalid_signature") {
+      return { success: false, message: "El secret HMAC no coincide con el del game server.", data };
+    }
+    return { success: false, message: `Endpoint respondió 400: ${err ?? "bad_request"}`, data };
+  }
+  if (result.ok || result.status >= 200 && result.status < 300) {
+    return { success: true, message: "Endpoint accesible y firma válida.", data };
+  }
+  return { success: false, message: `Endpoint respondió HTTP ${result.status}`, data };
 }
 
 // ── Sincronizar MariaDB → Supabase ───────────────────────────────
@@ -336,10 +413,34 @@ export async function getServerConfig() {
     table_accounts_v1:   d.table_accounts_v1   ?? "accounts",
     table_characters_v1: d.table_characters_v1 ?? "topservers",
     table_payments_v1:   d.table_payments_v1   ?? "dbb_payments",
-    has_password_v2:     ((d.db_pass_v2 ?? "") as string).trim().length > 0,
-    has_password_v1:     ((d.db_pass_v1 ?? "") as string).trim().length > 0,
+    db_host_test:          d.db_host_test          ?? "",
+    db_port_test:          d.db_port_test          ?? 3306,
+    db_name_test:          d.db_name_test          ?? "",
+    db_user_test:          d.db_user_test          ?? "",
+    db_pass_test:          "",
+    table_accounts_test:   d.table_accounts_test   ?? "accounts",
+    table_characters_test: d.table_characters_test ?? "topserver_turbo",
+    table_payments_test:   d.table_payments_test   ?? "dbb_payments",
+    shop_endpoint_test:    d.shop_endpoint_test    ?? "",
+    shop_hmac_secret_test: "",
+    shop_enabled_test:     Boolean(d.shop_enabled_test),
+    shop_timeout_ms_test:  d.shop_timeout_ms_test  ?? 5000,
+    has_password_v2:        ((d.db_pass_v2          ?? "") as string).trim().length > 0,
+    has_password_v1:        ((d.db_pass_v1          ?? "") as string).trim().length > 0,
+    has_password_test:      ((d.db_pass_test        ?? "") as string).trim().length > 0,
+    has_shop_secret_test:   ((d.shop_hmac_secret_test ?? "") as string).trim().length > 0,
     last_sync:             d.last_sync             ?? null,
     sync_accounts_count:   d.sync_accounts_count   ?? 0,
     sync_characters_count: d.sync_characters_count ?? 0,
   };
+}
+
+/**
+ * Generates a fresh 64-hex-char HMAC secret. Returned only to the admin once,
+ * and only saved to DB when the form is saved (caller responsibility).
+ */
+export async function generateShopSecret(): Promise<{ secret: string }> {
+  await requireAdminPanelAccess("gameServer");
+  const { randomBytes } = await import("node:crypto");
+  return { secret: randomBytes(32).toString("hex") };
 }

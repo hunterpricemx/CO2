@@ -26,6 +26,7 @@ import {
   ShoppingCart,
   SearchCheck,
   Clapperboard,
+  Share2,
 } from "lucide-react";
 
 const NAV_CONTENT = [
@@ -50,10 +51,13 @@ const NAV_CONTENT = [
   { href: "/admin/market-purchases",   icon: ShoppingCart,    label: "Compras Market",     permission: "donations" as AdminPanelPermission },
   { href: "/admin/users",            icon: Users,           label: "Administradores",    permission: "users"     as AdminPanelPermission },
   { href: "/admin/game-accounts",    icon: Gamepad2,        label: "Cuentas de Juego",   permission: "users"     as AdminPanelPermission },
+  { href: "/admin/referrals",          icon: Share2,          label: "Referidos",          permission: "referrals" as AdminPanelPermission },
+  { href: "/admin/referrals/settings", icon: Settings,        label: "→ Ajustes",          permission: "referrals" as AdminPanelPermission },
 ];
 
 const NAV_SYSTEM = [
-  { href: "/admin/game-server",   icon: Server,      label: "Game Server",  permission: "gameServer" as AdminPanelPermission },
+  { href: "/admin/game-server",              icon: Server,      label: "Game Server",         permission: "gameServer" as AdminPanelPermission },
+  { href: "/admin/game-server/test-market",  icon: ShoppingCart,label: "→ Mercado Pruebas",   permission: "gameServer" as AdminPanelPermission },
   { href: "/admin/payments",      icon: CreditCard,  label: "Pagos",        permission: "payments"   as AdminPanelPermission },
   { href: "/admin/payment-logs",  icon: ScrollText,  label: "→ Logs Compras", permission: "payments" as AdminPanelPermission },
   { href: "/admin/settings-logs", icon: ScrollText,  label: "→ Log de Ajustes", permission: "settings" as AdminPanelPermission },
