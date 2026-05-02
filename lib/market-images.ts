@@ -12,6 +12,7 @@
 
 import { readdirSync } from "node:fs";
 import path from "node:path";
+import { resolveSpriteFilename } from "@/lib/items-catalog";
 
 let cache: Set<string> | null = null;
 
@@ -36,4 +37,29 @@ export function marketImageExists(filename: string | null | undefined): boolean 
 /** Returns the original filename if it exists, else null. Use for `item_image`. */
 export function safeMarketImage(filename: string | null | undefined): string | null {
   return marketImageExists(filename) ? (filename as string) : null;
+}
+
+/**
+ * Resolves the best available sprite for a market itemid:
+ *
+ *   1. Look up `itemId` in Items.ini → spriteId.
+ *      If `${spriteId}.png` exists on disk → return it.
+ *   2. Otherwise try `${itemId}.png` (raw, no mapping).
+ *      If it exists → return it.
+ *   3. Otherwise return null (caller renders the placeholder).
+ *
+ * Designed for the market page: uses the INI mapping when available, falls
+ * back gracefully when an itemid isn't in the catalog OR its mapped sprite
+ * file isn't deployed yet.
+ */
+export function resolveMarketImage(itemId: number | null | undefined): string | null {
+  if (itemId == null || !Number.isFinite(itemId) || itemId <= 0) return null;
+
+  const mapped = resolveSpriteFilename(itemId);     // "900320.png" or "900025.png"
+  if (marketImageExists(mapped)) return mapped;
+
+  const raw = `${itemId}.png`;
+  if (mapped !== raw && marketImageExists(raw)) return raw;
+
+  return null;
 }
