@@ -1106,8 +1106,9 @@ export function MarketGrid({
                           {item.quantity > 1 && <span className="ml-1 text-xs text-muted-foreground/50">×{item.quantity}</span>}
                           {(item.item_id_raw || item.item_image) && (
                             <span
-                              className="ml-2 text-[10px] font-mono text-muted-foreground/40 select-all cursor-text"
+                              className="hidden ml-2 text-[10px] font-mono text-muted-foreground/40 select-all cursor-text"
                               title="ID del item (clic para seleccionar)"
+                              data-item-id={item.item_id_raw ?? item.item_image?.replace(/\.png$/i, "")}
                             >
                               #{item.item_id_raw ?? item.item_image?.replace(/\.png$/i, "")}
                             </span>
