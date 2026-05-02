@@ -4,7 +4,8 @@
 
 export interface MarketItemRow {
   id: string;
-  item_image: string | null;       // e.g. "113300.png"
+  item_image: string | null;       // e.g. "113300.png" — null when no PNG exists in public/images/market/
+  item_id_raw?: number;            // raw itemid from game DB (independent of whether the sprite PNG exists)
   item_name: string;
   quality: string | null;          // "NotQuality" | "Normality" | "Elite" | "Super" | "Refined"
   plus_enchant: number;            // [+] enchant level

@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import type { RowDataPacket } from "mysql2";
 import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { getGameDb, getCharacterForAccount, getCpMarketRate } from "@/lib/game-db";
+import { safeMarketImage } from "@/lib/market-images";
 import { getGameSession } from "@/lib/session";
 import { MarketGrid, type MarketLabels } from "@/components/shared/MarketGrid";
 import type { MarketItemRow } from "@/modules/market/types";
@@ -68,7 +69,8 @@ async function getMarketRows(versionNum: 1 | 2): Promise<MarketItemRow[]> {
 
     return rows.map((r, index) => ({
       id: String(r.ID),
-      item_image: `${r.itemid}.png`,
+      item_image: safeMarketImage(`${r.itemid}.png`),
+      item_id_raw: Number(r.itemid),
       item_name: r.itemname ?? "Unknown",
       quality: (r.Quality ?? "NotQuality").trim() || "NotQuality",
       plus_enchant: Number(r.itemplus ?? 0),
