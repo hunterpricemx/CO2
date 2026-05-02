@@ -21,7 +21,16 @@ type Donation = {
   created_at: string;
   claimed_at: string | null;
   game_credited_at: string | null;
+  tebex_transaction: string | null;
+  notes: string | null;
 };
+
+/** Extract `basket: <id>` from the donation's notes column (Tebex webhook stores it there). */
+function extractBasket(notes: string | null | undefined): string | null {
+  if (!notes) return null;
+  const m = notes.match(/Tebex basket:\s*([^\s]+)/i);
+  return m?.[1] ?? null;
+}
 
 /* ── Constants ── */
 const PAGE_SIZE = 15;
@@ -96,10 +105,17 @@ export default function AdminDonationsPage() {
     return all.filter((d) => {
       if (statusFilter !== "all" && d.status !== statusFilter) return false;
       if (versionFilter !== "all" && String(d.version) !== versionFilter) return false;
-      if (q && !d.character_name?.toLowerCase().includes(q) &&
-               !d.account_name?.toLowerCase().includes(q) &&
-               !d.payment_provider?.toLowerCase().includes(q) &&
-               !d.influencer_code?.toLowerCase().includes(q)) return false;
+      if (q) {
+        const basket = extractBasket(d.notes);
+        const matches =
+          d.character_name?.toLowerCase().includes(q) ||
+          d.account_name?.toLowerCase().includes(q) ||
+          d.payment_provider?.toLowerCase().includes(q) ||
+          d.influencer_code?.toLowerCase().includes(q) ||
+          d.tebex_transaction?.toLowerCase().includes(q) ||
+          basket?.toLowerCase().includes(q);
+        if (!matches) return false;
+      }
       return true;
     });
   }, [all, search, statusFilter, versionFilter]);
@@ -145,7 +161,7 @@ export default function AdminDonationsPage() {
             type="text"
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Buscar jugador, código..."
+            placeholder="Buscar jugador, código, basket, txn..."
             className={`${SEL_CLS} pl-9 w-full`}
           />
         </div>
@@ -174,7 +190,7 @@ export default function AdminDonationsPage() {
             <table className="w-full text-sm font-poppins">
               <thead>
                 <tr style={{ background: "rgba(255,215,0,0.04)", borderBottom: "1px solid rgba(255,215,0,0.08)" }}>
-                  {["Jugador", "User ID", "Ver.", "Monto", "CPs", "Plataforma", "Código", "Estado", "Fecha"].map((h) => (
+                  {["Jugador", "User ID", "Ver.", "Monto", "CPs", "Plataforma", "Tebex / Basket", "Código", "Estado", "Fecha"].map((h) => (
                     <th key={h} className="text-left px-4 py-3 text-xs text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
@@ -214,6 +230,27 @@ export default function AdminDonationsPage() {
                     <td className="px-4 py-3 text-gray-400 capitalize">
                       {PROVIDER_ICON[d.payment_provider] ?? "💰"} {d.payment_provider}
                     </td>
+                    <td className="px-4 py-3 text-xs font-mono whitespace-nowrap">
+                      {(() => {
+                        const basket = extractBasket(d.notes);
+                        const txn = d.tebex_transaction;
+                        if (!basket && !txn) return <span className="text-gray-700">—</span>;
+                        return (
+                          <div className="flex flex-col gap-0.5 leading-tight">
+                            {basket && (
+                              <span className="text-purple-300 select-all cursor-text" title={`Basket completo: ${basket}`}>
+                                🧺 {basket.length > 14 ? `…${basket.slice(-12)}` : basket}
+                              </span>
+                            )}
+                            {txn && (
+                              <span className="text-blue-300/70 select-all cursor-text" title={`Transaction completo: ${txn}`}>
+                                #{txn.length > 14 ? `…${txn.slice(-12)}` : txn}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3 text-gray-500 text-xs font-mono">
                       {d.influencer_code || <span className="text-gray-700">—</span>}
                     </td>
@@ -229,7 +266,7 @@ export default function AdminDonationsPage() {
                 ))}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-12 text-center text-gray-600">
+                    <td colSpan={10} className="px-4 py-12 text-center text-gray-600">
                       No se encontraron donaciones con los filtros aplicados.
                     </td>
                   </tr>
