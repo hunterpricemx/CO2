@@ -5,31 +5,11 @@
  */
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { requireAdminPanelAccess, getCurrentAdminContext } from "@/lib/admin/auth";
 import type { ActionResult } from "@/types";
-import type { ScreenshotStatus, ScreenshotVersion } from "./types";
-
-const VERSION_VALUES = ["1.0", "2.0", "both"] as const;
-
-const ScreenshotInputSchema = z.object({
-  slug:           z.string().min(3).max(120).regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/, "Slug inválido (a-z, 0-9, guiones; sin acentos ni espacios)."),
-  version:        z.enum(VERSION_VALUES),
-  category_id:    z.string().uuid().nullable(),
-  title_es:       z.string().min(2).max(200),
-  title_en:       z.string().max(200).optional().default(""),
-  title_pt:       z.string().max(200).optional().default(""),
-  description_es: z.string().max(2000).nullable().optional(),
-  description_en: z.string().max(2000).nullable().optional(),
-  description_pt: z.string().max(2000).nullable().optional(),
-  image_url:      z.string().url().min(8),
-  thumbnail_url:  z.string().url().nullable().optional(),
-  status:         z.enum(["draft", "published"]).default("published"),
-  tags:           z.array(z.string().max(40)).max(20).default([]),
-});
-
-export type ScreenshotInput = z.infer<typeof ScreenshotInputSchema>;
+import type { ScreenshotStatus } from "./types";
+import { ScreenshotInputSchema, CategoryInputSchema } from "./schemas";
 
 function slugify(input: string): string {
   return input
@@ -172,15 +152,6 @@ export async function incrementScreenshotView(id: string): Promise<void> {
 
 // ─── Screenshot Categories CRUD ────────────────────────────────
 
-const CategoryInputSchema = z.object({
-  slug:    z.string().min(2).max(40).regex(/^[a-z0-9-]+$/, "Slug inválido."),
-  name_es: z.string().min(2).max(60),
-  name_en: z.string().min(2).max(60),
-  name_pt: z.string().min(2).max(60),
-  icon:    z.string().max(40).nullable().optional(),
-  sort_order: z.number().int().min(0).max(9999).default(0),
-});
-
 export async function createScreenshotCategory(input: unknown): Promise<ActionResult> {
   await requireAdminPanelAccess("screenshots");
   const parsed = CategoryInputSchema.safeParse(input);
@@ -221,6 +192,6 @@ export async function deleteScreenshotCategory(id: string): Promise<ActionResult
   return { success: true, data: undefined };
 }
 
-// Re-export for client convenience.
-void VERSION_VALUES; // silence unused warning if needed
-export type { ScreenshotVersion };
+// Note: NO type, const, or non-function exports here — files with "use server"
+// can only export async functions. Schemas/types/constants live in
+// ./schemas and ./types, re-exported via ./index.

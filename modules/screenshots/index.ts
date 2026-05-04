@@ -27,5 +27,6 @@ export {
   updateScreenshotCategory,
   deleteScreenshotCategory,
   suggestScreenshotSlug,
-  type ScreenshotInput,
 } from "./actions";
+
+export type { ScreenshotInput } from "./schemas";
