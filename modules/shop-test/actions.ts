@@ -174,6 +174,84 @@ export async function listTestPurchases(): Promise<ActionResult<TestPurchase[]>>
   return { success: true, data: (data ?? []) as TestPurchase[] };
 }
 
+export interface PurchaseHistoryFilters {
+  status?:   TestPurchaseStatus[];
+  uid?:      number;
+  itemId?:   number;
+  search?:   string;            // matches admin_email, delivery_error, player_ip
+  fromDate?: string;            // ISO yyyy-mm-dd
+  toDate?:   string;            // ISO yyyy-mm-dd
+  page?:     number;            // 1-based
+  pageSize?: number;            // default 25
+}
+
+export interface PurchaseHistoryPage {
+  rows:      TestPurchase[];
+  total:     number;
+  page:      number;
+  pageSize:  number;
+  totalPages: number;
+}
+
+/** Paginated, filtered list of test purchases for the dedicated history page. */
+export async function getTestPurchaseHistory(
+  filters: PurchaseHistoryFilters = {},
+): Promise<ActionResult<PurchaseHistoryPage>> {
+  await requireAdminPanelAccess("gameServer");
+  const supabase = await createAdminClient();
+
+  const page = Math.max(1, filters.page ?? 1);
+  const pageSize = Math.min(100, Math.max(5, filters.pageSize ?? 25));
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let q = (supabase as any)
+    .from(TEST_PURCHASES_TABLE)
+    .select("*", { count: "exact" })
+    .order("created_at", { ascending: false });
+
+  if (filters.status && filters.status.length > 0) {
+    q = q.in("status", filters.status);
+  }
+  if (filters.uid && filters.uid > 0) {
+    q = q.eq("uid", filters.uid);
+  }
+  if (filters.itemId && filters.itemId > 0) {
+    q = q.eq("item_id", filters.itemId);
+  }
+  if (filters.fromDate) {
+    q = q.gte("created_at", `${filters.fromDate}T00:00:00.000Z`);
+  }
+  if (filters.toDate) {
+    q = q.lte("created_at", `${filters.toDate}T23:59:59.999Z`);
+  }
+  if (filters.search) {
+    const s = filters.search.trim();
+    if (s.length > 0) {
+      // PostgREST `or` filter: match on admin_email, delivery_error, player_ip
+      q = q.or(`admin_email.ilike.%${s}%,delivery_error.ilike.%${s}%,player_ip.ilike.%${s}%`);
+    }
+  }
+
+  q = q.range(from, to);
+
+  const { data, error, count } = await q;
+  if (error) return { success: false, error: error.message };
+
+  const total = count ?? 0;
+  return {
+    success: true,
+    data: {
+      rows: (data ?? []) as TestPurchase[],
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    },
+  };
+}
+
 /** Reintenta SOLO el HTTP delivery; no re-deduce CPs. Útil cuando el game server estuvo caído. */
 export async function retryTestPurchase(id: string): Promise<ActionResult<TestPurchaseResult>> {
   const admin = await requireAdminPanelAccess("gameServer");
