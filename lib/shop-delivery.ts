@@ -33,6 +33,11 @@ export interface ShopDeliveryInput {
   uid: number;
   itemId: number;
   ip: string | null;
+  /** Item attributes (all 0..255 byte range). Default 0 if not provided. */
+  plus?:  number;   // enchant level (+N)
+  bless?: number;   // bless / minus enchant
+  soc1?:  number;   // socket 1 (0 = empty, !=0 = gem code)
+  soc2?:  number;   // socket 2 (0 = empty, !=0 = gem code)
 }
 
 export interface ShopDeliveryResult {
@@ -73,6 +78,14 @@ function newNonce(): string {
   return crypto.randomUUID();
 }
 
+/** Clamp any input to a valid C# byte (0..255). undefined/NaN → 0. */
+function clampByte(v: number | null | undefined): number {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  if (n > 255) return 255;
+  return Math.floor(n);
+}
+
 /**
  * Sends a signed POST to the game server shop listener.
  * Returns ok=true on HTTP 200 with `body.ok === true` (delivered or already_delivered).
@@ -106,6 +119,10 @@ export async function deliverShopItem(input: ShopDeliveryInput): Promise<ShopDel
     item_id:     input.itemId,
     ip:          input.ip,
     env:         input.env,
+    plus:        clampByte(input.plus),
+    bless:       clampByte(input.bless),
+    soc1:        clampByte(input.soc1),
+    soc2:        clampByte(input.soc2),
     timestamp:   Date.now(),
     nonce:       newNonce(),
   };

@@ -32,6 +32,22 @@ function fmtNum(n: number) {
   return n.toLocaleString("es-ES");
 }
 
+/**
+ * Convert a marketlogs socket string ("NoSocket", "PhoenixGem", "0", "", etc.)
+ * to a C# byte value. Returns 0 for empty/no-socket states, 1 for any non-empty
+ * gem (the game server resolves the actual gem type from another source). If
+ * the string is a numeric ID that fits in a byte, returns it directly.
+ */
+function socketStringToByte(s: string | null | undefined): number {
+  const v = (s ?? "").trim();
+  if (!v) return 0;
+  const lower = v.toLowerCase();
+  if (lower === "nosocket" || lower === "none" || lower === "0") return 0;
+  const n = Number(v);
+  if (Number.isFinite(n) && n >= 0 && n <= 255) return Math.floor(n);
+  return 1; // gema presente, valor genérico — game server lo resuelve
+}
+
 export function AdminMarketSimulator({ items, cpRate }: Props) {
   const [uidInput, setUidInput] = useState("");
   const [character, setCharacter] = useState<TestCharacterInfo | null>(null);
@@ -88,6 +104,10 @@ export function AdminMarketSimulator({ items, cpRate }: Props) {
       itemId:      item.itemId,
       silverPrice: item.silverPrice,
       currency:    item.currency,
+      plus:        item.itemPlus,
+      bless:       item.itemBless,
+      soc1:        socketStringToByte(item.itemSoc1),
+      soc2:        socketStringToByte(item.itemSoc2),
     });
     setBusyRowId(null);
     if (r.success) {

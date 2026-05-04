@@ -385,6 +385,10 @@ const MarketBuyInput = z.object({
   itemId:      z.number().int().positive(),
   silverPrice: z.number().int().nonnegative().max(2_000_000_000),
   currency:    z.enum(["CP", "Gold"]),
+  plus:        z.number().int().min(0).max(255).optional(),
+  bless:       z.number().int().min(0).max(255).optional(),
+  soc1:        z.number().int().min(0).max(255).optional(),
+  soc2:        z.number().int().min(0).max(255).optional(),
 });
 
 /**
@@ -400,7 +404,7 @@ export async function adminMarketBuyAsUid(input: unknown): Promise<ActionResult<
   if (!parsed.success) {
     return { success: false, error: "Datos inválidos: " + parsed.error.issues.map(i => i.message).join(", ") };
   }
-  const { uid, itemId, silverPrice, currency } = parsed.data;
+  const { uid, itemId, silverPrice, currency, plus, bless, soc1, soc2 } = parsed.data;
 
   const rl = checkRateLimit("shop_test_market_buy", admin.email, { max: 30, windowMs: 60_000 });
   if (!rl.ok) return { success: false, error: "Demasiadas compras en poco tiempo. Espera un momento." };
@@ -467,6 +471,10 @@ export async function adminMarketBuyAsUid(input: unknown): Promise<ActionResult<
     uid,
     itemId,
     ip,
+    plus,
+    bless,
+    soc1,
+    soc2,
   });
 
   if (delivery.ok) {
