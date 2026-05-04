@@ -77,63 +77,62 @@ export async function createAdminUser(input: CreateAdminInput): Promise<ActionRe
   if (!username || !email || !password) {
     return { success: false, error: "Completa usuario, email y contraseña." };
   }
-
+  if (username.length < 3) {
+    return { success: false, error: "El usuario debe tener al menos 3 caracteres." };
+  }
+  if (!/^[\w.\-@+ ]{3,32}$/.test(username)) {
+    return { success: false, error: "Usuario solo letras, números, .-_@+ y espacios (3-32 chars)." };
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { success: false, error: "Email inválido." };
+  }
   if (password.length < 8) {
     return { success: false, error: "La contraseña debe tener al menos 8 caracteres." };
   }
 
   const supabase = await createAdminClient();
 
-  // Prevent opaque Supabase auth errors caused by profile trigger failures
-  // (for example, duplicate username unique constraint on public.profiles).
-  const { data: existingUsername, error: usernameCheckError } = await supabase
-    .from("profiles")
-    .select("id")
-    .eq("username", username)
-    .limit(1)
-    .maybeSingle();
+  // Pre-checks to avoid opaque trigger errors.
+  const [{ data: existingUsername }, { data: existingEmail }] = await Promise.all([
+    supabase.from("profiles").select("id").eq("username", username).limit(1).maybeSingle(),
+    supabase.from("profiles").select("id").eq("email", email).limit(1).maybeSingle(),
+  ]);
+  if (existingUsername) return { success: false, error: "Ese nombre de usuario ya existe." };
+  if (existingEmail) return { success: false, error: "Ese correo ya está en uso." };
 
-  if (usernameCheckError) {
-    return { success: false, error: usernameCheckError.message };
-  }
-
-  if (existingUsername) {
-    return { success: false, error: "Ese nombre de usuario ya existe." };
-  }
-
-  const { data, error } = await supabase.auth.admin.createUser({
+  const { data: created, error: createErr } = await supabase.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
-    user_metadata: {
-      role: "admin",
-      username,
-      panel_permissions: permissions,
-    },
+    user_metadata: { role: "admin", username, panel_permissions: permissions },
   });
 
-  if (error || !data.user) {
-    const message = (error?.message ?? "").toLowerCase();
-
-    if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
-      return { success: false, error: "Ese correo ya esta registrado." };
+  if (createErr || !created.user) {
+    console.error("[createAdminUser] auth.admin.createUser failed:", createErr);
+    const msg = (createErr?.message ?? "").toLowerCase();
+    if (msg.includes("already") || msg.includes("registered") || msg.includes("exists")) {
+      return { success: false, error: "Ese correo ya está registrado en Supabase Auth." };
     }
-
-    if (message.includes("database error creating new user")) {
+    if (msg.includes("database error creating new user")) {
       return {
         success: false,
-        error: "Error de base de datos al crear usuario. Revisa que username/email no esten duplicados.",
+        error: "Error de base de datos al crear usuario. Posible: username/email duplicado, trigger profile fallando, o columna NOT NULL sin default. Revisa logs server.",
       };
     }
-
-    return { success: false, error: error?.message ?? "No se pudo crear el administrador." };
+    if (msg.includes("password")) {
+      return { success: false, error: `Contraseña rechazada por Supabase: ${createErr?.message}` };
+    }
+    return { success: false, error: createErr?.message ?? "No se pudo crear el administrador." };
   }
 
-  const { error: profileError } = await supabase
+  // Force-write the profile row (covers both: no trigger, and trigger that wrote
+  // a default 'player' role row we need to override).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: profileError } = await (supabase as any)
     .from("profiles")
     .upsert(
       {
-        id: data.user.id,
+        id: created.user.id,
         username,
         email,
         role: "admin",
@@ -144,9 +143,71 @@ export async function createAdminUser(input: CreateAdminInput): Promise<ActionRe
     );
 
   if (profileError) {
-    await supabase.auth.admin.deleteUser(data.user.id);
-    return { success: false, error: profileError.message };
+    console.error("[createAdminUser] profile upsert failed, rolling back auth user:", profileError);
+    await supabase.auth.admin.deleteUser(created.user.id).catch(rbErr => {
+      console.error("[createAdminUser] rollback deleteUser also failed:", rbErr);
+    });
+    return { success: false, error: `Error guardando profile: ${profileError.message}` };
   }
+
+  // Post-create verification: read back the profile to confirm role/permissions saved.
+  const { data: verify } = await supabase
+    .from("profiles").select("role, username, email").eq("id", created.user.id).single();
+  if (!verify || verify.role !== "admin") {
+    console.error("[createAdminUser] post-verify failed:", verify);
+    return {
+      success: false,
+      error: "El usuario fue creado pero el profile no quedó como admin. Revisa el trigger en profiles.",
+    };
+  }
+
+  revalidatePath("/admin/users");
+  return { success: true, data: undefined };
+}
+
+/**
+ * Deletes an admin user from Supabase auth (cascades to profile).
+ * Restrictions:
+ *   - Only the super admin can delete other admins.
+ *   - Cannot delete yourself.
+ *   - Cannot delete the super admin (mariano).
+ */
+export async function deleteAdminUser(userId: string): Promise<ActionResult> {
+  const denied = await ensureUsersPermission();
+  if (denied) return denied;
+
+  const currentAdmin = await getCurrentAdminContext();
+  if (!currentAdmin) return { success: false, error: "unauthorized" };
+
+  const isSuperAdmin = currentAdmin.email.trim().toLowerCase() === SUPER_ADMIN_EMAIL;
+  if (!isSuperAdmin) {
+    return { success: false, error: "Solo el super admin puede eliminar administradores." };
+  }
+  if (currentAdmin.id === userId) {
+    return { success: false, error: "No puedes eliminarte a ti mismo." };
+  }
+
+  const supabase = await createAdminClient();
+
+  const { data: target } = await supabase
+    .from("profiles").select("id, username, email, role").eq("id", userId).single();
+  if (!target) return { success: false, error: "Administrador no encontrado." };
+  if (target.role !== "admin") {
+    return { success: false, error: "Esta cuenta no es un administrador." };
+  }
+  if (target.email?.trim().toLowerCase() === SUPER_ADMIN_EMAIL) {
+    return { success: false, error: "No se puede eliminar al super admin." };
+  }
+
+  const { error: deleteErr } = await supabase.auth.admin.deleteUser(userId);
+  if (deleteErr) {
+    console.error("[deleteAdminUser] auth.admin.deleteUser failed:", deleteErr);
+    return { success: false, error: `Supabase Auth no pudo borrar: ${deleteErr.message}` };
+  }
+
+  // Best-effort: ensure profile row is gone (Supabase usually cascades via FK,
+  // but if RLS or a missing FK leaves it behind, drop it explicitly).
+  await supabase.from("profiles").delete().eq("id", userId);
 
   revalidatePath("/admin/users");
   return { success: true, data: undefined };
