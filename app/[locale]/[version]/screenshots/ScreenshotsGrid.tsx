@@ -8,7 +8,7 @@ import {
   pickCategoryName,
   type ScreenshotCategory,
   type ScreenshotWithCategory,
-} from "@/modules/screenshots";
+} from "@/modules/screenshots/types";
 
 type Props = {
   initialItems: ScreenshotWithCategory[];

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Search, Eye, EyeOff, Trash2, Pencil, ExternalLink, Image as ImageIcon, AlertTriangle, Loader2 } from "lucide-react";
-import { deleteScreenshot, setScreenshotStatus } from "@/modules/screenshots";
-import type { ScreenshotCategory, ScreenshotWithCategory, ScreenshotStatus } from "@/modules/screenshots";
+import { deleteScreenshot, setScreenshotStatus } from "@/modules/screenshots/actions";
+import type { ScreenshotCategory, ScreenshotWithCategory, ScreenshotStatus } from "@/modules/screenshots/types";
 
 type Props = {
   initialRows: ScreenshotWithCategory[];

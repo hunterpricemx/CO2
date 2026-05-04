@@ -5,14 +5,9 @@ import { useState, useTransition } from "react";
 import Link from "next/link";
 import { Loader2, Save, ArrowLeft, AlertCircle, CheckCircle, Wand2 } from "lucide-react";
 import ImageUploadField from "@/components/admin/ImageUploadField";
-import {
-  createScreenshot,
-  updateScreenshot,
-  suggestScreenshotSlug,
-  type Screenshot,
-  type ScreenshotCategory,
-  type ScreenshotInput,
-} from "@/modules/screenshots";
+import { createScreenshot, updateScreenshot, suggestScreenshotSlug } from "@/modules/screenshots/actions";
+import type { Screenshot, ScreenshotCategory } from "@/modules/screenshots/types";
+import type { ScreenshotInput } from "@/modules/screenshots/schemas";
 
 type Props = {
   mode: "create" | "edit";

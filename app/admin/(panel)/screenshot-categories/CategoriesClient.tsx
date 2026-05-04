@@ -7,8 +7,8 @@ import {
   createScreenshotCategory,
   updateScreenshotCategory,
   deleteScreenshotCategory,
-  type ScreenshotCategory,
-} from "@/modules/screenshots";
+} from "@/modules/screenshots/actions";
+import type { ScreenshotCategory } from "@/modules/screenshots/types";
 
 type Draft = Omit<ScreenshotCategory, "id" | "created_at"> & { id?: string };
 

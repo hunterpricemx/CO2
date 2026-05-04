@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { incrementScreenshotView } from "@/modules/screenshots";
+import { incrementScreenshotView } from "@/modules/screenshots/actions";
 
 export function ViewIncrementer({ id }: { id: string }) {
   useEffect(() => {
