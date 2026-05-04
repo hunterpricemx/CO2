@@ -42,8 +42,9 @@ export interface ShopDeliveryInput {
   sellerUid?:  number;          // EntityID of the seller
   sellerName?: string;          // display name of seller (max 64 chars)
   itemUid?:    number;          // unique instance UID of the item (NOT itemId)
-  price?:      number;          // price as listed in marketlogs
-  costType?:   "CP" | "Gold";   // currency the buyer paid in
+  /** Price split: exactly one of these is non-zero, the other is 0. */
+  gold?:       number;          // silver price if listed in Gold, else 0
+  cp?:         number;          // CP price if listed in CP, else 0
 }
 
 export interface ShopDeliveryResult {
@@ -134,8 +135,8 @@ export async function deliverShopItem(input: ShopDeliveryInput): Promise<ShopDel
     seller_name: (input.sellerName ?? "").toString().slice(0, 64),
     item_uid:    clampUint(input.itemUid),
     item_id:     input.itemId,
-    price:       clampUint(input.price),
-    cost_type:   input.costType ?? "CP",
+    gold:        clampUint(input.gold),
+    cp:          clampUint(input.cp),
     ip:          input.ip,
     env:         input.env,
     plus:        clampByte(input.plus),

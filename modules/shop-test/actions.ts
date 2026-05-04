@@ -467,7 +467,10 @@ export async function adminMarketBuyAsUid(input: unknown): Promise<ActionResult<
   }
   let newBalance: number | null = deductRes.newBalance;
 
-  // HTTP delivery to game server listener
+  // HTTP delivery to game server listener.
+  // Split price into gold/cp based on the listing currency:
+  //   - listed in Gold → gold=silverPrice, cp=0
+  //   - listed in CP   → cp=silverPrice,   gold=0
   const delivery = await deliverShopItem({
     env: "test",
     purchaseId,
@@ -481,8 +484,8 @@ export async function adminMarketBuyAsUid(input: unknown): Promise<ActionResult<
     sellerUid,
     sellerName,
     itemUid,
-    price:    silverPrice,
-    costType: currency,
+    gold: currency === "Gold" ? silverPrice : 0,
+    cp:   currency === "CP"   ? silverPrice : 0,
   });
 
   if (delivery.ok) {
