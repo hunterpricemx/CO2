@@ -27,6 +27,8 @@ import {
   SearchCheck,
   Clapperboard,
   Share2,
+  Camera,
+  FolderTree as FolderTreeIcon,
 } from "lucide-react";
 
 const NAV_CONTENT = [
@@ -39,6 +41,8 @@ const NAV_CONTENT = [
   { href: "/admin/fix-categories",   icon: FolderTree,      label: "Categorías Fixes",   permission: "fixes"     as AdminPanelPermission },
   { href: "/admin/news",             icon: Newspaper,       label: "Noticias",           permission: "news"      as AdminPanelPermission },
   { href: "/admin/news-categories",  icon: FolderTree,      label: "Categorías Noticias",permission: "news"      as AdminPanelPermission },
+  { href: "/admin/screenshots",        icon: Camera,          label: "Screenshots",        permission: "screenshots" as AdminPanelPermission },
+  { href: "/admin/screenshot-categories", icon: FolderTreeIcon, label: "→ Categorías",     permission: "screenshots" as AdminPanelPermission },
   { href: "/admin/downloads",        icon: Download,        label: "Descargas",          permission: "downloads" as AdminPanelPermission },
   { href: "/admin/influencers",       icon: Star,            label: "Influencers",        permission: "influencers" as AdminPanelPermission },
   { href: "/admin/tickets",           icon: TicketCheck,     label: "Tickets",            permission: "tickets"   as AdminPanelPermission },

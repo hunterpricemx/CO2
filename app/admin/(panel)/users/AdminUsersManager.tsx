@@ -33,6 +33,7 @@ const PANEL_LABELS: Record<AdminPanelPermission, string> = {
   settings: "Ajustes del Sitio",
   tickets: "Tickets de Soporte",
   referrals: "Referidos",
+  screenshots: "Screenshots",
 };
 
 type Props = {

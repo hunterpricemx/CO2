@@ -13,6 +13,7 @@ export const ADMIN_PANELS = [
   "tickets",
   "garments",
   "referrals",
+  "screenshots",
 ] as const;
 
 export type AdminPanelPermission = (typeof ADMIN_PANELS)[number];
@@ -34,6 +35,7 @@ export const DEFAULT_ADMIN_PANEL_PERMISSIONS: PanelPermissions = {
   tickets: true,
   garments: true,
   referrals: true,
+  screenshots: true,
 };
 
 export const EMPTY_PANEL_PERMISSIONS: PanelPermissions = {
@@ -51,6 +53,7 @@ export const EMPTY_PANEL_PERMISSIONS: PanelPermissions = {
   tickets: false,
   garments: false,
   referrals: false,
+  screenshots: false,
 };
 
 export function normalizePanelPermissions(
@@ -74,6 +77,7 @@ export function normalizePanelPermissions(
     tickets:  typeof Reflect.get(source, "tickets")  === "boolean" ? Reflect.get(source, "tickets")  as boolean : fallback.tickets,
     garments: typeof Reflect.get(source, "garments") === "boolean" ? Reflect.get(source, "garments") as boolean : fallback.garments,
     referrals: typeof Reflect.get(source, "referrals") === "boolean" ? Reflect.get(source, "referrals") as boolean : fallback.referrals,
+    screenshots: typeof Reflect.get(source, "screenshots") === "boolean" ? Reflect.get(source, "screenshots") as boolean : fallback.screenshots,
   };
 }
 
