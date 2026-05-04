@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { Search, User, RefreshCw, ShoppingCart, CheckCircle, XCircle, Coins, Sparkles, AlertTriangle } from "lucide-react";
 import {
   getTestCharacter,
+  getTestMarketItems,
   adminMarketBuyAsUid,
   type TestMarketItem,
   type TestCharacterInfo,
@@ -48,7 +49,10 @@ function socketStringToByte(s: string | null | undefined): number {
   return 1; // gema presente, valor genérico — game server lo resuelve
 }
 
-export function AdminMarketSimulator({ items, cpRate }: Props) {
+export function AdminMarketSimulator({ items: initialItems, cpRate }: Props) {
+  const [items, setItems] = useState<TestMarketItem[]>(initialItems);
+  const [refreshingMarket, setRefreshingMarket] = useState(false);
+
   const [uidInput, setUidInput] = useState("");
   const [character, setCharacter] = useState<TestCharacterInfo | null>(null);
   const [charError, setCharError] = useState<string | null>(null);
@@ -95,6 +99,16 @@ export function AdminMarketSimulator({ items, cpRate }: Props) {
     if (r.success) setCharacter(r.data);
   };
 
+  const refreshMarket = async () => {
+    setRefreshingMarket(true);
+    try {
+      const r = await getTestMarketItems(200);
+      if (r.success) setItems(r.data);
+    } finally {
+      setRefreshingMarket(false);
+    }
+  };
+
   const buy = async (item: TestMarketItem) => {
     if (!character) return;
     setOutcome(null);
@@ -125,7 +139,9 @@ export function AdminMarketSimulator({ items, cpRate }: Props) {
     } else {
       setOutcome({ ok: false, msg: r.error, itemRowId: item.marketRowId });
     }
-    await refreshCharacter();
+    // Refresh both character (CPs/Gold/balance) and market list (item should
+    // be removed from marketlogs by the game server after a successful buy).
+    await Promise.all([refreshCharacter(), refreshMarket()]);
   };
 
   return (
@@ -237,6 +253,16 @@ export function AdminMarketSimulator({ items, cpRate }: Props) {
             </button>
           ))}
         </div>
+        <button
+          type="button"
+          onClick={refreshMarket}
+          disabled={refreshingMarket}
+          title="Recargar listado del marketlogs"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${refreshingMarket ? "animate-spin" : ""}`} />
+          Refrescar
+        </button>
         <span className="text-xs text-gray-500">
           {filtered.length} de {items.length}
         </span>
