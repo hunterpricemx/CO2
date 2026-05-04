@@ -5,6 +5,7 @@ import type { RowDataPacket } from "mysql2";
 import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { getGameDb, getCharacterForAccount, getCpMarketRate } from "@/lib/game-db";
 import { resolveMarketImage } from "@/lib/market-images";
+import { isShopBuyerWhitelisted } from "@/lib/shop-whitelist";
 import { getGameSession } from "@/lib/session";
 import { MarketGrid, type MarketLabels } from "@/components/shared/MarketGrid";
 import type { MarketItemRow } from "@/modules/market/types";
@@ -76,9 +77,13 @@ async function getMarketRows(versionNum: 1 | 2): Promise<MarketItemRow[]> {
       plus_enchant: Number(r.itemplus ?? 0),
       minus_enchant: Number(r.itembless ?? 0),
       sockets: countSockets(r.itemsoc1, r.itemsoc2),
+      item_soc1: r.itemsoc1 ?? "",
+      item_soc2: r.itemsoc2 ?? "",
       seller: r.sellername ?? "-",
+      seller_uid: Number(r.selleruid ?? 0),
       seller_x: Number(r.X ?? 0),
       seller_y: Number(r.Y ?? 0),
+      item_uid: Number(r.itemuid ?? 0),
       price: Number(r.price ?? 0),
       currency: Number(r.type ?? 1) === 2 ? "Gold" : "CP",
       version: versionNum === 1 ? "1.0" : "2.0",
@@ -193,11 +198,13 @@ export default async function MarketPage({ params }: Props) {
   let cpBalance: number | undefined;
   let goldBalance: number | undefined;
   let charName: string | undefined;
+  let isAllowedBuyer = false;
   if (session) {
     const charData = await getCharacterForAccount(session.uid, versionNum);
     cpBalance = charData?.cps;
     goldBalance = charData?.gold;
     charName = charData?.name;
+    isAllowedBuyer = await isShopBuyerWhitelisted(session.username);
   }
 
   const loginHref = locale === "es" ? `/${version}/login` : `/${locale}/${version}/login`;
@@ -262,6 +269,7 @@ export default async function MarketPage({ params }: Props) {
             goldBalance={goldBalance}
             charName={charName}
             cpRate={cpRate}
+            isAllowedBuyer={isAllowedBuyer}
             loginHref={session ? historyHref : loginHref}
           />
         </div>

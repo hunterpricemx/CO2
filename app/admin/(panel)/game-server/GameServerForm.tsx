@@ -8,6 +8,8 @@ import {
   syncGameServer,
   testShopEndpoint,
   generateShopSecret,
+  loadShopBuyerWhitelist,
+  saveShopBuyerWhitelist,
   type ServerConfigData,
   type ServerEnv,
 } from "./actions";
@@ -26,6 +28,8 @@ type Props = {
     has_password_v2?: boolean;
     has_password_test?: boolean;
     has_shop_secret_test?: boolean;
+    has_shop_secret_v1?:   boolean;
+    has_shop_secret_v2?:   boolean;
   }) | null;
 };
 
@@ -62,12 +66,22 @@ export function GameServerForm({ initial }: Props) {
     shop_hmac_secret_test: "",
     shop_enabled_test:     initial?.shop_enabled_test     ?? false,
     shop_timeout_ms_test:  initial?.shop_timeout_ms_test  ?? 5000,
+    shop_endpoint_v1:      initial?.shop_endpoint_v1      ?? "",
+    shop_hmac_secret_v1:   "",
+    shop_enabled_v1:       initial?.shop_enabled_v1       ?? false,
+    shop_timeout_ms_v1:    initial?.shop_timeout_ms_v1    ?? 5000,
+    shop_endpoint_v2:      initial?.shop_endpoint_v2      ?? "",
+    shop_hmac_secret_v2:   "",
+    shop_enabled_v2:       initial?.shop_enabled_v2       ?? false,
+    shop_timeout_ms_v2:    initial?.shop_timeout_ms_v2    ?? 5000,
   });
 
   const hasPasswordV2     = initial?.has_password_v2     ?? false;
   const hasPasswordV1     = initial?.has_password_v1     ?? false;
   const hasPasswordTest   = initial?.has_password_test   ?? false;
   const hasShopSecretTest = initial?.has_shop_secret_test ?? false;
+  const hasShopSecretV1   = initial?.has_shop_secret_v1  ?? false;
+  const hasShopSecretV2   = initial?.has_shop_secret_v2  ?? false;
 
   const [result,    setResult]    = useState<{ ok: boolean; msg: string; data?: Record<string, unknown> } | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -90,21 +104,24 @@ export function GameServerForm({ initial }: Props) {
     });
   };
 
-  const handleTestShopEndpoint = () => {
+  const handleTestShopEndpointFor = (env: "test" | "v1" | "v2") => () => {
     startTransition(async () => {
-      const r = await testShopEndpoint("test");
+      const r = await testShopEndpoint(env);
       setResult({ ok: r.success, msg: r.message, data: r.data });
     });
   };
+  const handleTestShopEndpoint = handleTestShopEndpointFor("test");
 
-  const handleGenerateSecret = () => {
+  const handleGenerateSecretFor = (env: "test" | "v1" | "v2") => () => {
+    const fieldKey = `shop_hmac_secret_${env}` as keyof ServerConfigData;
     startTransition(async () => {
       const { secret } = await generateShopSecret();
-      setForm(prev => ({ ...prev, shop_hmac_secret_test: secret }));
+      setForm(prev => ({ ...prev, [fieldKey]: secret }));
       setShowShopSecret(true);
-      setResult({ ok: true, msg: "Secret generado. Guárdalo (clic en 'Guardar') y copia este valor al game server." });
+      setResult({ ok: true, msg: `Secret generado para ${env}. Guárdalo (clic en 'Guardar') y copia este valor al game server.` });
     });
   };
+  const handleGenerateSecret = handleGenerateSecretFor("test");
 
   const handleSync = () => {
     startTransition(async () => {
@@ -148,6 +165,32 @@ export function GameServerForm({ initial }: Props) {
       />
 
       <ShopTestRunner enabled={form.shop_enabled_test} />
+
+      <ShopProdCard
+        version="v2"
+        form={form}
+        set={set}
+        hasShopSecret={hasShopSecretV2}
+        showShopSecret={showShopSecret}
+        setShowShopSecret={setShowShopSecret}
+        isPending={isPending}
+        onTestEndpoint={handleTestShopEndpointFor("v2")}
+        onGenerateSecret={handleGenerateSecretFor("v2")}
+      />
+
+      <ShopProdCard
+        version="v1"
+        form={form}
+        set={set}
+        hasShopSecret={hasShopSecretV1}
+        showShopSecret={showShopSecret}
+        setShowShopSecret={setShowShopSecret}
+        isPending={isPending}
+        onTestEndpoint={handleTestShopEndpointFor("v1")}
+        onGenerateSecret={handleGenerateSecretFor("v1")}
+      />
+
+      <ShopBuyerWhitelistCard />
 
       <TestPurchaseHistory />
 
@@ -735,5 +778,252 @@ function StatusBadge({ status }: { status: TestPurchase["status"] }) {
     <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${s.bg} ${s.border} ${s.color}`}>
       {s.label}
     </span>
+  );
+}
+
+// ─── Tarjeta Shop Endpoint para v1.0 / v2.0 (producción) ───────────
+type ShopProdCardProps = {
+  version: "v1" | "v2";
+  form: ServerConfigData;
+  set: (k: keyof ServerConfigData, v: string | number | boolean) => void;
+  hasShopSecret: boolean;
+  showShopSecret: boolean;
+  setShowShopSecret: (v: boolean) => void;
+  isPending: boolean;
+  onTestEndpoint: () => void;
+  onGenerateSecret: () => void;
+};
+
+function ShopProdCard({
+  version, form, set, hasShopSecret, showShopSecret, setShowShopSecret,
+  isPending, onTestEndpoint, onGenerateSecret,
+}: ShopProdCardProps) {
+  const label = version === "v1" ? "1.0" : "2.0";
+  const accentColor = version === "v1" ? "#3b82f6" : "#10b981";
+  const borderColor = version === "v1" ? "rgba(59,130,246,0.35)" : "rgba(16,185,129,0.35)";
+  const endpointKey = `shop_endpoint_${version}` as keyof ServerConfigData;
+  const secretKey   = `shop_hmac_secret_${version}` as keyof ServerConfigData;
+  const enabledKey  = `shop_enabled_${version}` as keyof ServerConfigData;
+  const timeoutKey  = `shop_timeout_ms_${version}` as keyof ServerConfigData;
+  const enabled     = form[enabledKey] as boolean;
+  const secretValue = form[secretKey] as string;
+  const secretPlaceholder = hasShopSecret && secretValue === ""
+    ? "✓ Secret guardado (dejar vacío para no cambiar)"
+    : "Genera o pega un HMAC secret de 64 hex chars";
+
+  return (
+    <div className="bg-[#111] rounded-xl p-6 space-y-4" style={{ border: `1px solid ${borderColor}` }}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <KeyRound className="h-4 w-4" style={{ color: accentColor }} />
+          <h2 className="text-sm font-medium text-white uppercase tracking-wide">Shop endpoint v{label}</h2>
+          <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: `${accentColor}22`, color: accentColor, border: `1px solid ${accentColor}55` }}>
+            producción
+          </span>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer text-xs text-gray-400">
+          <input
+            type="checkbox"
+            checked={enabled}
+            onChange={e => set(enabledKey, e.target.checked)}
+            className={version === "v1" ? "accent-blue-500" : "accent-emerald-500"}
+          />
+          Habilitado
+        </label>
+      </div>
+
+      <div>
+        <label className={labelCls}>URL del endpoint</label>
+        <input className={inputCls} placeholder="http://51.222.254.2:8080/shop/"
+          value={form[endpointKey] as string}
+          onChange={e => set(endpointKey, e.target.value)} />
+      </div>
+
+      <div>
+        <label className={labelCls}>HMAC Secret (compartido con el game server)</label>
+        <SecretInput
+          value={secretValue}
+          onChange={v => set(secretKey, v)}
+          show={showShopSecret}
+          onToggle={() => setShowShopSecret(!showShopSecret)}
+          placeholder={secretPlaceholder}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className={labelCls}>Timeout (ms)</label>
+          <input className={inputCls} type="number" min={1000} max={30000} step={500}
+            value={form[timeoutKey] as number}
+            onChange={e => set(timeoutKey, +e.target.value)} />
+        </div>
+        <div className="flex items-end gap-2">
+          <button
+            type="button"
+            onClick={onGenerateSecret}
+            disabled={isPending}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-colors disabled:opacity-50"
+            style={{ background: `${accentColor}18`, border: `1px solid ${accentColor}44`, color: accentColor }}
+          >
+            <KeyRound className="h-3.5 w-3.5" />
+            Generar secret
+          </button>
+          <button
+            type="button"
+            onClick={onTestEndpoint}
+            disabled={isPending}
+            className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs transition-colors disabled:opacity-50"
+            style={{ background: `${accentColor}18`, border: `1px solid ${accentColor}44`, color: accentColor }}
+          >
+            <Plug className="h-3.5 w-3.5" />
+            Probar endpoint
+          </button>
+        </div>
+      </div>
+
+      <p className="text-[11px] text-gray-500 leading-relaxed">
+        Mientras <code className="text-gray-400">enabled</code> esté apagado o la whitelist esté vacía, el botón Comprar
+        del market público sigue mostrando &quot;Próximamente&quot; — kill switch instantáneo.
+      </p>
+    </div>
+  );
+}
+
+// ─── Whitelist de compradores ─────────────────────────────────────
+function ShopBuyerWhitelistCard() {
+  const [users, setUsers] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const list = await loadShopBuyerWhitelist();
+      setUsers(list);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, []);
+
+  const addUser = () => {
+    const v = draft.trim();
+    if (!v) return;
+    if (users.some(u => u.toLowerCase() === v.toLowerCase())) {
+      setFeedback({ ok: false, msg: `'${v}' ya está en la lista.` });
+      setDraft("");
+      return;
+    }
+    setUsers(prev => [...prev, v]);
+    setDraft("");
+    setFeedback(null);
+  };
+
+  const removeUser = (u: string) => {
+    setUsers(prev => prev.filter(x => x !== u));
+    setFeedback(null);
+  };
+
+  const save = async () => {
+    setSaving(true);
+    setFeedback(null);
+    const r = await saveShopBuyerWhitelist(users);
+    setFeedback({ ok: r.success, msg: r.message });
+    setSaving(false);
+    if (r.success) await load();
+  };
+
+  return (
+    <div className="bg-[#111] rounded-xl p-6 space-y-4" style={{ border: "1px solid rgba(168,85,247,0.30)" }}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ListOrdered className="h-4 w-4 text-purple-400" />
+          <h2 className="text-sm font-medium text-white uppercase tracking-wide">Whitelist de compradores</h2>
+          <span className="text-[10px] text-gray-500">({users.length})</span>
+        </div>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-3 w-3 ${loading ? "animate-spin" : ""}`} />
+          Refrescar
+        </button>
+      </div>
+
+      <p className="text-[11px] text-gray-500 leading-relaxed">
+        Solo los <strong className="text-purple-300">usernames</strong> de esta lista pueden completar compras en el market público
+        de v1.0 / v2.0. El resto de jugadores ven el botón &quot;Próximamente&quot;. Vacía la lista para deshabilitar el feature por completo.
+      </p>
+
+      {/* Input + add */}
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="username (case-insensitive)"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addUser(); } }}
+          className={inputCls + " flex-1"}
+        />
+        <button
+          type="button"
+          onClick={addUser}
+          disabled={!draft.trim()}
+          className="px-3 py-2 rounded-lg text-xs bg-purple-900/30 border border-purple-700/40 text-purple-200 hover:bg-purple-900/50 disabled:opacity-40"
+        >
+          Agregar
+        </button>
+      </div>
+
+      {/* Chips */}
+      <div className="flex flex-wrap gap-1.5 min-h-8">
+        {users.length === 0 ? (
+          <span className="text-xs text-gray-600 italic">Lista vacía — feature deshabilitado para todos.</span>
+        ) : (
+          users.map(u => (
+            <span
+              key={u}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs bg-purple-900/20 border border-purple-700/40 text-purple-200"
+            >
+              {u}
+              <button
+                type="button"
+                onClick={() => removeUser(u)}
+                className="text-purple-400/60 hover:text-red-400 transition-colors"
+                title={`Quitar ${u}`}
+              >
+                <XCircle className="h-3.5 w-3.5" />
+              </button>
+            </span>
+          ))
+        )}
+      </div>
+
+      {/* Save */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={save}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-purple-900/30 border border-purple-700/50 text-purple-200 hover:bg-purple-900/50 disabled:opacity-50"
+        >
+          {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Guardar whitelist
+        </button>
+        {feedback && (
+          <span className={`text-xs ${feedback.ok ? "text-green-400" : "text-red-400"}`}>
+            {feedback.msg}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }

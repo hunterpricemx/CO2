@@ -5,6 +5,10 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { requireAdminPanelAccess } from "@/lib/admin/auth";
 import { pingShopEndpoint, type ShopEnv } from "@/lib/shop-delivery";
+import {
+  getShopBuyerWhitelist,
+  setShopBuyerWhitelist as persistShopBuyerWhitelist,
+} from "@/lib/shop-whitelist";
 
 export type ServerConfigData = {
   // V2.0
@@ -34,11 +38,21 @@ export type ServerConfigData = {
   table_accounts_test: string;
   table_characters_test: string;
   table_payments_test: string;
-  // Shop endpoint (HTTP listener del game server) — solo "test" por ahora
+  // Shop endpoint (HTTP listener del game server) — test
   shop_endpoint_test: string;
   shop_hmac_secret_test: string;
   shop_enabled_test: boolean;
   shop_timeout_ms_test: number;
+  // Shop endpoint v1.0
+  shop_endpoint_v1: string;
+  shop_hmac_secret_v1: string;
+  shop_enabled_v1: boolean;
+  shop_timeout_ms_v1: number;
+  // Shop endpoint v2.0
+  shop_endpoint_v2: string;
+  shop_hmac_secret_v2: string;
+  shop_enabled_v2: boolean;
+  shop_timeout_ms_v2: number;
 };
 
 export type ServerEnv = 1 | 2 | "test";
@@ -112,10 +126,18 @@ export async function saveServerConfig(config: ServerConfigData): Promise<Action
     table_accounts_test:   config.table_accounts_test,
     table_characters_test: config.table_characters_test,
     table_payments_test:   config.table_payments_test,
-    // Shop endpoint
+    // Shop endpoint test
     shop_endpoint_test:    config.shop_endpoint_test,
     shop_enabled_test:     config.shop_enabled_test,
     shop_timeout_ms_test:  config.shop_timeout_ms_test,
+    // Shop endpoint v1.0
+    shop_endpoint_v1:      config.shop_endpoint_v1,
+    shop_enabled_v1:       config.shop_enabled_v1,
+    shop_timeout_ms_v1:    config.shop_timeout_ms_v1,
+    // Shop endpoint v2.0
+    shop_endpoint_v2:      config.shop_endpoint_v2,
+    shop_enabled_v2:       config.shop_enabled_v2,
+    shop_timeout_ms_v2:    config.shop_timeout_ms_v2,
     updated_at:            new Date().toISOString(),
   };
 
@@ -123,6 +145,8 @@ export async function saveServerConfig(config: ServerConfigData): Promise<Action
   if (config.db_pass_v1.trim()             !== "") payload.db_pass_v1          = config.db_pass_v1;
   if (config.db_pass_test.trim()           !== "") payload.db_pass_test        = config.db_pass_test;
   if (config.shop_hmac_secret_test.trim()  !== "") payload.shop_hmac_secret_test = config.shop_hmac_secret_test;
+  if (config.shop_hmac_secret_v1.trim()    !== "") payload.shop_hmac_secret_v1   = config.shop_hmac_secret_v1;
+  if (config.shop_hmac_secret_v2.trim()    !== "") payload.shop_hmac_secret_v2   = config.shop_hmac_secret_v2;
 
   const { error } = await supabase.from("server_config").upsert(payload);
   if (error) return { success: false, message: error.message };
@@ -436,14 +460,41 @@ export async function getServerConfig() {
     shop_hmac_secret_test: "",
     shop_enabled_test:     Boolean(d.shop_enabled_test),
     shop_timeout_ms_test:  d.shop_timeout_ms_test  ?? 5000,
+    shop_endpoint_v1:      d.shop_endpoint_v1      ?? "",
+    shop_hmac_secret_v1:   "",
+    shop_enabled_v1:       Boolean(d.shop_enabled_v1),
+    shop_timeout_ms_v1:    d.shop_timeout_ms_v1    ?? 5000,
+    shop_endpoint_v2:      d.shop_endpoint_v2      ?? "",
+    shop_hmac_secret_v2:   "",
+    shop_enabled_v2:       Boolean(d.shop_enabled_v2),
+    shop_timeout_ms_v2:    d.shop_timeout_ms_v2    ?? 5000,
     has_password_v2:        ((d.db_pass_v2          ?? "") as string).trim().length > 0,
     has_password_v1:        ((d.db_pass_v1          ?? "") as string).trim().length > 0,
     has_password_test:      ((d.db_pass_test        ?? "") as string).trim().length > 0,
     has_shop_secret_test:   ((d.shop_hmac_secret_test ?? "") as string).trim().length > 0,
+    has_shop_secret_v1:     ((d.shop_hmac_secret_v1   ?? "") as string).trim().length > 0,
+    has_shop_secret_v2:     ((d.shop_hmac_secret_v2   ?? "") as string).trim().length > 0,
     last_sync:             d.last_sync             ?? null,
     sync_accounts_count:   d.sync_accounts_count   ?? 0,
     sync_characters_count: d.sync_characters_count ?? 0,
   };
+}
+
+// ── Whitelist de compradores (server actions thin wrappers) ──────
+export async function loadShopBuyerWhitelist(): Promise<string[]> {
+  await requireAdminPanelAccess("gameServer");
+  return getShopBuyerWhitelist();
+}
+
+export async function saveShopBuyerWhitelist(list: string[]): Promise<ActionResult> {
+  await requireAdminPanelAccess("gameServer");
+  try {
+    await persistShopBuyerWhitelist(list);
+    revalidatePath("/admin/game-server");
+    return { success: true, message: `Whitelist guardada (${list.length} usuarios).` };
+  } catch (e) {
+    return { success: false, message: getErrorMessage(e, "No se pudo guardar la whitelist.") };
+  }
 }
 
 /**

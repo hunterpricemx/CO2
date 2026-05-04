@@ -553,8 +553,10 @@ type CartItem = {
   item_soc1: string | null;
   item_soc2: string | null;
   seller_name: string;
+  seller_uid?: number;
   seller_x: number | null;
   seller_y: number | null;
+  item_uid?: number;
   silver_price: number;
   currency: string;
   version: string;
@@ -568,13 +570,14 @@ type CartPanelProps = {
   cpRate: number;
   charName: string;
   labels: MarketLabels;
+  isAllowedBuyer: boolean;
   onRemove: (id: string) => void;
   onClear: () => void;
   onCheckoutSuccess: (newBalance: number) => void;
 };
 
 function CartPanel({
-  cartItems, cpBalance, goldBalance, cpRate, charName, labels, onRemove, onClear, onCheckoutSuccess,
+  cartItems, cpBalance, goldBalance, cpRate, charName, labels, isAllowedBuyer, onRemove, onClear, onCheckoutSuccess,
 }: CartPanelProps) {
   const [isPending, startTransition] = useTransition();
   const [errors, setErrors] = useState<string[]>([]);
@@ -604,8 +607,10 @@ function CartPanel({
           item_soc1: item.item_soc1,
           item_soc2: item.item_soc2,
           seller_name: item.seller_name,
+          seller_uid: item.seller_uid,
           seller_x: item.seller_x,
           seller_y: item.seller_y,
+          item_uid: item.item_uid,
           silver_price: item.silver_price,
           version: item.version,
         });
@@ -736,15 +741,29 @@ function CartPanel({
 
               <p className="text-[10px] text-muted-foreground/40 text-center">{charName}</p>
 
-              <button
-                onClick={handleCheckout}
-                disabled
-                className="w-full py-2.5 rounded-xl bg-white/8 border border-white/10 text-muted-foreground/60 font-bold text-sm cursor-not-allowed flex items-center justify-center gap-2"
-                title="Próximamente"
-              >
-                <Coins className="h-4 w-4" />
-                Próximamente
-              </button>
+              {isAllowedBuyer ? (
+                <button
+                  onClick={handleCheckout}
+                  disabled={isPending || !canAfford}
+                  className={`w-full py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-colors ${
+                    isPending || !canAfford
+                      ? "bg-white/8 border border-white/10 text-muted-foreground/60 cursor-not-allowed"
+                      : "bg-emerald-600 hover:bg-emerald-500 border border-emerald-500/40 text-white cursor-pointer"
+                  }`}
+                >
+                  <Coins className="h-4 w-4" />
+                  {isPending ? labels.cart_processing : labels.cart_checkout}
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="w-full py-2.5 rounded-xl bg-white/8 border border-white/10 text-muted-foreground/60 font-bold text-sm cursor-not-allowed flex items-center justify-center gap-2"
+                  title="Próximamente"
+                >
+                  <Coins className="h-4 w-4" />
+                  Próximamente
+                </button>
+              )}
             </div>
           </>
         )}
@@ -756,7 +775,7 @@ function CartPanel({
 // ── Main MarketGrid ────────────────────────────────────────────────────────────
 
 export function MarketGrid({
-  items, labels, defaultVersion, sessionUid, cpBalance: initialCpBalance, goldBalance: initialGoldBalance, charName, cpRate, loginHref,
+  items, labels, defaultVersion, sessionUid, cpBalance: initialCpBalance, goldBalance: initialGoldBalance, charName, cpRate, isAllowedBuyer, loginHref,
 }: {
   items: MarketItemRow[];
   labels: MarketLabels;
@@ -766,6 +785,7 @@ export function MarketGrid({
   goldBalance?: number;
   charName?: string;
   cpRate?: number;
+  isAllowedBuyer?: boolean;
   loginHref?: string;
 }) {
   const effectiveCpRate = cpRate ?? 100000;
@@ -796,11 +816,13 @@ export function MarketGrid({
           item_name: item.item_name,
           item_plus: item.plus_enchant,
           item_bless: item.minus_enchant,
-          item_soc1: null,
-          item_soc2: null,
+          item_soc1: item.item_soc1 ?? null,
+          item_soc2: item.item_soc2 ?? null,
           seller_name: item.seller,
+          seller_uid: item.seller_uid,
           seller_x: item.seller_x ?? null,
           seller_y: item.seller_y ?? null,
+          item_uid: item.item_uid,
           silver_price: item.price,
           currency: item.currency,
           version: item.version,
@@ -1033,6 +1055,7 @@ export function MarketGrid({
               cpRate={effectiveCpRate}
               charName={charName}
               labels={labels}
+              isAllowedBuyer={Boolean(isAllowedBuyer)}
               onRemove={(id) => setCartItems((prev) => prev.filter((i) => i.id !== id))}
               onClear={() => setCartItems([])}
               onCheckoutSuccess={(nb) => {

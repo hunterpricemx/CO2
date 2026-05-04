@@ -11,9 +11,14 @@ export interface MarketItemRow {
   plus_enchant: number;            // [+] enchant level
   minus_enchant: number;           // [-] bless level
   sockets: number;                 // 0 | 1 | 2
+  /** Raw socket strings from marketlogs ("PhoenixGem", "NoSocket", etc.) — used to compute soc1/soc2 bytes for the listener */
+  item_soc1?: string;
+  item_soc2?: string;
   seller: string;
+  seller_uid?: number;             // selleruid from marketlogs (needed by the C# listener to remove the listing)
   seller_x: number | null;         // market map X coord
   seller_y: number | null;         // market map Y coord
+  item_uid?: number;               // unique instance UID from marketlogs (NOT the catalog item_id)
   price: number;
   currency: string;                // "CP" | "Gold"
   version: string;                 // "1.0" | "2.0"
