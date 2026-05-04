@@ -108,6 +108,9 @@ export function AdminMarketSimulator({ items, cpRate }: Props) {
       bless:       item.itemBless,
       soc1:        socketStringToByte(item.itemSoc1),
       soc2:        socketStringToByte(item.itemSoc2),
+      sellerUid:   item.sellerUid,
+      sellerName:  item.sellerName,
+      itemUid:     item.itemUid,
     });
     setBusyRowId(null);
     if (r.success) {

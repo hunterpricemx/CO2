@@ -38,6 +38,12 @@ export interface ShopDeliveryInput {
   bless?: number;   // bless / minus enchant
   soc1?:  number;   // socket 1 (0 = empty, !=0 = gem code)
   soc2?:  number;   // socket 2 (0 = empty, !=0 = gem code)
+  /** Marketlogs context — required to remove the listing and credit seller. */
+  sellerUid?:  number;          // EntityID of the seller
+  sellerName?: string;          // display name of seller (max 64 chars)
+  itemUid?:    number;          // unique instance UID of the item (NOT itemId)
+  price?:      number;          // price as listed in marketlogs
+  costType?:   "CP" | "Gold";   // currency the buyer paid in
 }
 
 export interface ShopDeliveryResult {
@@ -86,6 +92,14 @@ function clampByte(v: number | null | undefined): number {
   return Math.floor(n);
 }
 
+/** Clamp any input to a valid C# uint (0..4_294_967_295). undefined/NaN → 0. */
+function clampUint(v: number | null | undefined): number {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < 0) return 0;
+  if (n > 4_294_967_295) return 4_294_967_295;
+  return Math.floor(n);
+}
+
 /**
  * Sends a signed POST to the game server shop listener.
  * Returns ok=true on HTTP 200 with `body.ok === true` (delivered or already_delivered).
@@ -116,7 +130,12 @@ export async function deliverShopItem(input: ShopDeliveryInput): Promise<ShopDel
   const payload = {
     purchase_id: input.purchaseId,
     uid:         input.uid,
+    seller_uid:  clampUint(input.sellerUid),
+    seller_name: (input.sellerName ?? "").toString().slice(0, 64),
+    item_uid:    clampUint(input.itemUid),
     item_id:     input.itemId,
+    price:       clampUint(input.price),
+    cost_type:   input.costType ?? "CP",
     ip:          input.ip,
     env:         input.env,
     plus:        clampByte(input.plus),
