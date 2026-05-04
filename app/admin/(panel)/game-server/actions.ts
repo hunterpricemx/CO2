@@ -219,18 +219,29 @@ export async function testShopEndpoint(env: ShopEnv = "test"): Promise<ActionRes
   if (result.status === 0) {
     return { success: false, message: `Endpoint inaccesible: ${result.error ?? "network"}`, data };
   }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const err = typeof result.body === "object" && result.body ? (result.body as any).error : null;
+
   if (result.status === 400) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const err = typeof result.body === "object" && result.body ? (result.body as any).error : null;
     if (err === "invalid_signature") {
       return { success: false, message: "El secret HMAC no coincide con el del game server.", data };
     }
+    if (err === "invalid_payload") {
+      // El ping envía uid=0 / item_id=0 deliberadamente (sintético). Si el listener
+      // rechaza con invalid_payload, significa que la firma SÍ fue válida y la
+      // conectividad funciona — solo no acepta el payload. Lo contamos como OK.
+      return { success: true, message: "Endpoint accesible y firma válida (rechazó ping sintético, esperado).", data };
+    }
     return { success: false, message: `Endpoint respondió 400: ${err ?? "bad_request"}`, data };
+  }
+  // 404 uid_not_found / item_not_found = listener vivo, firma OK, payload válido pero sin datos reales
+  if (result.status === 404 && (err === "uid_not_found" || err === "item_not_found")) {
+    return { success: true, message: `Endpoint accesible y firma válida (${err}, esperado en ping).`, data };
   }
   if (result.ok || result.status >= 200 && result.status < 300) {
     return { success: true, message: "Endpoint accesible y firma válida.", data };
   }
-  return { success: false, message: `Endpoint respondió HTTP ${result.status}`, data };
+  return { success: false, message: `Endpoint respondió HTTP ${result.status}: ${err ?? "unknown"}`, data };
 }
 
 // ── Sincronizar MariaDB → Supabase ───────────────────────────────
