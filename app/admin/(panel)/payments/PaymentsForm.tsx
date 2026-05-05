@@ -1,39 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { CreditCard, Save, CheckCircle, XCircle, ExternalLink, FlaskConical, Loader2, Eye, EyeOff, KeyRound } from "lucide-react";
-import { savePaymentConfig, testStripeConnection, testTebexConnection, getSecretValues, insertManualPayment, insertZeroTebexPurchase, type PaymentConfigData } from "./actions";
+import { CreditCard, Save, CheckCircle, XCircle, ExternalLink, FlaskConical, Loader2, KeyRound, Beaker } from "lucide-react";
+import { savePaymentConfig, testStripeConnection, testTebexConnection, getSecretValues, insertManualPayment, insertZeroTebexPurchase, simulateTebexPurchase, type PaymentConfigData } from "./actions";
+import { SecretInput } from "@/app/admin/_components/SecretInput";
 
 type Props = {
   initial: PaymentConfigData | null;
   hasSecrets: { has_stripe_sk_test: boolean; has_stripe_sk_live: boolean; has_tebex_secret: boolean; has_tebex_webhook_secret: boolean };
 };
-
-function SecretInput({
-  value, onChange, show, onToggle, placeholder,
-}: { value: string; onChange: (v: string) => void; show: boolean; onToggle: () => void; placeholder: string }) {
-  return (
-    <div className="relative">
-      <input
-        className="w-full bg-[#1a1a1a] border border-[rgba(255,255,255,0.08)] rounded-lg pl-3 pr-10 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-[rgba(243,156,18,0.5)]"
-        type={show ? "text" : "password"}
-        placeholder={placeholder}
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        autoComplete="off"
-        spellCheck={false}
-      />
-      <button
-        type="button"
-        onClick={onToggle}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 hover:text-gray-300 transition-colors"
-        tabIndex={-1}
-      >
-        {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-      </button>
-    </div>
-  );
-}
 
 export function PaymentsForm({ initial, hasSecrets }: Props) {
   const [form, setForm] = useState<PaymentConfigData>({
@@ -111,6 +86,16 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
 
       setResult({ ok: r.success, msg: r.message, debug: r.debug });
       if (r.success) setManualUsername("");
+    });
+  };
+
+  const handleSimulateTebex = (version: 1 | 2) => {
+    startTransition(async () => {
+      const r = await simulateTebexPurchase({
+        version,
+        username: manualUsername.trim() || undefined,
+      });
+      setResult({ ok: r.success, msg: r.message, debug: r.debug });
     });
   };
 
@@ -265,7 +250,7 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
                   onChange={e => set("tebex_uri_v2", e.target.value)} />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               <div>
                 <label className={labelCls}>Tabla de pagos</label>
                 <input className={inputCls} placeholder="dbb_payments" value={form.tebex_payment_table}
@@ -368,6 +353,30 @@ export function PaymentsForm({ initial, hasSecrets }: Props) {
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
             Compra Tebex $0 (debug)
           </button>
+        </div>
+
+        <div className="pt-3 mt-3 border-t border-white/5 space-y-2">
+          <p className="text-xs text-gray-500">
+            Simulación de compra Tebex usando el mismo flujo real (<code>upsertLegacyPayment</code> + <code>server_name</code>). El usuario es opcional — si lo dejas vacío usa <code>tebex-debug-v{'{version}'}</code>.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => handleSimulateTebex(1)}
+              disabled={isPending}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 transition-colors disabled:opacity-50"
+            >
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Beaker className="h-4 w-4" />}
+              Simular compra Tebex 1.0
+            </button>
+            <button
+              onClick={() => handleSimulateTebex(2)}
+              disabled={isPending}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm bg-orange-500/10 border border-orange-500/30 text-orange-300 hover:bg-orange-500/20 transition-colors disabled:opacity-50"
+            >
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Beaker className="h-4 w-4" />}
+              Simular compra Tebex 2.0
+            </button>
+          </div>
         </div>
       </div>
 

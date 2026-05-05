@@ -206,7 +206,7 @@ export function GameServerForm({ initial }: Props) {
             {result.msg}
           </div>
           {result.data && (
-            <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-xs font-mono opacity-80 mt-1 border-t border-white/10 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1 text-xs font-mono opacity-80 mt-1 border-t border-white/10 pt-2">
               {"from_host" in result.data && (
                 <span>🖥 Origen: <span className="text-white">{String(result.data.from_host)}</span></span>
               )}

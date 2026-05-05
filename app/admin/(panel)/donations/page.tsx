@@ -186,8 +186,9 @@ export default function AdminDonationsPage() {
         <div className="flex items-center justify-center py-24 text-gray-600 text-sm">Cargando...</div>
       ) : (
         <div className="rounded-xl overflow-hidden" style={{ border: "1px solid rgba(255,215,0,0.1)" }}>
+          <p className="md:hidden text-[11px] text-gray-500 px-3 pt-2 italic">→ Desliza horizontal para ver todas las columnas</p>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm font-poppins">
+            <table className="w-full text-sm font-poppins min-w-[900px]">
               <thead>
                 <tr style={{ background: "rgba(255,215,0,0.04)", borderBottom: "1px solid rgba(255,215,0,0.08)" }}>
                   {["Jugador", "User ID", "Ver.", "Monto", "CPs", "Plataforma", "Tebex / Basket", "Código", "Estado", "Fecha"].map((h) => (

@@ -178,7 +178,7 @@ export function PurchaseHistoryClient() {
         </div>
 
         {/* Inputs */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
           <div>
             <label className={labelCls}>UID</label>
             <input className={inputCls} type="number" min={1} placeholder="UID exacto" value={uidFilter} onChange={e => setUidFilter(e.target.value)} />

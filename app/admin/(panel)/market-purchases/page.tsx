@@ -198,8 +198,54 @@ export default function MarketPurchasesAdminPage() {
         </button>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-surface/50 overflow-hidden">
+      {/* Mobile: cards verticales */}
+      <div className="md:hidden space-y-3">
+        {loading && (
+          <div className="rounded-xl border border-surface/50 px-4 py-12 text-center text-muted-foreground text-sm">
+            Cargando...
+          </div>
+        )}
+        {!loading && filtered.length === 0 && (
+          <div className="rounded-xl border border-surface/50 px-4 py-12 text-center text-muted-foreground text-sm">
+            No hay compras.
+          </div>
+        )}
+        {!loading && filtered.map((p) => (
+          <div key={`m-${p.id}`} className="rounded-xl border border-surface/50 bg-surface/20 overflow-hidden">
+            <div className="p-3 space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm truncate">{p.buyer_username}</p>
+                  <p className="text-[11px] text-muted-foreground/70 truncate">{p.char_name}</p>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[10px] text-muted-foreground bg-white/5 border border-white/10 rounded px-1.5 py-0.5">v{p.version}</span>
+                  <StatusBadge status={p.status} />
+                </div>
+              </div>
+              <div className="flex items-baseline justify-between gap-2 border-t border-white/5 pt-2">
+                <p className="font-medium text-sm flex-1 min-w-0 truncate">
+                  {p.item_name}
+                  {p.item_plus > 0 && <span className="text-gold ml-1">+{p.item_plus}</span>}
+                </p>
+                <span className="font-mono font-semibold text-gold text-sm shrink-0">{p.cp_cost.toLocaleString("es-ES")} CP</span>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+                <span className="truncate">de {p.seller_name}</span>
+                <span className="shrink-0 whitespace-nowrap">
+                  {new Date(p.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </div>
+            </div>
+            <div className="border-t border-white/5 bg-surface/10 p-2">
+              <ActionRow purchase={p} onRefresh={load} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop: tabla tradicional */}
+      <div className="hidden md:block rounded-xl border border-surface/50 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-sm border-collapse">
             <thead>

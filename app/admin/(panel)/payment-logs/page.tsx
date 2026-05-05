@@ -122,8 +122,10 @@ export default function PaymentLogsPage() {
             {isPending ? "Cargando..." : "No hay logs registrados aún"}
           </div>
         ) : (
+          <>
+            <p className="md:hidden text-[11px] text-gray-500 px-1 pb-1.5 italic">→ Desliza horizontal para ver todas las columnas</p>
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[800px]">
               <thead>
                 <tr className="border-b border-white/6">
                   {["Fecha/Hora", "Fuente", "Nivel", "Evento", "Usuario", "Productos / Monto", "Mensaje"].map(h => (
@@ -227,6 +229,7 @@ export default function PaymentLogsPage() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
     </div>
