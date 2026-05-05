@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { Fragment, useState, useTransition, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 import { Search, RefreshCw, Send, Mail, ChevronLeft, ChevronRight, AlertTriangle, Shield, ShieldOff } from "lucide-react";
@@ -198,82 +198,144 @@ export function GameAccountsManager({
         </Button>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-gold/10 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gold/10 bg-surface/30">
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">ID</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Usuario</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Correo</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Estado</th>
-              <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {accounts.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">
-                  {dbError ? "No se pudo cargar la tabla." : "No se encontraron cuentas."}
-                </td>
-              </tr>
-            ) : (
-              accounts.map((row) => (
-                <>
-                  <tr
-                    key={row.EntityID}
-                    className="border-b border-gold/5 hover:bg-surface/20 transition-colors cursor-pointer"
-                    onClick={() => setLogsTarget(logsTarget === row.Username ? null : row.Username)}
-                  >
-                    <td className="px-4 py-3 text-muted-foreground font-mono">{row.EntityID}</td>
-                    <td className="px-4 py-3 font-medium text-foreground">{row.Username}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{row.Email}</td>
-                    <td className="px-4 py-3">
+      {/* Mobile: cards verticales (visible solo en <md) */}
+      <div className="md:hidden space-y-3">
+        {accounts.length === 0 ? (
+          <div className="rounded-xl border border-gold/10 px-4 py-10 text-center text-muted-foreground text-sm">
+            {dbError ? "No se pudo cargar la tabla." : "No se encontraron cuentas."}
+          </div>
+        ) : (
+          accounts.map((row) => (
+            <Fragment key={`m-${row.EntityID}`}>
+              <div className="rounded-xl border border-gold/10 bg-surface/20 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setLogsTarget(logsTarget === row.Username ? null : row.Username)}
+                  className="w-full text-left px-4 py-3 hover:bg-surface/30 transition-colors flex items-start justify-between gap-2"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-foreground text-base">{row.Username}</p>
                       {isBanned(row) ? (
-                        <span className="inline-flex items-center gap-1 text-xs text-red-400">
-                          <ShieldOff className="h-3 w-3" /> Baneado
+                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-red-900/30 text-red-300 border border-red-700/40">
+                          <ShieldOff className="h-2.5 w-2.5" /> Baneado
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
-                          <Shield className="h-3 w-3" /> Activo
+                        <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-900/30 text-emerald-300 border border-emerald-700/40">
+                          <Shield className="h-2.5 w-2.5" /> Activo
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          title="Enviar link de recuperación"
-                          className="h-7 px-2 text-xs hover:text-gold"
-                          onClick={() => setRecoveryTarget(row)}
-                        >
-                          <Send className="h-3 w-3 mr-1" /> Recovery
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          title="Cambiar correo"
-                          className="h-7 px-2 text-xs hover:text-gold"
-                          onClick={() => { setEmailTarget(row); setNewEmail(""); }}
-                        >
-                          <Mail className="h-3 w-3 mr-1" /> Email
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                  {logsTarget === row.Username && (
-                    <tr key={`${row.EntityID}-logs`} className="bg-surface/10">
-                      <td colSpan={5} className="px-4 py-3">
-                        <AccountActionLogsPanel username={row.Username} />
+                    </div>
+                    <p className="text-xs text-muted-foreground truncate mt-0.5">{row.Email}</p>
+                    <p className="text-[10px] text-gray-600 font-mono mt-0.5">ID {row.EntityID}</p>
+                  </div>
+                </button>
+                <div className="grid grid-cols-2 border-t border-gold/5">
+                  <button
+                    type="button"
+                    onClick={() => setRecoveryTarget(row)}
+                    className="flex items-center justify-center gap-1.5 py-3 text-sm text-gold hover:bg-gold/10 transition-colors"
+                  >
+                    <Send className="h-4 w-4" />
+                    Recovery
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setEmailTarget(row); setNewEmail(""); }}
+                    className="flex items-center justify-center gap-1.5 py-3 text-sm text-gold hover:bg-gold/10 transition-colors border-l border-gold/5"
+                  >
+                    <Mail className="h-4 w-4" />
+                    Email
+                  </button>
+                </div>
+              </div>
+              {logsTarget === row.Username && (
+                <div className="rounded-xl border border-gold/10 bg-surface/10 p-3">
+                  <AccountActionLogsPanel username={row.Username} />
+                </div>
+              )}
+            </Fragment>
+          ))
+        )}
+      </div>
+
+      {/* Desktop: tabla tradicional (oculta en <md) */}
+      <div className="hidden md:block rounded-xl border border-gold/10 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gold/10 bg-surface/30">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">ID</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Usuario</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Correo</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase tracking-wider">Estado</th>
+                <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase tracking-wider">Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accounts.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground text-sm">
+                    {dbError ? "No se pudo cargar la tabla." : "No se encontraron cuentas."}
+                  </td>
+                </tr>
+              ) : (
+                accounts.map((row) => (
+                  <Fragment key={row.EntityID}>
+                    <tr
+                      className="border-b border-gold/5 hover:bg-surface/20 transition-colors cursor-pointer"
+                      onClick={() => setLogsTarget(logsTarget === row.Username ? null : row.Username)}
+                    >
+                      <td className="px-4 py-3 text-muted-foreground font-mono">{row.EntityID}</td>
+                      <td className="px-4 py-3 font-medium text-foreground">{row.Username}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{row.Email}</td>
+                      <td className="px-4 py-3">
+                        {isBanned(row) ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-red-400">
+                            <ShieldOff className="h-3 w-3" /> Baneado
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
+                            <Shield className="h-3 w-3" /> Activo
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="Enviar link de recuperación"
+                            className="h-7 px-2 text-xs hover:text-gold"
+                            onClick={() => setRecoveryTarget(row)}
+                          >
+                            <Send className="h-3 w-3 mr-1" /> Recovery
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="Cambiar correo"
+                            className="h-7 px-2 text-xs hover:text-gold"
+                            onClick={() => { setEmailTarget(row); setNewEmail(""); }}
+                          >
+                            <Mail className="h-3 w-3 mr-1" /> Email
+                          </Button>
+                        </div>
                       </td>
                     </tr>
-                  )}
-                </>
-              ))
-            )}
-          </tbody>
-        </table>
+                    {logsTarget === row.Username && (
+                      <tr className="bg-surface/10">
+                        <td colSpan={5} className="px-4 py-3">
+                          <AccountActionLogsPanel username={row.Username} />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}
