@@ -143,7 +143,7 @@ export default function AdminDonationsPage() {
       </div>
 
       {/* ── Stats row ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard icon={<TrendingUp className="h-5 w-5" />}  label="Total recaudado"  value={`$${fmt(stats.totalUsd)} USD`} sub={`${stats.total} transacciones`} />
         <StatCard icon={<Coins className="h-5 w-5" />}       label="CPs acreditados"  value={stats.totalCps.toLocaleString()} sub="credited + claimed" />
         <StatCard icon={<Clock className="h-5 w-5" />}        label="Pendientes"        value={String(stats.pending)} sub="por acreditar" />
@@ -296,7 +296,7 @@ export default function AdminDonationsPage() {
                   const p = start + i;
                   return (
                     <button key={p} onClick={() => goTo(p)}
-                      className={`w-7 h-7 rounded text-xs font-medium transition-colors ${
+                      className={`w-9 h-9 sm:w-7 sm:h-7 rounded text-sm sm:text-xs font-medium transition-colors ${
                         p === currentPage ? "bg-[#f39c12] text-black" : "text-gray-500 hover:text-white hover:bg-white/5"
                       }`}>
                       {p}

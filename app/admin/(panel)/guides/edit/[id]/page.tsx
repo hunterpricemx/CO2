@@ -57,7 +57,7 @@ export default function GuideEditPage() {
           <label className={LABEL_CLS}>Slug</label>
           <input {...register("slug")} className={FIELD_CLS} />
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {GUIDE_LANGS.map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Título {lang.toUpperCase()} *</label>
@@ -69,7 +69,7 @@ export default function GuideEditPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {GUIDE_LANGS.map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Extracto {lang.toUpperCase()}</label>
@@ -127,7 +127,7 @@ export default function GuideEditPage() {
           </select>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {GUIDE_LANGS.map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Contenido {lang.toUpperCase()}</label>

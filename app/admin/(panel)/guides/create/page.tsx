@@ -61,7 +61,7 @@ function GuideForm({ action }: { action: "create" | "edit" }) {
           <input {...register("slug", { required: true })} className={FIELD_CLS} placeholder="como-subir-de-nivel" />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {GUIDE_LANGS.map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Título {lang.toUpperCase()} *</label>
@@ -73,7 +73,7 @@ function GuideForm({ action }: { action: "create" | "edit" }) {
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {GUIDE_LANGS.map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Extracto {lang.toUpperCase()}</label>
@@ -131,7 +131,7 @@ function GuideForm({ action }: { action: "create" | "edit" }) {
           </select>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {GUIDE_LANGS.map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Contenido {lang.toUpperCase()}</label>

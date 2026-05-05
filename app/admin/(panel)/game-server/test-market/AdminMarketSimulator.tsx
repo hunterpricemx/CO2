@@ -230,7 +230,7 @@ export function AdminMarketSimulator({ items: initialItems, cpRate }: Props) {
 
       {/* Filtros */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex-1 min-w-[200px] relative">
+        <div className="flex-1 min-w-50 relative">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
             placeholder="Buscar por nombre, vendedor, ItemID, RowID..."

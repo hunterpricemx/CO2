@@ -2,11 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, TicketCheck } from "lucide-react";
+import { Bell, Menu, Shield, TicketCheck } from "lucide-react";
 
 type NotifCount = { open: number };
 
-export function AdminTopBar() {
+type AdminTopBarProps = {
+  /** Mobile-only callback to open the sidebar drawer. */
+  onMenuToggle?: () => void;
+};
+
+export function AdminTopBar({ onMenuToggle }: AdminTopBarProps = {}) {
   const [count, setCount] = useState<number>(0);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -39,8 +44,24 @@ export function AdminTopBar() {
   }, []);
 
   return (
-    <header className="h-12 shrink-0 bg-[#111] border-b border-[rgba(255,215,0,0.08)] flex items-center justify-end px-4 gap-3">
-      {/* Tickets bell */}
+    <header className="h-14 shrink-0 bg-[#111] border-b border-[rgba(255,215,0,0.08)] flex items-center justify-between px-3 sm:px-4 gap-3">
+      {/* Left: Hamburger (mobile only) + brand */}
+      <div className="flex items-center gap-2 min-w-0">
+        <button
+          type="button"
+          onClick={onMenuToggle}
+          className="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors -ml-1"
+          aria-label="Abrir menú"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+        <div className="md:hidden flex items-center gap-1.5 min-w-0">
+          <Shield className="h-4 w-4 text-[#f39c12] shrink-0" />
+          <span className="font-bebas text-base tracking-widest text-[#f39c12] truncate">Admin</span>
+        </div>
+      </div>
+
+      {/* Right: Tickets bell */}
       <div className="relative" ref={ref}>
         <button
           onClick={() => setOpen((v) => !v)}
@@ -56,7 +77,10 @@ export function AdminTopBar() {
         </button>
 
         {open && (
-          <div className="absolute right-0 top-full mt-1 w-64 bg-[#1a1a1a] border border-[rgba(255,215,0,0.12)] rounded-xl shadow-xl z-50 overflow-hidden">
+          <div
+            className="absolute right-0 top-full mt-1 w-[min(18rem,calc(100vw-1.5rem))] bg-[#1a1a1a] border border-[rgba(255,215,0,0.12)] rounded-xl shadow-xl z-50 overflow-hidden"
+            style={{ maxWidth: "calc(100vw - 1.5rem)" }}
+          >
             <div className="px-4 py-3 border-b border-[rgba(255,215,0,0.08)] flex items-center justify-between">
               <span className="text-xs text-gray-400 font-medium uppercase tracking-wider">
                 Tickets Abiertos

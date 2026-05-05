@@ -62,7 +62,7 @@ function EditNewsForm() {
           <input {...register("slug", { required: true })} className={FIELD_CLS} />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Título {lang.toUpperCase()} *</label>
@@ -74,7 +74,7 @@ function EditNewsForm() {
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Resumen {lang.toUpperCase()}</label>

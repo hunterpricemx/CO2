@@ -29,6 +29,7 @@ import {
   Share2,
   Camera,
   FolderTree as FolderTreeIcon,
+  X as CloseIcon,
 } from "lucide-react";
 
 const NAV_CONTENT = [
@@ -68,7 +69,14 @@ const NAV_SYSTEM = [
   { href: "/admin/settings-logs", icon: ScrollText,  label: "→ Log de Ajustes", permission: "settings" as AdminPanelPermission },
 ];
 
-export function AdminSidebar() {
+type AdminSidebarProps = {
+  /** When true, the sidebar slides in as an off-canvas drawer on mobile. */
+  isDrawerOpen?: boolean;
+  /** Called when the user taps the backdrop or close button on mobile. */
+  onClose?: () => void;
+};
+
+export function AdminSidebar({ isDrawerOpen = false, onClose }: AdminSidebarProps = {}) {
   const pathname = usePathname();
   const { mutate: logout } = useLogout();
   const { data: identity } = useGetIdentity<{ name: string; email: string; permissions?: PanelPermissions }>();
@@ -77,14 +85,43 @@ export function AdminSidebar() {
   const visibleSystem = NAV_SYSTEM.filter((item) => hasPanelAccess(permissions, item.permission));
 
   return (
-    <aside className="w-56 shrink-0 bg-[#111] border-r border-[rgba(255,215,0,0.1)] flex flex-col h-screen">
-      {/* Logo */}
-      <div className="flex items-center gap-2 px-5 py-5 border-b border-[rgba(255,215,0,0.1)]">
-        <Shield className="h-5 w-5 text-[#f39c12]" />
-        <span className="font-bebas text-xl tracking-widest text-[#f39c12]">
-          Admin
-        </span>
-      </div>
+    <>
+      {/* Mobile backdrop — only rendered when drawer is open */}
+      {isDrawerOpen && (
+        <button
+          type="button"
+          onClick={onClose}
+          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity"
+          aria-label="Cerrar menú"
+        />
+      )}
+
+      <aside
+        className={`
+          bg-[#111] border-r border-[rgba(255,215,0,0.1)] flex flex-col h-screen w-64 md:w-56 shrink-0
+          fixed md:static inset-y-0 left-0 z-50
+          transition-transform duration-200 ease-out
+          ${isDrawerOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+        `}
+        aria-label="Menú de administración"
+      >
+        {/* Logo + close (close visible solo en mobile) */}
+        <div className="flex items-center justify-between gap-2 px-5 py-5 border-b border-[rgba(255,215,0,0.1)]">
+          <div className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-[#f39c12]" />
+            <span className="font-bebas text-xl tracking-widest text-[#f39c12]">
+              Admin
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="md:hidden p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+            aria-label="Cerrar menú"
+          >
+            <CloseIcon className="h-5 w-5" />
+          </button>
+        </div>
 
       {/* Nav — Contenido */}
       <nav className="flex flex-col gap-1 p-3 flex-1 overflow-y-auto">
@@ -152,5 +189,6 @@ export function AdminSidebar() {
         </button>
       </div>
     </aside>
+    </>
   );
 }

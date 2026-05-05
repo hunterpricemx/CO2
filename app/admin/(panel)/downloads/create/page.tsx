@@ -81,7 +81,7 @@ function DownloadForm({ action }: { action: "create" | "edit" }) {
         </div>
 
         {/* Names */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Nombre {lang.toUpperCase()} *</label>
@@ -94,7 +94,7 @@ function DownloadForm({ action }: { action: "create" | "edit" }) {
         </div>
 
         {/* Descriptions */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Descripción {lang.toUpperCase()}</label>

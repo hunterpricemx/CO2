@@ -49,7 +49,7 @@ function EditDownloadForm() {
           </select>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Nombre {lang.toUpperCase()} *</label>
@@ -61,7 +61,7 @@ function EditDownloadForm() {
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Descripción {lang.toUpperCase()}</label>

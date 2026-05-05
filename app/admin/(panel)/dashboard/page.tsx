@@ -60,7 +60,7 @@ export default async function AdminDashboardPage() {
         <p className="text-sm text-gray-500 mt-1">Resumen del servidor</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
         {cards.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-[#1a1a1a] border border-[rgba(255,215,0,0.1)] rounded-xl p-5 flex flex-col gap-3">
             <Icon className={`h-5 w-5 ${color}`} />

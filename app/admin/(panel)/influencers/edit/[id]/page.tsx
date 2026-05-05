@@ -81,7 +81,7 @@ export default function AdminInfluencersEditPage() {
         {/* Descripción ES / EN / PT */}
         <div className="flex flex-col gap-1">
           <span className="text-xs text-gray-400 uppercase tracking-wider">Descripción</span>
-          <div className="grid grid-cols-3 gap-4 mt-1">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-1">
             {(["es", "en", "pt"] as const).map((lang) => (
               <div key={lang}>
                 <label className={LABEL_CLS}>{lang.toUpperCase()}</label>

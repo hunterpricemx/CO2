@@ -94,7 +94,7 @@ export default function EventEditPage() {
         onSubmit={handleSubmit(onFinish)}
         className="bg-[#1a1a1a] border border-[rgba(255,215,0,0.1)] rounded-xl p-6 flex flex-col gap-5"
       >
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Título {lang.toUpperCase()} *</label>
@@ -146,7 +146,7 @@ export default function EventEditPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Descripción {lang.toUpperCase()}</label>
@@ -155,7 +155,7 @@ export default function EventEditPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Recompensas {lang.toUpperCase()}</label>

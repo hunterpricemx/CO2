@@ -243,13 +243,13 @@ export function ScreenshotForm({ mode, initial, categories }: Props) {
         </div>
       )}
 
-      {/* Submit */}
-      <div className="flex justify-end">
+      {/* Submit — sticky en mobile para que el botón siempre esté a mano */}
+      <div className="sticky bottom-0 -mx-4 md:mx-0 md:relative bg-[#0f0503]/95 md:bg-transparent backdrop-blur md:backdrop-blur-none border-t border-white/10 md:border-0 px-4 md:px-0 py-3 md:py-0 flex justify-end">
         <button
           type="button"
           onClick={handleSubmit}
           disabled={isPending || !valid}
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#f39c12]/20 border border-[#f39c12]/40 text-[#f39c12] hover:bg-[#f39c12]/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 md:py-2.5 rounded-lg bg-[#f39c12] text-black hover:bg-[#e67e22] md:bg-[#f39c12]/20 md:text-[#f39c12] md:border md:border-[#f39c12]/40 md:hover:bg-[#f39c12]/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed font-medium"
         >
           {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {mode === "create" ? "Crear screenshot" : "Guardar cambios"}

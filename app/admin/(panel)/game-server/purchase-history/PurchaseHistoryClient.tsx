@@ -341,7 +341,7 @@ export function PurchaseHistoryClient() {
                 if (p > totalPages) return null;
                 return (
                   <button key={p} onClick={() => setPage(p)}
-                    className={`w-7 h-7 rounded text-xs font-medium ${
+                    className={`w-9 h-9 sm:w-7 sm:h-7 rounded text-sm sm:text-xs font-medium ${
                       p === page ? "bg-purple-700 text-white" : "text-gray-500 hover:text-white hover:bg-white/5"
                     }`}>
                     {p}

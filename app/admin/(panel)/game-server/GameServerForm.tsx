@@ -314,7 +314,7 @@ function ServerCard({ version, form, set, hasPasswordV1, hasPasswordV2, handleTe
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="col-span-2">
           <label className={labelCls}>Host / IP</label>
           <input className={inputCls} placeholder="51.222.254.2"
@@ -426,7 +426,7 @@ function TestServerCard({
 
       {/* MySQL */}
       <div className="space-y-3">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div className="col-span-2">
             <label className={labelCls}>Host / IP</label>
             <input className={inputCls} placeholder="192.168.1.50"
@@ -600,7 +600,7 @@ function ShopTestRunner({ enabled }: { enabled: boolean }) {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div>
           <label className="text-xs text-gray-400 uppercase tracking-wide mb-1 block">UID jugador</label>
           <input

@@ -210,7 +210,7 @@ export function AdminUsersManager({ admins, currentAdminId, isSuperAdmin }: Prop
 
         <div>
           <p className="mb-3 text-xs uppercase tracking-wide text-gray-500">Accesos</p>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:grid-cols-3">
             {ADMIN_PANELS.map((panel) => (
               <label key={panel} className="flex items-center gap-2 text-sm text-gray-300">
                 <input
@@ -284,9 +284,9 @@ export function AdminUsersManager({ admins, currentAdminId, isSuperAdmin }: Prop
                   )}
                 </div>
 
-                <div className="min-w-[320px] space-y-3">
+                <div className="lg:min-w-80 space-y-3">
                   <p className="text-xs uppercase tracking-wide text-gray-500">Permisos</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {ADMIN_PANELS.map((panel) => (
                       <label key={panel} className="flex items-center gap-2 text-sm text-gray-300">
                         <input

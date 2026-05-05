@@ -44,7 +44,7 @@ export default function FixCategoryEditPage() {
           <input {...register("slug", { required: true })} className={FIELD_CLS} />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className={LABEL_CLS}>Nombre ES *</label>
             <input {...register("name_es", { required: true })} className={FIELD_CLS} />

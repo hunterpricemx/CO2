@@ -53,7 +53,7 @@ function FixForm({ action }: { action: "create" | "edit" }) {
           <input {...register("slug", { required: true })} className={FIELD_CLS} placeholder="fix-crash-2026-03" />
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Título {lang.toUpperCase()} *</label>
@@ -81,7 +81,7 @@ function FixForm({ action }: { action: "create" | "edit" }) {
           </select>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {(["es", "en", "pt"] as const).map((lang) => (
             <div key={lang}>
               <label className={LABEL_CLS}>Contenido {lang.toUpperCase()}</label>
