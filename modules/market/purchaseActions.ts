@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { createAdminClient } from "@/lib/supabase/server";
 import { getGameSession } from "@/lib/session";
-import { getCharacterForAccount, deductCPs, creditCPs, getCpMarketRate } from "@/lib/game-db";
+import { getCharacterForAccount, deductCPs, creditCPs, deductGold, creditGold, getCpMarketRate } from "@/lib/game-db";
 import { deliverShopItem, type ShopEnv } from "@/lib/shop-delivery";
 import { isShopBuyerWhitelisted } from "@/lib/shop-whitelist";
 import type { ActionResult } from "@/types";
@@ -46,6 +46,8 @@ export interface BuyWithCPsInput {
   seller_y: number | null;
   silver_price: number;
   version: string; // "1.0" | "2.0"
+  /** Currency the listing was made in. "Gold" cobra Gold real; "CP" cobra CPs. */
+  currency?: "CP" | "Gold";
   /** Marketlogs context — needed by the C# listener to remove the listing. */
   seller_uid?: number;
   item_uid?:   number;
@@ -98,27 +100,37 @@ export async function buyWithCPsAction(
   const versionNum: 1 | 2 = input.version === "1.0" ? 1 : 2;
   const env: ShopEnv = versionNum === 1 ? "v1" : "v2";
 
+  // ── Decide currency: respeta el listing original del marketlogs ────
+  // currency=="Gold" → cobra Gold real (sin convertir). currency=="CP" → cobra CPs.
+  // Default "CP" para retro-compat con clientes que no manden currency.
+  const isGoldListing = input.currency === "Gold";
   const cpRate = await getCpMarketRate();
-  if (cpRate <= 0) return { success: false, error: "Tasa de conversión de CPs no configurada." };
+  if (!isGoldListing && cpRate <= 0) return { success: false, error: "Tasa de conversión de CPs no configurada." };
 
-  // The current public input doesn't carry the currency type — same conversion as
-  // the legacy flow, identical to the previous behaviour to avoid regressions.
-  const cpCost = Math.ceil(input.silver_price / cpRate);
-  if (cpCost <= 0) return { success: false, error: "Precio inválido." };
+  const cost = isGoldListing ? Math.floor(input.silver_price) : Math.ceil(input.silver_price / cpRate);
+  if (cost <= 0) return { success: false, error: "Precio inválido." };
 
   const character = await getCharacterForAccount(session.uid, versionNum);
   if (!character) return { success: false, error: "No se encontró tu personaje en este servidor." };
-  if (character.cps < cpCost) {
+
+  if (isGoldListing) {
+    if (character.gold < cost) {
+      return {
+        success: false,
+        error: `Oro insuficiente. Necesitas ${cost.toLocaleString("es-ES")} Gold, tienes ${character.gold.toLocaleString("es-ES")} Gold.`,
+      };
+    }
+  } else if (character.cps < cost) {
     return {
       success: false,
-      error: `CPs insuficientes. Necesitas ${cpCost.toLocaleString("es-ES")} CP, tienes ${character.cps.toLocaleString("es-ES")} CP.`,
+      error: `CPs insuficientes. Necesitas ${cost.toLocaleString("es-ES")} CP, tienes ${character.cps.toLocaleString("es-ES")} CP.`,
     };
   }
 
   const ip = await captureClientIp();
   const supabase = await createAdminClient();
 
-  // 1. Insert pending row first (audit trail before any side effect).
+  // 1. Insert pending row (audit trail before any side effect).
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: inserted, error: insertErr } = await (supabase as any)
     .from("market_purchases")
@@ -136,7 +148,9 @@ export async function buyWithCPsAction(
       seller_x:       input.seller_x,
       seller_y:       input.seller_y,
       silver_price:   input.silver_price,
-      cp_cost:        cpCost,
+      // Cuando es Gold, cp_cost=0 y silver_price guarda el monto real Gold.
+      // Cuando es CP, cp_cost guarda los CPs cobrados (cp_rate aplicado).
+      cp_cost:        isGoldListing ? 0 : cost,
       cp_rate:        cpRate,
       version:        input.version,
       status:         "pending" as MarketPurchaseStatus,
@@ -150,10 +164,12 @@ export async function buyWithCPsAction(
   }
   const purchaseId = (inserted as { id: string }).id;
 
-  // 2. Atomic deduction in game DB.
+  // 2. Atomic deduction (Gold or CP según currency).
   let deductResult: { success: boolean; newBalance: number };
   try {
-    deductResult = await deductCPs(session.uid, versionNum, cpCost);
+    deductResult = isGoldListing
+      ? await deductGold(session.uid, versionNum, cost)
+      : await deductCPs(session.uid, versionNum, cost);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "deduct_failed";
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -161,18 +177,19 @@ export async function buyWithCPsAction(
       .from("market_purchases")
       .update({ status: "failed" as MarketPurchaseStatus, delivery_error: `deduct_error: ${msg}` })
       .eq("id", purchaseId);
-    return { success: false, error: "Error al descontar CPs del personaje. Intenta de nuevo." };
+    return { success: false, error: `Error al descontar ${isGoldListing ? "Gold" : "CPs"} del personaje. Intenta de nuevo.` };
   }
   if (!deductResult.success) {
+    const errorCode = isGoldListing ? "insufficient_gold_at_charge" : "insufficient_cps_at_charge";
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (supabase as any)
       .from("market_purchases")
-      .update({ status: "failed" as MarketPurchaseStatus, delivery_error: "insufficient_cps_at_charge" })
+      .update({ status: "failed" as MarketPurchaseStatus, delivery_error: errorCode })
       .eq("id", purchaseId);
-    return { success: false, error: "CPs insuficientes al momento del cobro. Intenta de nuevo." };
+    return { success: false, error: `${isGoldListing ? "Oro" : "CPs"} insuficiente al momento del cobro. Intenta de nuevo.` };
   }
 
-  // 3. HTTP delivery to game server listener.
+  // 3. HTTP delivery to game server listener — manda gold/cp por separado.
   const itemIdNum = Number(input.item_id);
   const delivery = await deliverShopItem({
     env,
@@ -187,10 +204,8 @@ export async function buyWithCPsAction(
     sellerUid:  input.seller_uid,
     sellerName: input.seller_name,
     itemUid:    input.item_uid,
-    // Public market always quotes the price already pre-converted to CP-equivalent
-    // by getMarketRows(); we forward it as `cp` for the listener to record.
-    cp:         input.silver_price,
-    gold:       0,
+    gold:       isGoldListing ? cost : 0,
+    cp:         isGoldListing ? 0    : cost,
   });
 
   if (delivery.ok) {
@@ -209,18 +224,18 @@ export async function buyWithCPsAction(
 
     return {
       success: true,
-      data: { purchaseId, cpCost, newBalance: deductResult.newBalance },
+      data: { purchaseId, cpCost: isGoldListing ? 0 : cost, newBalance: deductResult.newBalance },
     };
   }
 
-  // 4. Failure path — refund CPs and mark failed/refunded.
+  // 4. Failure path — refund la moneda correcta + marcar.
   let refunded = false;
   let refundError: string | undefined;
-  let newBalance = deductResult.newBalance;
   try {
-    const credit = await creditCPs(session.uid, versionNum, cpCost);
+    const credit = isGoldListing
+      ? await creditGold(session.uid, versionNum, cost)
+      : await creditCPs(session.uid, versionNum, cost);
     refunded = credit.success;
-    newBalance = credit.newBalance;
   } catch (e) {
     refundError = e instanceof Error ? e.message : "refund_failed";
   }
@@ -237,10 +252,9 @@ export async function buyWithCPsAction(
     })
     .eq("id", purchaseId);
 
-  void newBalance;
   return {
     success: false,
-    error: `Entrega fallida (${delivery.error ?? "unknown"})${refunded ? " — CPs reembolsados." : refundError ? ` — refund también falló: ${refundError}` : ""}`,
+    error: `Entrega fallida (${delivery.error ?? "unknown"})${refunded ? ` — ${isGoldListing ? "Oro" : "CPs"} reembolsados.` : refundError ? ` — refund también falló: ${refundError}` : ""}`,
   };
 }
 

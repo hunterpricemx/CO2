@@ -584,10 +584,16 @@ function CartPanel({
   const [done, setDone] = useState(false);
   const [finalBalance, setFinalBalance] = useState(cpBalance);
 
-  const totalCp = cartItems.reduce((s, i) => s + i.cpCost, 0);
-  const totalGoldCp = cartItems.filter((i) => i.currency !== "CP").reduce((s, i) => s + i.cpCost, 0);
-  const totalDirectCp = cartItems.filter((i) => i.currency === "CP").reduce((s, i) => s + i.cpCost, 0);
-  const canAfford = cpBalance >= totalCp;
+  // Totales separados por moneda — los items Gold se cobran en Gold, no se convierten.
+  const totalCp = cartItems.filter((i) => i.currency === "CP").reduce((s, i) => s + i.silver_price, 0);
+  const totalGold = cartItems.filter((i) => i.currency !== "CP").reduce((s, i) => s + i.silver_price, 0);
+  const hasGoldItems = totalGold > 0;
+  const hasCpItems = totalCp > 0;
+  const canAffordCp = cpBalance >= totalCp;
+  const canAffordGold = goldBalance >= totalGold;
+  const canAfford = canAffordCp && canAffordGold;
+  // legacy refs to silence unused warnings of the old totalDirectCp / totalGoldCp pattern
+  void cpRate;
 
   // Reset done state when cart changes
   useEffect(() => { setDone(false); setErrors([]); }, [cartItems.length]);
@@ -613,9 +619,11 @@ function CartPanel({
           item_uid: item.item_uid,
           silver_price: item.silver_price,
           version: item.version,
+          currency: item.currency === "Gold" ? "Gold" : "CP",
         });
         if (res.success) {
-          balance = res.data.newBalance;
+          // Solo refresca cpBalance si fue cobro CP (newBalance es CPs).
+          if (item.currency === "CP") balance = res.data.newBalance;
         } else {
           errs.push(`${item.item_name}: ${res.error}`);
         }
@@ -698,30 +706,43 @@ function CartPanel({
               ))}
             </ul>
 
-            {/* Total */}
+            {/* Totals — desglose por moneda (Gold + CP separados) */}
             <div className="border-t border-white/8 pt-3 flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">{labels.buy_cp_balance}</span>
-                <span className={`text-xs font-mono font-semibold ${cpBalance >= totalDirectCp ? "text-foreground/70" : "text-red-400"}`}>
-                  {cpBalance.toLocaleString("es-ES")} CP
-                </span>
-              </div>
-              {cartItems.some((i) => i.currency !== "CP") && (
+              {/* Balances disponibles */}
+              {hasCpItems && (
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">{labels.buy_cp_balance}</span>
+                  <span className={`text-xs font-mono font-semibold ${canAffordCp ? "text-foreground/70" : "text-red-400"}`}>
+                    {cpBalance.toLocaleString("es-ES")} CP
+                  </span>
+                </div>
+              )}
+              {hasGoldItems && (
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground">Oro disponible</span>
-                  <span className="text-xs font-mono font-semibold text-yellow-300">
+                  <span className={`text-xs font-mono font-semibold ${canAffordGold ? "text-yellow-300" : "text-red-400"}`}>
                     {goldBalance.toLocaleString("es-ES")} Gold
                   </span>
                 </div>
               )}
-              <div className="flex items-center justify-between">
+              {/* Total a pagar */}
+              <div className="flex items-start justify-between gap-2">
                 <span className="text-sm font-bold flex items-center gap-1">
                   <Coins className="h-3.5 w-3.5 text-emerald-400" />
                   {labels.cart_total}
                 </span>
-                <span className={`text-sm font-bold font-mono ${canAfford ? "text-emerald-400" : "text-red-400"}`}>
-                  {totalCp.toLocaleString("es-ES")} CP
-                </span>
+                <div className="flex flex-col items-end gap-0.5">
+                  {hasCpItems && (
+                    <span className={`text-sm font-bold font-mono ${canAffordCp ? "text-emerald-400" : "text-red-400"}`}>
+                      {totalCp.toLocaleString("es-ES")} CP
+                    </span>
+                  )}
+                  {hasGoldItems && (
+                    <span className={`text-sm font-bold font-mono ${canAffordGold ? "text-yellow-300" : "text-red-400"}`}>
+                      {totalGold.toLocaleString("es-ES")} Gold
+                    </span>
+                  )}
+                </div>
               </div>
 
               {!canAfford && (

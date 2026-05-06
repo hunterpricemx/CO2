@@ -272,6 +272,66 @@ export async function deductCPs(
 }
 
 /**
+ * Atomically deducts Gold (Money column) from a character in the game DB.
+ * Returns { success, newBalance } or throws on DB error.
+ * Uses an optimistic UPDATE with a WHERE Money >= amount guard.
+ */
+export async function deductGold(
+  entityId: number,
+  env: GameEnv | number,
+  amount: number,
+): Promise<{ success: boolean; newBalance: number }> {
+  let conn: mysql.Connection | undefined;
+  try {
+    const { conn: c, config } = await getGameDb(toGameEnv(env));
+    conn = c;
+
+    const [result] = await conn.execute<mysql.ResultSetHeader>(
+      `UPDATE \`${config.table_characters}\` SET Money = Money - ? WHERE EntityID = ? AND Money >= ?`,
+      [amount, entityId, amount],
+    );
+
+    if (result.affectedRows === 0) {
+      return { success: false, newBalance: 0 };
+    }
+
+    const [rows] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT Money FROM \`${config.table_characters}\` WHERE EntityID = ? LIMIT 1`,
+      [entityId],
+    );
+    return { success: true, newBalance: Number(rows[0]?.Money ?? 0) };
+  } finally {
+    await conn?.end();
+  }
+}
+
+/**
+ * Credits Gold (Money column) to a character in the game DB (used for refunds).
+ */
+export async function creditGold(
+  entityId: number,
+  env: GameEnv | number,
+  amount: number,
+): Promise<{ success: boolean; newBalance: number }> {
+  let conn: mysql.Connection | undefined;
+  try {
+    const { conn: c, config } = await getGameDb(toGameEnv(env));
+    conn = c;
+    await conn.execute(
+      `UPDATE \`${config.table_characters}\` SET Money = Money + ? WHERE EntityID = ?`,
+      [amount, entityId],
+    );
+    const [rows] = await conn.execute<mysql.RowDataPacket[]>(
+      `SELECT Money FROM \`${config.table_characters}\` WHERE EntityID = ? LIMIT 1`,
+      [entityId],
+    );
+    return { success: true, newBalance: Number(rows[0]?.Money ?? 0) };
+  } finally {
+    await conn?.end();
+  }
+}
+
+/**
  * Credits CPs to a character in the game DB (used for refunds).
  */
 export async function creditCPs(
