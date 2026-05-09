@@ -121,13 +121,15 @@ export async function buyWithCPsAction(
   void versionNum; // versionNum sigue usándose para deduct/credit (líneas abajo)
 
   // ── Decide currency: respeta el listing original del marketlogs ────
-  // currency=="Gold" → cobra Gold real (sin convertir). currency=="CP" → cobra CPs.
-  // Default "CP" para retro-compat con clientes que no manden currency.
+  // currency=="Gold" → cobra Gold real. currency=="CP" → cobra CPs.
+  // En AMBOS casos `silver_price` ya viene en la moneda destino del listing
+  // (Gold o CP), NO necesita conversión vía cpRate. Bug previo: el branch CP
+  // hacía `Math.ceil(silver_price / cpRate)` lo cual convertía 10000 CPs → 1 CP
+  // y rompía la coherencia de precio que el listener valida (price_mismatch).
   const isGoldListing = input.currency === "Gold";
-  const cpRate = await getCpMarketRate();
-  if (!isGoldListing && cpRate <= 0) return { success: false, error: "Tasa de conversión de CPs no configurada." };
+  const cpRate = await getCpMarketRate(); // se persiste en market_purchases.cp_rate
 
-  const cost = isGoldListing ? Math.floor(input.silver_price) : Math.ceil(input.silver_price / cpRate);
+  const cost = Math.floor(input.silver_price);
   if (cost <= 0) return { success: false, error: "Precio inválido." };
 
   const character = await getCharacterForAccount(session.uid, versionNum);
