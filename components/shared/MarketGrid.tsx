@@ -736,8 +736,8 @@ function CartPanel({
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-emerald-300 mb-0.5">Revisa tu correo en el juego</p>
                   <p className="text-[11px] text-emerald-200/80 leading-relaxed">
-                    Los ítems comprados llegaron como <strong>mensajes</strong> a tu personaje. Abrí el correo
-                    in-game para reclamarlos. Si no los ves, hacé relog.
+                    Los ítems comprados llegaron como <strong>notificación</strong> a tu personaje.
+                    Si no los ves, cerrá sesión y volvé a entrar.
                   </p>
                 </div>
               </div>
