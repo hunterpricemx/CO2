@@ -105,7 +105,16 @@ export async function buyWithCPsAction(
   }
 
   const versionNum: 1 | 2 = input.version === "1.0" ? 1 : 2;
-  const env: ShopEnv = versionNum === 1 ? "v1" : "v2";
+  // ⚠️ WORKAROUND TEMPORAL: el listener C# de Sebastian re-descuenta el
+  // gold/cp del personaje cuando recibe env="v1"/"v2" (cobro doble), pero
+  // NO lo hace con env="test" (asume que el portal ya cobró). El portal
+  // siempre cobra atómicamente con deductGold/deductCPs antes del POST.
+  // Mientras Sebastian unifica el handler, forzamos env="test" — Servidor
+  // v2.0 y Pruebas apuntan al MISMO MySQL así que es seguro.
+  // TODO: revertir a `versionNum === 1 ? "v1" : "v2"` cuando Sebastian
+  // arregle su listener (no debe re-descontar el balance).
+  const env: ShopEnv = "test";
+  void versionNum; // versionNum sigue usándose para deduct/credit (líneas abajo)
 
   // ── Decide currency: respeta el listing original del marketlogs ────
   // currency=="Gold" → cobra Gold real (sin convertir). currency=="CP" → cobra CPs.
