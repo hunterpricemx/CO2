@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/server";
 import { getGameSession } from "@/lib/session";
 import { getCharacterForAccount, deductCPs, creditCPs, deductGold, creditGold, getCpMarketRate } from "@/lib/game-db";
 import { deliverShopItem, type ShopEnv } from "@/lib/shop-delivery";
-import { isShopBuyerWhitelisted } from "@/lib/shop-whitelist";
+import { isShopBuyerWhitelisted, isShopOpenToAll } from "@/lib/shop-whitelist";
 import type { ActionResult } from "@/types";
 
 export type MarketPurchaseStatus = "pending" | "completed" | "cancelled" | "refunded" | "failed";
@@ -100,13 +100,15 @@ export async function buyWithCPsAction(
   const session = await getGameSession();
   if (!session) return { success: false, error: "Debes iniciar sesión para comprar." };
 
-  // Beta gate — only whitelisted usernames can complete the purchase.
-  const allowed = await isShopBuyerWhitelisted(session.username);
+  const versionNum: 1 | 2 = input.version === "1.0" ? 1 : 2;
+
+  // Gate: si shop_open_to_all_<env> está activado, cualquier sesión válida puede
+  // comprar. Si no, fallback a la whitelist beta (shop_buyer_whitelist).
+  const openToAll = await isShopOpenToAll(versionNum);
+  const allowed = openToAll || await isShopBuyerWhitelisted(session.username);
   if (!allowed) {
     return { success: false, error: "feature_not_enabled" };
   }
-
-  const versionNum: 1 | 2 = input.version === "1.0" ? 1 : 2;
   // ⚠️ WORKAROUND TEMPORAL: el listener C# de Sebastian re-descuenta el
   // gold/cp del personaje cuando recibe env="v1"/"v2" (cobro doble), pero
   // NO lo hace con env="test" (asume que el portal ya cobró). El portal

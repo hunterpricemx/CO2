@@ -88,3 +88,46 @@ export async function setShopBuyerWhitelist(list: string[]): Promise<void> {
 export function invalidateShopBuyerWhitelistCache(): void {
   cache = null;
 }
+
+// ─── Open-to-all toggle por versión (sql/053) ────────────────────────
+// Cuando shop_open_to_all_<env> es true, cualquier sesión válida puede
+// comprar (bypass whitelist). Si la columna no existe en server_config,
+// devuelve false (comportamiento beta original).
+
+let openCache: { v1: boolean; v2: boolean; expiresAt: number } | null = null;
+const OPEN_TTL_MS = 30_000;
+
+async function loadOpenFromDb(): Promise<{ v1: boolean; v2: boolean }> {
+  const supabase = await createAdminClient();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase as any)
+    .from("server_config")
+    .select("shop_open_to_all_v1, shop_open_to_all_v2")
+    .eq("id", 1)
+    .single();
+  return {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    v1: Boolean((data as any)?.shop_open_to_all_v1),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    v2: Boolean((data as any)?.shop_open_to_all_v2),
+  };
+}
+
+/** Returns true if /<version>/market is open to ALL logged-in players (whitelist bypassed). */
+export async function isShopOpenToAll(version: 1 | 2): Promise<boolean> {
+  const now = Date.now();
+  if (!openCache || openCache.expiresAt < now) {
+    try {
+      const { v1, v2 } = await loadOpenFromDb();
+      openCache = { v1, v2, expiresAt: now + OPEN_TTL_MS };
+    } catch {
+      // Columna no existe todavía → tratar como false (whitelist sigue activo)
+      openCache = { v1: false, v2: false, expiresAt: now + 5_000 };
+    }
+  }
+  return version === 1 ? openCache.v1 : openCache.v2;
+}
+
+export function invalidateShopOpenToAllCache(): void {
+  openCache = null;
+}

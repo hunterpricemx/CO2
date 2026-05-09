@@ -48,11 +48,13 @@ export type ServerConfigData = {
   shop_hmac_secret_v1: string;
   shop_enabled_v1: boolean;
   shop_timeout_ms_v1: number;
+  shop_open_to_all_v1: boolean;
   // Shop endpoint v2.0
   shop_endpoint_v2: string;
   shop_hmac_secret_v2: string;
   shop_enabled_v2: boolean;
   shop_timeout_ms_v2: number;
+  shop_open_to_all_v2: boolean;
 };
 
 export type ServerEnv = 1 | 2 | "test";
@@ -134,10 +136,12 @@ export async function saveServerConfig(config: ServerConfigData): Promise<Action
     shop_endpoint_v1:      config.shop_endpoint_v1,
     shop_enabled_v1:       config.shop_enabled_v1,
     shop_timeout_ms_v1:    config.shop_timeout_ms_v1,
+    shop_open_to_all_v1:   config.shop_open_to_all_v1,
     // Shop endpoint v2.0
     shop_endpoint_v2:      config.shop_endpoint_v2,
     shop_enabled_v2:       config.shop_enabled_v2,
     shop_timeout_ms_v2:    config.shop_timeout_ms_v2,
+    shop_open_to_all_v2:   config.shop_open_to_all_v2,
     updated_at:            new Date().toISOString(),
   };
 
@@ -464,10 +468,12 @@ export async function getServerConfig() {
     shop_hmac_secret_v1:   "",
     shop_enabled_v1:       Boolean(d.shop_enabled_v1),
     shop_timeout_ms_v1:    d.shop_timeout_ms_v1    ?? 5000,
+    shop_open_to_all_v1:   Boolean(d.shop_open_to_all_v1),
     shop_endpoint_v2:      d.shop_endpoint_v2      ?? "",
     shop_hmac_secret_v2:   "",
     shop_enabled_v2:       Boolean(d.shop_enabled_v2),
     shop_timeout_ms_v2:    d.shop_timeout_ms_v2    ?? 5000,
+    shop_open_to_all_v2:   Boolean(d.shop_open_to_all_v2),
     has_password_v2:        ((d.db_pass_v2          ?? "") as string).trim().length > 0,
     has_password_v1:        ((d.db_pass_v1          ?? "") as string).trim().length > 0,
     has_password_test:      ((d.db_pass_test        ?? "") as string).trim().length > 0,

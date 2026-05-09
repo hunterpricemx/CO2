@@ -5,7 +5,7 @@ import type { RowDataPacket } from "mysql2";
 import { getSiteSettings, getVersionAssets, buildPageSeo } from "@/lib/site-settings";
 import { getGameDb, getCharacterForAccount, getCpMarketRate } from "@/lib/game-db";
 import { resolveMarketImage } from "@/lib/market-images";
-import { isShopBuyerWhitelisted } from "@/lib/shop-whitelist";
+import { isShopBuyerWhitelisted, isShopOpenToAll } from "@/lib/shop-whitelist";
 import { getGameSession } from "@/lib/session";
 import { MarketGrid, type MarketLabels } from "@/components/shared/MarketGrid";
 import type { MarketItemRow } from "@/modules/market/types";
@@ -204,7 +204,9 @@ export default async function MarketPage({ params }: Props) {
     cpBalance = charData?.cps;
     goldBalance = charData?.gold;
     charName = charData?.name;
-    isAllowedBuyer = await isShopBuyerWhitelisted(session.username);
+    // Open-to-all toggle por versión bypassea la whitelist.
+    const openToAll = await isShopOpenToAll(versionNum);
+    isAllowedBuyer = openToAll || await isShopBuyerWhitelisted(session.username);
   }
 
   const loginHref = locale === "es" ? `/${version}/login` : `/${locale}/${version}/login`;

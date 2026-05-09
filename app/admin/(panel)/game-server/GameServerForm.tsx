@@ -70,10 +70,12 @@ export function GameServerForm({ initial }: Props) {
     shop_hmac_secret_v1:   "",
     shop_enabled_v1:       initial?.shop_enabled_v1       ?? false,
     shop_timeout_ms_v1:    initial?.shop_timeout_ms_v1    ?? 5000,
+    shop_open_to_all_v1:   initial?.shop_open_to_all_v1   ?? false,
     shop_endpoint_v2:      initial?.shop_endpoint_v2      ?? "",
     shop_hmac_secret_v2:   "",
     shop_enabled_v2:       initial?.shop_enabled_v2       ?? false,
     shop_timeout_ms_v2:    initial?.shop_timeout_ms_v2    ?? 5000,
+    shop_open_to_all_v2:   initial?.shop_open_to_all_v2   ?? false,
   });
 
   const hasPasswordV2     = initial?.has_password_v2     ?? false;
@@ -805,7 +807,9 @@ function ShopProdCard({
   const secretKey   = `shop_hmac_secret_${version}` as keyof ServerConfigData;
   const enabledKey  = `shop_enabled_${version}` as keyof ServerConfigData;
   const timeoutKey  = `shop_timeout_ms_${version}` as keyof ServerConfigData;
+  const openToAllKey = `shop_open_to_all_${version}` as keyof ServerConfigData;
   const enabled     = form[enabledKey] as boolean;
+  const openToAll   = Boolean(form[openToAllKey]);
   const secretValue = form[secretKey] as string;
   const secretPlaceholder = hasShopSecret && secretValue === ""
     ? "✓ Secret guardado (dejar vacío para no cambiar)"
@@ -881,9 +885,29 @@ function ShopProdCard({
         </div>
       </div>
 
+      {/* Toggle abierto a todos — bypass whitelist */}
+      <div className="border-t border-white/5 pt-4 space-y-2">
+        <label className="flex items-start gap-2.5 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={openToAll}
+            onChange={e => set(openToAllKey, e.target.checked)}
+            className={`mt-0.5 ${version === "v1" ? "accent-blue-500" : "accent-emerald-500"}`}
+          />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-white font-medium">Abrir a todos los jugadores</p>
+            <p className="text-[11px] text-gray-500 leading-relaxed mt-0.5">
+              Si está <strong>activado</strong>: cualquier jugador con sesión iniciada en /{label}/market puede comprar.
+              <br />
+              Si está <strong>apagado</strong>: solo los usernames de la whitelist beta pueden comprar (modo beta).
+            </p>
+          </div>
+        </label>
+      </div>
+
       <p className="text-[11px] text-gray-500 leading-relaxed">
-        Mientras <code className="text-gray-400">enabled</code> esté apagado o la whitelist esté vacía, el botón Comprar
-        del market público sigue mostrando &quot;Próximamente&quot; — kill switch instantáneo.
+        Mientras <code className="text-gray-400">enabled</code> esté apagado, el botón Comprar
+        del market público v{label} muestra &quot;Próximamente&quot; — kill switch instantáneo independiente del toggle anterior.
       </p>
     </div>
   );
