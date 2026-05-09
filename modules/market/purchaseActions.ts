@@ -32,6 +32,13 @@ export interface MarketPurchase {
   status: MarketPurchaseStatus;
   admin_note: string | null;
   completed_at: string | null;
+  /** Tracking de delivery (sql/051) — disponibles tras el promote v1/v2. */
+  delivered_at?:      string | null;
+  delivery_attempts?: number | null;
+  delivery_error?:    string | null;
+  player_ip?:         string | null;
+  request_payload?:   unknown;
+  response_body?:     unknown;
 }
 
 export interface BuyWithCPsInput {
