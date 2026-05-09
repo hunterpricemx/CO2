@@ -578,13 +578,37 @@ type CartPanelProps = {
   onCheckoutSuccess: (newBalance: number) => void;
 };
 
+type CheckoutItemResult = {
+  name: string;
+  currency: string;
+  price: number;
+  ok: boolean;
+  error?: string;
+};
+
+/** Traduce errores técnicos del backend a mensajes amigables para el jugador. */
+function friendlyError(raw: string | undefined): string {
+  if (!raw) return "Error desconocido";
+  const m = raw.toLowerCase();
+  if (m.includes("feature_not_enabled")) return "Esta función todavía no está disponible para tu cuenta.";
+  if (m.includes("not_enough_money") || m.includes("insufficient") || m.includes("insuficiente")) return raw; // ya legible
+  if (m.includes("uid_not_found")) return "Tu personaje no se encontró en el servidor.";
+  if (m.includes("item_not_found")) return "El ítem ya no existe en el mercado del juego.";
+  if (m.includes("invalid_signature") || m.includes("stale_timestamp") || m.includes("replay")) return "Error de sincronización con el servidor del juego.";
+  if (m.includes("internal_error")) return "Error en el servidor del juego — intenta de nuevo en unos minutos.";
+  if (m.includes("timeout") || m.includes("network")) return "El servidor del juego no respondió a tiempo.";
+  if (m.includes("shop_disabled")) return "El sistema de compras está temporalmente deshabilitado.";
+  return raw; // fallback al mensaje raw
+}
+
 function CartPanel({
   cartItems, cpBalance, goldBalance, cpRate, charName, labels, isAllowedBuyer, onRemove, onClear, onCheckoutSuccess,
 }: CartPanelProps) {
   const [isPending, startTransition] = useTransition();
-  const [errors, setErrors] = useState<string[]>([]);
-  const [done, setDone] = useState(false);
-  const [finalBalance, setFinalBalance] = useState(cpBalance);
+  const [result, setResult] = useState<{ items: CheckoutItemResult[]; finalCpBalance: number } | null>(null);
+  const done = result !== null;
+  const errors: string[] = result?.items.filter(i => !i.ok).map(i => `${i.name}: ${friendlyError(i.error)}`) ?? [];
+  const finalBalance = result?.finalCpBalance ?? cpBalance;
 
   // Totales separados por moneda — los items Gold se cobran en Gold, no se convierten.
   const totalCp = cartItems.filter((i) => i.currency === "CP").reduce((s, i) => s + i.silver_price, 0);
@@ -597,15 +621,14 @@ function CartPanel({
   // legacy refs to silence unused warnings of the old totalDirectCp / totalGoldCp pattern
   void cpRate;
 
-  // Reset done state when cart changes
-  useEffect(() => { setDone(false); setErrors([]); }, [cartItems.length]);
+  // Reset result when cart changes
+  useEffect(() => { setResult(null); }, [cartItems.length]);
 
   const handleCheckout = () => {
-    setErrors([]);
-    setDone(false);
+    setResult(null);
     startTransition(async () => {
       let balance = cpBalance;
-      const errs: string[] = [];
+      const items: CheckoutItemResult[] = [];
       for (const item of cartItems) {
         const res = await buyWithCPsAction({
           item_id: item.id,
@@ -627,19 +650,26 @@ function CartPanel({
         if (res.success) {
           // Solo refresca cpBalance si fue cobro CP (newBalance es CPs).
           if (item.currency === "CP") balance = res.data.newBalance;
+          items.push({ name: item.item_name, currency: item.currency, price: item.silver_price, ok: true });
         } else {
-          errs.push(`${item.item_name}: ${res.error}`);
+          items.push({ name: item.item_name, currency: item.currency, price: item.silver_price, ok: false, error: res.error });
         }
       }
-      setFinalBalance(balance);
       onCheckoutSuccess(balance);
-      if (errs.length === 0) {
-        setDone(true);
-      } else {
-        setErrors(errs);
-      }
+      setResult({ items, finalCpBalance: balance });
     });
   };
+
+  // Derived flags para el render del resultado
+  const okCount   = result?.items.filter(i => i.ok).length   ?? 0;
+  const failCount = result?.items.filter(i => !i.ok).length ?? 0;
+  const allOk     = result !== null && failCount === 0;
+  const allFail   = result !== null && okCount === 0;
+  const partial   = result !== null && okCount > 0 && failCount > 0;
+  // Suma reembolsada por moneda
+  const refundedGold = result?.items.filter(i => !i.ok && i.currency !== "CP").reduce((s, i) => s + i.price, 0) ?? 0;
+  const refundedCp   = result?.items.filter(i => !i.ok && i.currency === "CP").reduce((s, i) => s + i.price, 0) ?? 0;
+  void errors; // referenced para retro-compat; el render usa result.items directo abajo
 
   return (
     <aside className="w-full lg:w-80 xl:w-96 shrink-0 rounded-xl border border-emerald-500/20 overflow-hidden bg-[#0a0a0a]">
@@ -667,12 +697,97 @@ function CartPanel({
 
       <div className="p-4 flex flex-col gap-3">
         {done ? (
-          <div className="flex flex-col items-center gap-2 py-4 text-center">
-            <CheckCircle2 className="h-10 w-10 text-emerald-400" />
-            <p className="font-bold text-emerald-400">{labels.cart_success}</p>
-            <p className="text-xs text-muted-foreground">
-              {labels.buy_cp_balance}: {finalBalance.toLocaleString("es-ES")} CP
-            </p>
+          <div className="flex flex-col gap-3">
+            {/* Header de resultado — distinto color según outcome */}
+            <div className={`flex flex-col items-center gap-1.5 py-3 text-center rounded-lg border ${
+              allOk    ? "bg-emerald-500/10 border-emerald-500/30" :
+              allFail  ? "bg-red-500/10 border-red-500/30" :
+                         "bg-yellow-500/10 border-yellow-500/30"
+            }`}>
+              {allOk
+                ? <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+                : allFail
+                  ? <AlertCircle className="h-10 w-10 text-red-400" />
+                  : <AlertCircle className="h-10 w-10 text-yellow-400" />}
+              <p className={`font-bold text-base ${allOk ? "text-emerald-400" : allFail ? "text-red-400" : "text-yellow-400"}`}>
+                {allOk
+                  ? "¡Compra exitosa!"
+                  : allFail
+                    ? "Compra rechazada"
+                    : `Compra parcial: ${okCount} de ${result.items.length} entregados`}
+              </p>
+              <p className="text-[11px] text-muted-foreground/80">
+                {allOk
+                  ? `${okCount} ítem${okCount === 1 ? "" : "s"} entregado${okCount === 1 ? "" : "s"} a ${charName}.`
+                  : allFail
+                    ? "Ningún ítem se entregó. No perdiste oro ni CPs."
+                    : `${failCount} ítem${failCount === 1 ? "" : "s"} no se entregó (reembolsado).`}
+              </p>
+            </div>
+
+            {/* Banner: instrucción para reclamar in-game (solo si hubo entregas OK) */}
+            {okCount > 0 && (
+              <div className="rounded-lg border border-emerald-500/25 bg-emerald-500/5 p-3 flex items-start gap-2.5">
+                <span className="text-xl leading-none shrink-0">📬</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-emerald-300 mb-0.5">Revisa tu correo en el juego</p>
+                  <p className="text-[11px] text-emerald-200/80 leading-relaxed">
+                    Los ítems comprados llegaron como <strong>mensajes</strong> a tu personaje. Abrí el correo
+                    in-game para reclamarlos. Si no los ves, hacé relog.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Banner: refund explicado (solo si hubo fallidos) */}
+            {failCount > 0 && (
+              <div className="rounded-lg border border-blue-500/25 bg-blue-500/5 p-3 flex items-start gap-2.5">
+                <span className="text-xl leading-none shrink-0">💰</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-blue-300 mb-0.5">Reembolso automático</p>
+                  <p className="text-[11px] text-blue-200/80 leading-relaxed">
+                    {refundedCp > 0 && (
+                      <>Te devolvimos <strong className="text-emerald-300">{refundedCp.toLocaleString("es-ES")} CP</strong>{refundedGold > 0 && " y "}</>
+                    )}
+                    {refundedGold > 0 && (
+                      <><strong className="text-yellow-300">{refundedGold.toLocaleString("es-ES")} Gold</strong></>
+                    )}
+                    {refundedCp > 0 || refundedGold > 0 ? " a tu personaje." : "Tu balance no cambió."} No perdiste nada.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Detalle por ítem */}
+            <div className="rounded-lg border border-white/6 bg-white/2 divide-y divide-white/5 max-h-48 overflow-y-auto">
+              {result.items.map((it, idx) => (
+                <div key={`${it.name}-${idx}`} className="flex items-start gap-2 px-3 py-2">
+                  {it.ok
+                    ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
+                    : <X className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[11px] font-medium truncate">{it.name}</p>
+                    <p className="text-[10px] text-muted-foreground/60">
+                      {it.price.toLocaleString("es-ES")} {it.currency}
+                      {!it.ok && it.error && <span className="text-red-300/80"> · {friendlyError(it.error)}</span>}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Balance final + acción cerrar */}
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-[10px] text-muted-foreground/60">
+                {labels.buy_cp_balance}: <span className="text-emerald-400 font-mono">{finalBalance.toLocaleString("es-ES")}</span> CP
+              </p>
+              <button
+                onClick={onClear}
+                className="text-[11px] text-muted-foreground hover:text-white transition-colors underline-offset-2 hover:underline"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         ) : cartItems.length === 0 ? (
           <p className="text-xs text-muted-foreground/50 text-center py-4">{labels.cart_empty}</p>
@@ -755,13 +870,7 @@ function CartPanel({
                 </div>
               )}
 
-              {errors.length > 0 && (
-                <div className="flex flex-col gap-1">
-                  {errors.map((e, i) => (
-                    <p key={i} className="text-[10px] text-red-400 bg-red-400/8 border border-red-400/15 rounded px-2 py-1">{e}</p>
-                  ))}
-                </div>
-              )}
+              {/* errores del checkout previo se muestran ahora en el bloque de resultado (panel done) */}
 
               <p className="text-[10px] text-muted-foreground/40 text-center">{charName}</p>
 
