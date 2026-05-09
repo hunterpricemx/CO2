@@ -547,6 +547,8 @@ function FilterSidebar({
 
 type CartItem = {
   id: string;
+  /** Game item id real del marketlogs (item.itemid). Se usa para que el listener encuentre el item en su catálogo. */
+  game_item_id?: number;
   item_name: string;
   item_plus: number;
   item_bless: number;
@@ -607,6 +609,7 @@ function CartPanel({
       for (const item of cartItems) {
         const res = await buyWithCPsAction({
           item_id: item.id,
+          game_item_id: item.game_item_id,
           item_name: item.item_name,
           item_plus: item.item_plus,
           item_bless: item.item_bless,
@@ -834,6 +837,7 @@ export function MarketGrid({
         ...prev,
         {
           id,
+          game_item_id: item.item_id_raw,
           item_name: item.item_name,
           item_plus: item.plus_enchant,
           item_bless: item.minus_enchant,

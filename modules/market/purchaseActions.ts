@@ -58,6 +58,8 @@ export interface BuyWithCPsInput {
   /** Marketlogs context — needed by the C# listener to remove the listing. */
   seller_uid?: number;
   item_uid?:   number;
+  /** Game item id real (`marketlogs.itemid`). Si falta se infiere de `item_id` (legacy/buggy). */
+  game_item_id?: number;
 }
 
 /** Convert a marketlogs socket string to a C# byte for the shop listener. */
@@ -206,12 +208,15 @@ export async function buyWithCPsAction(
   }
 
   // 3. HTTP delivery to game server listener — manda gold/cp por separado.
-  const itemIdNum = Number(input.item_id);
+  // El listener espera el GAME item id (item.itemid de marketlogs), no el row ID.
+  // input.item_id es string que tiene el row ID (compat con market_purchases),
+  // input.game_item_id es el game item id real (lo que el listener busca en su catálogo).
+  const gameItemId = input.game_item_id ?? Number(input.item_id);
   const delivery = await deliverShopItem({
     env,
     purchaseId,
     uid:        session.uid,
-    itemId:     Number.isFinite(itemIdNum) ? itemIdNum : 0,
+    itemId:     Number.isFinite(gameItemId) && gameItemId > 0 ? gameItemId : 0,
     ip,
     plus:       input.item_plus,
     bless:      input.item_bless,
