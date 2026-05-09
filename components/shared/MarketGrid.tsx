@@ -621,8 +621,12 @@ function CartPanel({
   // legacy refs to silence unused warnings of the old totalDirectCp / totalGoldCp pattern
   void cpRate;
 
-  // Reset result when cart changes
-  useEffect(() => { setResult(null); }, [cartItems.length]);
+  // Reset result solo cuando el usuario AGREGA ítems al carrito (no cuando se
+  // vacía tras un checkout exitoso — eso borraría el banner instantáneamente).
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (cartItems.length > 0) setResult(null);
+  }, [cartItems.length]);
 
   const handleCheckout = () => {
     setResult(null);
@@ -782,7 +786,7 @@ function CartPanel({
                 {labels.buy_cp_balance}: <span className="text-emerald-400 font-mono">{finalBalance.toLocaleString("es-ES")}</span> CP
               </p>
               <button
-                onClick={onClear}
+                onClick={() => setResult(null)}
                 className="text-[11px] text-muted-foreground hover:text-white transition-colors underline-offset-2 hover:underline"
               >
                 Cerrar
